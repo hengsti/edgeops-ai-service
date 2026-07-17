@@ -5,7 +5,7 @@ description = "Anomaly Detection Service for EdgeOps"
 dependencies = ["fastapi", "uvicorn"]
 
 [dependency-groups]
-dev = ["httpx", "pytest", "ruff"]
+dev = ["httpx2", "pytest", "ruff"]
 
 
 [build-system]
