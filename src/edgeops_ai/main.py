@@ -1,26 +1,29 @@
+import asyncio
+import contextlib
+import logging
+from contextlib import asynccontextmanager
+
+import httpx2
 from fastapi import FastAPI, HTTPException, Request, status
 
 from edgeops_ai import __version__
+from edgeops_ai.collector_client import CollectorClient
 from edgeops_ai.features import FeatureExtractor
 from edgeops_ai.predictor import MODEL_VERSION, RuleBasedPredictor
 from edgeops_ai.schemas import AnalysisResult, ObservationV1
+from edgeops_ai.settings import Settings
+
+logger = logging.getLogger(__name__)
 
 
-def create_app() -> FastAPI:
-    app = FastAPI(title="EdgeOps AI Service", version=__version__)
+def create_app(
+    settings: Settings | None = None, collector_transport: (httpx2.AsyncBaseTransport | None) = None
+) -> FastAPI:
+    runtime_settings = settings or Settings()
 
-    app.state.feature_extractor = FeatureExtractor()
-    app.state.predictor = RuleBasedPredictor()
-    app.state.latest_detection = None
-
-    @app.get("/health")
-    def health() -> dict[str, str]:
-        return {"status": "ok", "service": "edgeops-ai-service", "version": __version__}
-
-    @app.post("/v1/observations", response_model=AnalysisResult, status_code=status.HTTP_200_OK)
-    def create_observation(observation: ObservationV1, request: Request) -> AnalysisResult:
-        extractor: FeatureExtractor = request.app.state.feature_extractor
-        predictor: RuleBasedPredictor = request.app.state.predictor
+    def analyze_observation(observation: ObservationV1, app: FastAPI) -> AnalysisResult:
+        extractor: FeatureExtractor = app.state.feature_extractor
+        predictor: RuleBasedPredictor = app.state.predictor
 
         features = extractor.update(observation)
 
@@ -49,8 +52,79 @@ def create_app() -> FastAPI:
                 simulation_phase=observation.metadata.simulation_phase,
             )
 
-        request.app.state.latest_detection = result
+        app.state.latest_detection = result
+
         return result
+
+    async def poll_collector(app: FastAPI, client: CollectorClient) -> None:
+        while True:
+            try:
+                observation = await client.fetch_observation()
+
+                analyze_observation(observation, app)
+
+                app.state.collector_last_error = None
+            except asyncio.CancelledError:
+                raise
+
+            except (
+                httpx2.HTTPError,
+                KeyError,
+                TypeError,
+                ValueError,
+            ) as error:
+                app.state.collector_last_error = str(error)
+
+                logger.warning("Collector polling failed: %s", error)
+
+            await asyncio.sleep(runtime_settings.collector_poll_interval_seconds)
+
+    @asynccontextmanager
+    async def lifespan(app: FastAPI):
+        polling_task: asyncio.Task[None] | None = None
+        collector_client: CollectorClient | None = None
+
+        if runtime_settings.collector_polling_enabled:
+            collector_client = CollectorClient(
+                base_url=runtime_settings.collector_base_url,
+                api_key=runtime_settings.collector_api_key,
+                timeout_seconds=runtime_settings.collector_timeout_seconds,
+                device_ids=runtime_settings.device_ids,
+                transport=collector_transport,
+            )
+
+            polling_task = asyncio.create_task(
+                poll_collector(app, collector_client), name="collector_polling_task"
+            )
+        try:
+            yield
+        finally:
+            if polling_task:
+                polling_task.cancel()
+                with contextlib.suppress(asyncio.CancelledError):
+                    await polling_task
+
+            if collector_client:
+                await collector_client.close()
+
+    app = FastAPI(
+        title="EdgeOps AI Service",
+        version=__version__,
+        lifespan=lifespan,
+    )
+
+    app.state.feature_extractor = FeatureExtractor()
+    app.state.predictor = RuleBasedPredictor()
+    app.state.latest_detection = None
+    app.state.collector_last_error = None
+
+    @app.get("/health")
+    def health() -> dict[str, str]:
+        return {"status": "ok", "service": "edgeops-ai-service", "version": __version__}
+
+    @app.post("/v1/observations", response_model=AnalysisResult, status_code=status.HTTP_200_OK)
+    def create_observation(observation: ObservationV1, request: Request) -> AnalysisResult:
+        return analyze_observation(observation, request.app)
 
     @app.get("/v1/detections/latest", response_model=AnalysisResult)
     def get_latest_detection(request: Request) -> AnalysisResult:
@@ -65,7 +139,3 @@ def create_app() -> FastAPI:
         return latest
 
     return app
-
-
-if __name__ == "__main__":
-    app = create_app()
