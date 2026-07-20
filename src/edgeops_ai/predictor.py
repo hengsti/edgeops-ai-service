@@ -54,7 +54,7 @@ class RuleBasedPredictor:
             )
 
         backpressure_detected = features.queue_full_rate >= self.QUEUE_FULL_RATE or (
-            features.queue_growth_rate > self.QUUEUE_GROWTH_RATE
+            features.queue_growth_rate > self.QUEUE_GROWTH_RATE
             and features.processing_ratio < self.MIN_PROCESSING_RATIO
         )
 
