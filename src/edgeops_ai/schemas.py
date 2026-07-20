@@ -43,7 +43,7 @@ class ObservationV1(StrictModel):
     schema_version: Literal["1.0"]
     metadata: ObservationMetadata
     metrics: IngestionMetrics
-    devices: list[DeviceObservation] = Field(min_length=1)
+    devices: list[DeviceObservation] = Field(default_factory=list)
 
 
 class FeatureVector(StrictModel):
