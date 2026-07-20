@@ -16,4 +16,4 @@ USER edgeops
 
 EXPOSE 8080
 
-CMD ["uvicorn", "edgeops_ai.main:app", "--host", "0.0.0.0", "--port", "8080"]
+CMD ["uvicorn", "edgeops_ai.main:create_app", "--factory", "--host", "0.0.0.0", "--port", "8080"]
