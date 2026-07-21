@@ -8,3 +8,7 @@ __pycache__/
 uv.lock
 
 .env
+
+scripts/
+tests/test_evaluate_rules.py
+data/generated/
