@@ -2,6 +2,7 @@
 name = "edgeops-ai-service"
 version = "0.1.0"
 description = "Anomaly Detection Service for EdgeOps"
+requires-python = ">=3.13"
 dependencies = ["fastapi", "uvicorn", "pydantic", "pydantic-settings", "httpx2"]
 
 [dependency-groups]
@@ -16,7 +17,7 @@ build-backend = "hatchling.build"
 packages = ["src/edgeops_ai"]
 
 [tool.pytest.ini_options]
-pythonpath = ["src"]
+pythonpath = [".","src"]
 testpaths = ["tests"]
 
 [tool.ruff]
