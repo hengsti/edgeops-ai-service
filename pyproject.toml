@@ -3,7 +3,7 @@ name = "edgeops-ai-service"
 version = "0.1.0"
 description = "Anomaly Detection Service for EdgeOps"
 requires-python = ">=3.13"
-dependencies = ["fastapi", "uvicorn", "pydantic", "pydantic-settings", "httpx2"]
+dependencies = ["fastapi", "uvicorn", "pydantic", "pydantic-settings", "httpx2", "scikit-learn", "joblib"]
 
 [dependency-groups]
 dev = ["pytest", "ruff"]
