@@ -52,7 +52,7 @@ class ProbabilityClassifier(Protocol):
 
     def predict(self, values: Any) -> Any: ...
 
-    def predict_probability(self, values: Any) -> Any: ...
+    def predict_proba(self, values: Any) -> Any: ...
 
 
 FeatureVectorizer: TypeAlias = Callable[[FeatureVector], Sequence[float]]
@@ -141,7 +141,7 @@ class MlPredictionBackend:
                 f"ML model predicted a class that is not present in classes_: {predicted_label!r}"
             )
 
-        raw_probabilities = self._model.predict_probability(matrix)
+        raw_probabilities = self._model.predict_proba(matrix)
 
         if len(raw_probabilities) != 1:
             raise RuntimeError(
