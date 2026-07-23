@@ -48,7 +48,7 @@ class FakeMlModel:
         assert values == [[1.5, 0.8, 0.0]]
         return ["ingestion-backpressure"]
 
-    def predict_probability(
+    def predict_proba(
         self,
         values: list[list[float]],
     ) -> list[list[float]]:
