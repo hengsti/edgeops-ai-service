@@ -1,5 +1,7 @@
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+from edgeops_ai.prediction_backends import PredictionBackendName
+
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
@@ -10,6 +12,8 @@ class Settings(BaseSettings):
     collector_timeout_seconds: float = 3.0
     collector_polling_enabled: bool = True
     collector_device_ids: str = ""
+
+    prediction_backend: PredictionBackendName = PredictionBackendName.RULES
 
     @property
     def device_ids(self) -> tuple[str, ...]:
