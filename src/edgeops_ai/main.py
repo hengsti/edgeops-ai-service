@@ -9,7 +9,12 @@ from fastapi import FastAPI, HTTPException, Request, status
 from edgeops_ai import __version__
 from edgeops_ai.collector_client import CollectorClient
 from edgeops_ai.features import FeatureExtractor
-from edgeops_ai.prediction_backends import PredictionBackend, RulesPredictionBackend
+from edgeops_ai.model_loader import load_ml_backend
+from edgeops_ai.prediction_backends import (
+    PredictionBackend,
+    PredictionBackendName,
+    RulesPredictionBackend,
+)
 from edgeops_ai.schemas import AnalysisResult, ObservationV1
 from edgeops_ai.settings import Settings
 
@@ -84,6 +89,11 @@ def create_app(
         polling_task: asyncio.Task[None] | None = None
         collector_client: CollectorClient | None = None
 
+        if runtime_settings.prediction_backend is PredictionBackendName.RULES:
+            app.state.prediction_backend = RulesPredictionBackend()
+        else:
+            app.state.prediction_backend = load_ml_backend(runtime_settings.model_artifact_path)
+
         if runtime_settings.collector_polling_enabled:
             collector_client = CollectorClient(
                 base_url=runtime_settings.collector_base_url,
@@ -101,6 +111,7 @@ def create_app(
         finally:
             if polling_task:
                 polling_task.cancel()
+
                 with contextlib.suppress(asyncio.CancelledError):
                     await polling_task
 
