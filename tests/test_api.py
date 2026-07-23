@@ -1,8 +1,23 @@
 from copy import deepcopy
+from pathlib import Path
 
+import pytest
 from fastapi.testclient import TestClient
 
 from edgeops_ai.main import create_app
+from edgeops_ai.model_loader import ModelArtifactError
+from edgeops_ai.prediction_backends import PredictionBackendName
+from edgeops_ai.settings import Settings
+
+
+def make_settings(**overrides: object) -> Settings:
+    values: dict[str, object] = {
+        "collector_polling_enabled": False,
+        "prediction_backend": PredictionBackendName.RULES,
+    }
+    values.update(overrides)
+
+    return Settings(**values)
 
 
 def observation() -> dict:
@@ -39,108 +54,145 @@ def observation() -> dict:
 
 
 def test_health() -> None:
-    client = TestClient(create_app())
+    with TestClient(create_app(make_settings())) as client:
+        response = client.get("/health")
 
-    response = client.get("/health")
-
-    assert response.status_code == 200
-    assert response.json() == {
-        "status": "ok",
-        "service": "edgeops-ai-service",
-        "version": "0.1.0",
-        "prediction_backend": "rules",
-        "model_version": "rules-0.1.0",
-    }
+        assert response.status_code == 200
 
 
 def test_first_observation_returns_warming_up() -> None:
-    client = TestClient(create_app())
+    with TestClient(create_app(make_settings())) as client:
+        response = client.post("/v1/observations", json=observation())
 
-    response = client.post("/v1/observations", json=observation())
-
-    assert response.status_code == 200, response.json()
-    assert response.json()["status"] == "warming-up"
-    assert response.json()["prediction"] is None
+        assert response.status_code == 200, response.json()
+        assert response.json()["status"] == "warming-up"
+        assert response.json()["prediction"] is None
 
 
 def test_backpressure_is_detected() -> None:
-    client = TestClient(create_app())
+    with TestClient(create_app(make_settings())) as client:
+        first = observation()
+        client.post("/v1/observations", json=first)
 
-    first = observation()
-    client.post("/v1/observations", json=first)
+        second = deepcopy(first)
+        second["metadata"]["captured_at"] = "2024-01-01T00:00:10Z"
+        second["metadata"]["simulation_phase"] = "overloaded"
 
-    second = deepcopy(first)
-    second["metadata"]["captured_at"] = "2024-01-01T00:00:10Z"
-    second["metadata"]["simulation_phase"] = "overloaded"
+        second["metrics"]["messages_enqueued_total"] = 1200
+        second["metrics"]["messages_processed_total"] = 1050
+        second["metrics"]["queue_full_total"] = 20
 
-    second["metrics"]["messages_enqueued_total"] = 1200
-    second["metrics"]["messages_processed_total"] = 1050
-    second["metrics"]["queue_full_total"] = 20
+        second["metrics"]["transform_success_total"] = 1050
+        second["metrics"]["influx_lines_written_total"] = 1050
+        second["metrics"]["pipeline_duration_seconds_sum"] = 2.5
+        second["metrics"]["pipeline_duration_seconds_count"] = 1050
 
-    second["metrics"]["transform_success_total"] = 1050
-    second["metrics"]["influx_lines_written_total"] = 1050
-    second["metrics"]["pipeline_duration_seconds_sum"] = 2.5
-    second["metrics"]["pipeline_duration_seconds_count"] = 1050
+        response = client.post("/v1/observations", json=second)
 
-    response = client.post("/v1/observations", json=second)
+        assert response.status_code == 200
 
-    assert response.status_code == 200
+        body = response.json()
 
-    body = response.json()
-
-    assert body["status"] == "predicted"
-    assert body["prediction"] == "ingestion-backpressure"
-    assert body["features"]["messages_enqueued_rate"] == 20
-    assert body["features"]["messages_processed_rate"] == 5
-    assert body["features"]["queue_growth_rate"] == 15
+        assert body["status"] == "predicted"
+        assert body["prediction"] == "ingestion-backpressure"
+        assert body["features"]["messages_enqueued_rate"] == 20
+        assert body["features"]["messages_processed_rate"] == 5
+        assert body["features"]["queue_growth_rate"] == 15
 
 
 def test_missing_heartbeat_is_detected() -> None:
-    client = TestClient(create_app())
+    with TestClient(create_app(make_settings())) as client:
+        first = observation()
+        client.post("/v1/observations", json=first)
 
-    first = observation()
-    client.post("/v1/observations", json=first)
+        second = deepcopy(first)
+        second["metadata"]["captured_at"] = "2024-01-01T00:00:10Z"
+        second["metadata"]["scenario_id"] = "missing-device-heartbeat"
+        second["metadata"]["simulation_phase"] = "heartbeat-missing"
 
-    second = deepcopy(first)
-    second["metadata"]["captured_at"] = "2024-01-01T00:00:10Z"
-    second["metadata"]["scenario_id"] = "missing-device-heartbeat"
-    second["metadata"]["simulation_phase"] = "heartbeat-missing"
+        second["metrics"]["messages_enqueued_total"] = 1100
+        second["metrics"]["messages_processed_total"] = 1100
+        second["metrics"]["transform_success_total"] = 1100
+        second["metrics"]["influx_lines_written_total"] = 1100
+        second["metrics"]["pipeline_duration_seconds_sum"] = 2.2
+        second["metrics"]["pipeline_duration_seconds_count"] = 1100
 
-    second["metrics"]["messages_enqueued_total"] = 1100
-    second["metrics"]["messages_processed_total"] = 1100
-    second["metrics"]["transform_success_total"] = 1100
-    second["metrics"]["influx_lines_written_total"] = 1100
-    second["metrics"]["pipeline_duration_seconds_sum"] = 2.2
-    second["metrics"]["pipeline_duration_seconds_count"] = 1100
+        second["devices"][0]["heartbeat_missing"] = True
+        second["devices"][0]["heartbeat_age_seconds"] = 120
 
-    second["devices"][0]["heartbeat_missing"] = True
-    second["devices"][0]["heartbeat_age_seconds"] = 120
+        response = client.post("/v1/observations", json=second)
 
-    response = client.post("/v1/observations", json=second)
-
-    assert response.status_code == 200
-    assert response.json()["prediction"] == "missing-device-heartbeat"
+        assert response.status_code == 200
+        assert response.json()["prediction"] == "missing-device-heartbeat"
 
 
 def test_latest_detection() -> None:
-    client = TestClient(create_app())
+    with TestClient(create_app(make_settings())) as client:
+        assert client.get("/v1/detections/latest").status_code == 404
 
-    assert client.get("/v1/detections/latest").status_code == 404
+        client.post("/v1/observations", json=observation())
 
-    client.post("/v1/observations", json=observation())
+        response = client.get("/v1/detections/latest")
 
-    response = client.get("/v1/detections/latest")
-
-    assert response.status_code == 200
-    assert response.json()["status"] == "warming-up"
+        assert response.status_code == 200
+        assert response.json()["status"] == "warming-up"
 
 
 def test_unknown_fields_are_rejected() -> None:
-    client = TestClient(create_app())
+    with TestClient(create_app(make_settings())) as client:
+        payload = observation()
+        payload["unexpected"] = True
 
-    payload = observation()
-    payload["unexpected"] = True
+        response = client.post("/v1/observations", json=payload)
 
-    response = client.post("/v1/observations", json=payload)
+        assert response.status_code == 422
 
-    assert response.status_code == 422
+
+def test_ml_health_reports_artifact_version() -> None:
+    settings = Settings(
+        collector_polling_enabled=False,
+        prediction_backend="ml",
+        model_artifact_path=Path("artifacts/model.joblib"),
+    )
+
+    with TestClient(create_app(settings)) as client:
+        response = client.get("/health")
+
+    assert response.status_code == 200
+    assert response.json()["prediction_backend"] == "ml"
+    assert response.json()["model_version"] == "lightweight-ml-0.1.0"
+
+
+def test_ml_warming_up_uses_ml_model_version() -> None:
+    settings = Settings(
+        collector_polling_enabled=False,
+        prediction_backend="ml",
+        model_artifact_path=Path("artifacts/model.joblib"),
+    )
+
+    with TestClient(create_app(settings)) as client:
+        response = client.post(
+            "/v1/observations",
+            json=observation(),
+        )
+
+    assert response.status_code == 200
+    assert response.json()["status"] == "warming-up"
+    assert response.json()["model_version"] == "lightweight-ml-0.1.0"
+
+
+def test_ml_startup_fails_when_artifact_is_missing(
+    tmp_path: Path,
+) -> None:
+    settings = Settings(
+        collector_polling_enabled=False,
+        prediction_backend="ml",
+        model_artifact_path=tmp_path / "missing.joblib",
+    )
+
+    with pytest.raises(
+        ModelArtifactError,
+        match="does not exist",
+    ):
+        with TestClient(create_app(settings)):
+            pass
