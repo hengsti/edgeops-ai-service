@@ -44,7 +44,13 @@ def test_health() -> None:
     response = client.get("/health")
 
     assert response.status_code == 200
-    assert response.json()["status"] == "ok"
+    assert response.json() == {
+        "status": "ok",
+        "service": "edgeops-ai-service",
+        "version": "0.1.0",
+        "prediction_backend": "rules",
+        "model_version": "rules-0.1.0",
+    }
 
 
 def test_first_observation_returns_warming_up() -> None:
