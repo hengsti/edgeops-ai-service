@@ -3,9 +3,9 @@ from enum import StrEnum
 from math import isfinite
 from typing import Any, Callable, Protocol, Sequence, TypeAlias
 
-from src.edgeops_ai.predictor import MODEL_VERSION as RULES_MODEL_VERSION
-from src.edgeops_ai.predictor import RuleBasedPredictor
-from src.edgeops_ai.schemas import FeatureVector
+from edgeops_ai.predictor import MODEL_VERSION as RULES_MODEL_VERSION
+from edgeops_ai.predictor import RuleBasedPredictor
+from edgeops_ai.schemas import FeatureVector
 
 ML_MODEL_VERSION = "lightweight-ml-0.1.0"
 
