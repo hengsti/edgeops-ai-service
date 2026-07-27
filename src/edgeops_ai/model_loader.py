@@ -4,6 +4,7 @@ from typing import Any, cast
 
 import joblib
 
+from edgeops_ai.model_features import MODEL_FEATURE_COLUMNS, vectorize_model_features
 from edgeops_ai.prediction_backends import (
     ML_MODEL_VERSION,
     MlPredictionBackend,
@@ -23,18 +24,7 @@ SUPPORTED_LABELS = frozenset(
     }
 )
 
-EXPECTED_FEATURE_COLUMNS = (
-    "messages_enqueued_rate",
-    "messages_processed_rate",
-    "transform_success_rate",
-    "queue_growth_rate",
-    "processing_ratio",
-    "queue_full_rate",
-    "transform_failure_ratio",
-    "persistence_ratio",
-    "pipeline_duration_average_seconds",
-    "heartbeat_missing",
-)
+EXPECTED_FEATURE_COLUMNS = MODEL_FEATURE_COLUMNS
 
 REQUIRED_ARTIFACT_FIELDS = frozenset(
     {
@@ -85,12 +75,9 @@ def load_ml_backend(artifact_path: Path) -> MlPredictionBackend:
     _validate_model_classes(model, labels)
     _validate_model_feature_count(model, feature_columns)
 
-    def vectorize(features: FeatureVector) -> list[float]:
-        return [getattr(features, col) for col in feature_columns]
-
     return MlPredictionBackend(
         model=model,
-        vectorizer=vectorize,
+        vectorizer=vectorize_model_features,
         recommendation_resolver=recommendation_for_prediction,
         model_version=cast(str, artifact["model_version"]),
     )
