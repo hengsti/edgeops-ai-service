@@ -1,4 +1,8 @@
+from pathlib import Path
+
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+from edgeops_ai.prediction_backends import PredictionBackendName
 
 
 class Settings(BaseSettings):
@@ -10,6 +14,9 @@ class Settings(BaseSettings):
     collector_timeout_seconds: float = 3.0
     collector_polling_enabled: bool = True
     collector_device_ids: str = ""
+
+    prediction_backend: PredictionBackendName = PredictionBackendName.RULES
+    model_artifact_path: Path = Path("artifacts/model.joblib")
 
     @property
     def device_ids(self) -> tuple[str, ...]:

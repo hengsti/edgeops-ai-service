@@ -12,6 +12,6 @@ uv.lock
 scripts/
 tests/test_evaluate_rules.py
 tests/test_train_model.py
-data/generated/
+data/
 
 artifacts/model.joblib
