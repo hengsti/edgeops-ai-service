@@ -190,9 +190,11 @@ def test_ml_startup_fails_when_artifact_is_missing(
         model_artifact_path=tmp_path / "missing.joblib",
     )
 
-    with pytest.raises(
-        ModelArtifactError,
-        match="does not exist",
+    with (
+        pytest.raises(
+            ModelArtifactError,
+            match="does not exist",
+        ),
+        TestClient(create_app(settings)),
     ):
-        with TestClient(create_app(settings)):
-            pass
+        pass
