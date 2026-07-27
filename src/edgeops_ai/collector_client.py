@@ -1,7 +1,7 @@
 from typing import Any
 from urllib.parse import quote
 
-import httpx2
+import httpx
 
 from edgeops_ai.schemas import DeviceObservation, ObservationV1
 
@@ -26,11 +26,11 @@ class CollectorClient:
         api_key: str,
         timeout_seconds: float,
         device_ids: tuple[str, ...] = (),
-        transport: httpx2.AsyncBaseTransport | None = None,
+        transport: httpx.AsyncBaseTransport | None = None,
     ) -> None:
         self._device_ids = device_ids
 
-        self._client = httpx2.AsyncClient(
+        self._client = httpx.AsyncClient(
             base_url=base_url.rstrip("/"),
             headers={"X-EdgeOps-Key": api_key},
             timeout=timeout_seconds,

@@ -3,7 +3,7 @@ import contextlib
 import logging
 from contextlib import asynccontextmanager
 
-import httpx2
+import httpx
 from fastapi import FastAPI, HTTPException, Request, status
 
 from edgeops_ai import __version__
@@ -22,7 +22,7 @@ logger = logging.getLogger(__name__)
 
 
 def create_app(
-    settings: Settings | None = None, collector_transport: (httpx2.AsyncBaseTransport | None) = None
+    settings: Settings | None = None, collector_transport: (httpx.AsyncBaseTransport | None) = None
 ) -> FastAPI:
     runtime_settings = settings or Settings()
 
@@ -73,7 +73,7 @@ def create_app(
                 raise
 
             except (
-                httpx2.HTTPError,
+                httpx.HTTPError,
                 KeyError,
                 TypeError,
                 ValueError,
