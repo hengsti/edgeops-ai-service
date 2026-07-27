@@ -60,6 +60,7 @@ class FeatureExtractor:
             "transform_success_total",
             "transform_failed_total",
             "influx_lines_written_total",
+            "influx_write_failed_total",
             "pipeline_duration_seconds_sum",
             "pipeline_duration_seconds_count",
         )
@@ -87,6 +88,7 @@ class FeatureExtractor:
         transform_failed_delta = delta("transform_failed_total")
 
         influx_lines_delta = delta("influx_lines_written_total")
+        influx_write_failed_delta = delta("influx_write_failed_total")
 
         pipeline_duration_delta = delta("pipeline_duration_seconds_sum")
         pipeline_count_delta = delta("pipeline_duration_seconds_count")
@@ -102,9 +104,24 @@ class FeatureExtractor:
             transform_failed_delta / transform_total if transform_total > 0 else 0.0
         )
 
-        persistence_ratio = (
+        raw_persistence_ratio = (
             influx_lines_delta / transform_success_delta if transform_success_delta > 0 else 1.0
         )
+
+        if (
+            current.metadata.collector_mode == "production"
+            and current_metrics.influxdb_healthy >= 1.0
+            and influx_write_failed_delta == 0.0
+        ):
+            # Production writes are asynchronous and batched through the WAL.
+            # No lines in this interval does not indicate a failure when the
+            # sink is healthy and no write errors occurred.
+            persistence_ratio = 1.0
+        else:
+            persistence_ratio = min(
+                max(raw_persistence_ratio, 0.0),
+                1.0,
+            )
 
         pipeline_average = (
             pipeline_duration_delta / pipeline_count_delta if pipeline_count_delta > 0 else 0.0
