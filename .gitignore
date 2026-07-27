@@ -15,3 +15,5 @@ tests/test_train_model.py
 data/
 
 artifacts/model.joblib
+
+REFACTORING.md
