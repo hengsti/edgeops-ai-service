@@ -12,8 +12,10 @@ METRIC_MAPPING = {
     "ingest_transform_success_total": "transform_success_total",
     "ingest_transform_failed_total": "transform_failed_total",
     "influx_lines_written_total": "influx_lines_written_total",
-    "ingest_pipeline_duration_seconds_sum": ("pipeline_duration_seconds_sum"),
-    "ingest_pipeline_duration_seconds_count": ("pipeline_duration_seconds_count"),
+    "influx_write_failed_total": "influx_write_failed_total",
+    "influxdb_healthy": "influxdb_healthy",
+    "ingest_pipeline_duration_seconds_sum": "pipeline_duration_seconds_sum",
+    "ingest_pipeline_duration_seconds_count": "pipeline_duration_seconds_count",
 }
 
 
