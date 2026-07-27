@@ -5,8 +5,8 @@ import pytest
 from fastapi.testclient import TestClient
 
 from edgeops_ai.main import create_app
-from edgeops_ai.model_loader import ModelArtifactError
-from edgeops_ai.prediction_backends import PredictionBackendName
+from edgeops_ai.ml import ModelArtifactError
+from edgeops_ai.prediction import PredictionBackendName
 from edgeops_ai.settings import Settings
 
 
