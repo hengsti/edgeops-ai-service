@@ -2,7 +2,7 @@ from pathlib import Path
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-from edgeops_ai.prediction_backends import PredictionBackendName
+from edgeops_ai.prediction import PredictionBackendName
 
 
 class Settings(BaseSettings):
