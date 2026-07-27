@@ -7,7 +7,7 @@ from edgeops_ai.predictor import MODEL_VERSION as RULES_MODEL_VERSION
 from edgeops_ai.predictor import RuleBasedPredictor
 from edgeops_ai.schemas import FeatureVector
 
-ML_MODEL_VERSION = "lightweight-ml-0.1.0"
+ML_MODEL_VERSION = "lightweight-ml-0.2.0"
 
 
 class PredictionBackendName(StrEnum):
@@ -49,6 +49,7 @@ class ProbabilityClassifier(Protocol):
     """Minimal interface required from the persisted scikit-learn model."""
 
     classes: Any
+    n_features_in_: int
 
     def predict(self, values: Any) -> Any: ...
 
