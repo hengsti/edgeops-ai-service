@@ -4,6 +4,7 @@ from typing import Any
 import joblib
 import pytest
 
+from edgeops_ai.model_features import MODEL_FEATURE_COLUMNS
 from edgeops_ai.model_loader import (
     EXPECTED_FEATURE_COLUMNS,
     ModelArtifactError,
@@ -20,7 +21,7 @@ class FakeModel:
         "missing-device-heartbeat",
         "normal",
     )
-    n_features_in_ = 10
+    n_features_in_ = len(MODEL_FEATURE_COLUMNS)
 
     def predict(self, values: Any) -> list[str]:
         return ["normal"]
@@ -32,7 +33,7 @@ class FakeModel:
 def artifact() -> dict[str, Any]:
     return {
         "schema_version": "1.0",
-        "model_version": "lightweight-ml-0.1.0",
+        "model_version": "lightweight-ml-0.2.0",
         "feature_columns": list(EXPECTED_FEATURE_COLUMNS),
         "labels": [
             "normal",
@@ -59,7 +60,7 @@ def test_loads_valid_ml_artifact(tmp_path: Path) -> None:
     backend = load_ml_backend(path)
 
     assert backend.backend_name is PredictionBackendName.ML
-    assert backend.model_version == "lightweight-ml-0.1.0"
+    assert backend.model_version == "lightweight-ml-0.2.0"
 
 
 def test_missing_artifact_fails(tmp_path: Path) -> None:
