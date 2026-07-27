@@ -1,7 +1,8 @@
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from enum import StrEnum
 from math import isfinite
-from typing import Any, Callable, Protocol, Sequence, TypeAlias
+from typing import Any, Protocol
 
 from edgeops_ai.predictor import MODEL_VERSION as RULES_MODEL_VERSION
 from edgeops_ai.predictor import RuleBasedPredictor
@@ -56,9 +57,9 @@ class ProbabilityClassifier(Protocol):
     def predict_proba(self, values: Any) -> Any: ...
 
 
-FeatureVectorizer: TypeAlias = Callable[[FeatureVector], Sequence[float]]
+type FeatureVectorizer = Callable[[FeatureVector], Sequence[float]]
 
-RecommendationResolver: TypeAlias = Callable[[str, FeatureVector], str]
+type RecommendationResolver = Callable[[str, FeatureVector], str]
 
 
 class RulesPredictionBackend:
