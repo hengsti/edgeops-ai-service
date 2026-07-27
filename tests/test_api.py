@@ -160,7 +160,7 @@ def test_ml_health_reports_artifact_version() -> None:
 
     assert response.status_code == 200
     assert response.json()["prediction_backend"] == "ml"
-    assert response.json()["model_version"] == "lightweight-ml-0.1.0"
+    assert response.json()["model_version"] == "lightweight-ml-0.2.0"
 
 
 def test_ml_warming_up_uses_ml_model_version() -> None:
@@ -178,7 +178,7 @@ def test_ml_warming_up_uses_ml_model_version() -> None:
 
     assert response.status_code == 200
     assert response.json()["status"] == "warming-up"
-    assert response.json()["model_version"] == "lightweight-ml-0.1.0"
+    assert response.json()["model_version"] == "lightweight-ml-0.2.0"
 
 
 def test_ml_startup_fails_when_artifact_is_missing(
