@@ -28,6 +28,8 @@ class IngestionMetrics(StrictModel):
     transform_failed_total: NonNegativeFloat
 
     influx_lines_written_total: NonNegativeFloat
+    influx_write_failed_total: NonNegativeFloat = 0.0
+    influxdb_healthy: float = Field(default=1.0, ge=0, le=1)
 
     pipeline_duration_seconds_sum: NonNegativeFloat
     pipeline_duration_seconds_count: NonNegativeFloat
