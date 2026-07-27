@@ -16,7 +16,8 @@ class RuleBasedPredictor:
     """
     Transparent baseline for evaluating the later ML Model.
 
-    The thresholds are intentionally kept in one place and should initially be calibrated against the collector scenarios.
+    The thresholds are intentionally kept in one place and should initially be calibrated against
+    the collector scenarios.
     """
 
     TRANSFORM_FAILURE_RATIO = 0.01
