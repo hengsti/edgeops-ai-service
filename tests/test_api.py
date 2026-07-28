@@ -5,7 +5,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from edgeops_ai.main import create_app
-from edgeops_ai.ml import ModelArtifactError
+from edgeops_ai.ml import ML_MODEL_VERSION, MlPredictor, ModelArtifactError
 from edgeops_ai.prediction import PredictionBackendName
 from edgeops_ai.settings import Settings
 
@@ -148,7 +148,11 @@ def test_unknown_fields_are_rejected() -> None:
         assert response.status_code == 422
 
 
-def test_ml_health_reports_artifact_version() -> None:
+def test_ml_health_reports_artifact_version(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(
+        "edgeops_ai.main.load_ml_predictor",
+        lambda _: MlPredictor(model=object()),
+    )
     settings = Settings(
         collector_polling_enabled=False,
         prediction_backend="ml",
@@ -160,10 +164,16 @@ def test_ml_health_reports_artifact_version() -> None:
 
     assert response.status_code == 200
     assert response.json()["prediction_backend"] == "ml"
-    assert response.json()["model_version"] == "lightweight-ml-0.2.0"
+    assert response.json()["model_version"] == ML_MODEL_VERSION
 
 
-def test_ml_warming_up_uses_ml_model_version() -> None:
+def test_ml_warming_up_uses_ml_model_version(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        "edgeops_ai.main.load_ml_predictor",
+        lambda _: MlPredictor(model=object()),
+    )
     settings = Settings(
         collector_polling_enabled=False,
         prediction_backend="ml",
@@ -178,7 +188,7 @@ def test_ml_warming_up_uses_ml_model_version() -> None:
 
     assert response.status_code == 200
     assert response.json()["status"] == "warming-up"
-    assert response.json()["model_version"] == "lightweight-ml-0.2.0"
+    assert response.json()["model_version"] == ML_MODEL_VERSION
 
 
 def test_ml_startup_fails_when_artifact_is_missing(

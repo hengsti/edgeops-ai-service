@@ -14,9 +14,12 @@ HEALTHY_FEATURE_VALUES: dict[str, Any] = {
     "processing_ratio": 1.0,
     "queue_full_rate": 0.0,
     "transform_failure_ratio": 0.0,
+    "influxdb_healthy": 1.0,
     "persistence_ratio": 1.0,
     "pipeline_duration_average_seconds": 0.05,
     "heartbeat_missing": False,
+    "observed_device_count": 0,
+    "missing_device_count": 0,
 }
 
 

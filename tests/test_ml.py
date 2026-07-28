@@ -5,6 +5,7 @@ import joblib
 import pytest
 
 from edgeops_ai.ml import (
+    ARTIFACT_SCHEMA_VERSION,
     ML_MODEL_VERSION,
     MODEL_FEATURE_COLUMNS,
     MlPredictor,
@@ -33,7 +34,7 @@ class FakeModel:
 
 def artifact() -> dict[str, Any]:
     return {
-        "schema_version": "1.0",
+        "schema_version": ARTIFACT_SCHEMA_VERSION,
         "model_version": ML_MODEL_VERSION,
         "feature_columns": list(MODEL_FEATURE_COLUMNS),
         "labels": list(FakeModel.classes_),
@@ -93,6 +94,24 @@ def test_rejects_missing_artifact_fields(tmp_path: Path) -> None:
     path = save_artifact(tmp_path / "model.joblib", value)
 
     with pytest.raises(ModelArtifactError, match="missing required fields"):
+        load_ml_predictor(path)
+
+
+def test_rejects_old_artifact_schema(tmp_path: Path) -> None:
+    value = artifact()
+    value["schema_version"] = "1.0"
+    path = save_artifact(tmp_path / "model.joblib", value)
+
+    with pytest.raises(ModelArtifactError, match="Unsupported artifact schema version"):
+        load_ml_predictor(path)
+
+
+def test_rejects_old_model_version(tmp_path: Path) -> None:
+    value = artifact()
+    value["model_version"] = "lightweight-ml-0.2.0"
+    path = save_artifact(tmp_path / "model.joblib", value)
+
+    with pytest.raises(ModelArtifactError, match="Unsupported ML model version"):
         load_ml_predictor(path)
 
 
