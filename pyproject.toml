@@ -3,7 +3,7 @@ name = "edgeops-ai-service"
 version = "0.1.0"
 description = "Anomaly Detection Service for EdgeOps"
 requires-python = ">=3.13"
-dependencies = ["fastapi", "uvicorn", "pydantic", "pydantic-settings", "httpx2", "scikit-learn", "joblib"]
+dependencies = ["fastapi", "uvicorn", "pydantic", "pydantic-settings", "httpx", "scikit-learn", "joblib"]
 
 [dependency-groups]
 dev = ["pytest", "ruff"]
@@ -23,3 +23,19 @@ testpaths = ["tests"]
 [tool.ruff]
 target-version = "py313"
 line-length = 100
+src = ["src", "tests", "scripts"]
+
+[tool.ruff.lint]
+select = [
+    "E",   # pycodestyle errors
+    "W",   # pycodestyle warnings
+    "F",   # pyflakes
+    "I",   # isort (import sorting)
+    "UP",  # pyupgrade (modern syntax)
+    "B",   # bugbear (likely bugs)
+    "SIM", # simplify
+    "C4",  # comprehensions
+    "RUF", # ruff-specific
+]
+
+[tool.ruff.format]

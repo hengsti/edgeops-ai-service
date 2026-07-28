@@ -5,8 +5,8 @@ import pytest
 from fastapi.testclient import TestClient
 
 from edgeops_ai.main import create_app
-from edgeops_ai.model_loader import ModelArtifactError
-from edgeops_ai.prediction_backends import PredictionBackendName
+from edgeops_ai.ml import ModelArtifactError
+from edgeops_ai.prediction import PredictionBackendName
 from edgeops_ai.settings import Settings
 
 
@@ -190,9 +190,11 @@ def test_ml_startup_fails_when_artifact_is_missing(
         model_artifact_path=tmp_path / "missing.joblib",
     )
 
-    with pytest.raises(
-        ModelArtifactError,
-        match="does not exist",
+    with (
+        pytest.raises(
+            ModelArtifactError,
+            match="does not exist",
+        ),
+        TestClient(create_app(settings)),
     ):
-        with TestClient(create_app(settings)):
-            pass
+        pass

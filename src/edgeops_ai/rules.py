@@ -1,22 +1,15 @@
-from dataclasses import dataclass
+from edgeops_ai.prediction import Prediction, PredictionBackendName, recommendation_for
+from edgeops_ai.schemas import FeatureVector
 
-from edgeops_ai.schemas import FeatureVector, PredictionLabel
-
-MODEL_VERSION = "rules-0.1.0"
-
-
-@dataclass(frozen=True)
-class Prediction:
-    label: PredictionLabel
-    confidence: float
-    recommendation: str
+RULES_MODEL_VERSION = "rules-0.1.0"
 
 
 class RuleBasedPredictor:
     """
     Transparent baseline for evaluating the later ML Model.
 
-    The thresholds are intentionally kept in one place and should initially be calibrated against the collector scenarios.
+    The thresholds are intentionally kept in one place and should initially be calibrated against
+    the collector scenarios.
     """
 
     TRANSFORM_FAILURE_RATIO = 0.01
@@ -26,14 +19,21 @@ class RuleBasedPredictor:
     MIN_PROCESSING_RATIO = 0.98
     QUEUE_FULL_RATE = 0.10
 
+    @property
+    def backend_name(self) -> PredictionBackendName:
+        return PredictionBackendName.RULES
+
+    @property
+    def model_version(self) -> str:
+        return RULES_MODEL_VERSION
+
     def predict(self, features: FeatureVector) -> Prediction:
         if features.heartbeat_missing:
-            devices = ", ".join(features.missing_device_ids)
-
             return Prediction(
                 label="missing-device-heartbeat",
                 confidence=1.0,
-                recommendation=f"Check connectivity and power state of: {devices}.",
+                recommendation=recommendation_for("missing-device-heartbeat", features),
+                model_version=RULES_MODEL_VERSION,
             )
 
         if (
@@ -43,14 +43,16 @@ class RuleBasedPredictor:
             return Prediction(
                 label="influxdb-write-failure",
                 confidence=1.0,
-                recommendation="Check InfluxDB health, connectivity and ingestion write logs.",
+                recommendation=recommendation_for("influxdb-write-failure", features),
+                model_version=RULES_MODEL_VERSION,
             )
 
         if features.transform_failure_ratio >= self.TRANSFORM_FAILURE_RATIO:
             return Prediction(
                 label="malformed-sensor-payload",
                 confidence=1.0,
-                recommendation="Inspect DLQ messages and validate sensor payload schemas.",
+                recommendation=recommendation_for("malformed-sensor-payload", features),
+                model_version=RULES_MODEL_VERSION,
             )
 
         backpressure_detected = features.queue_full_rate >= self.QUEUE_FULL_RATE or (
@@ -62,11 +64,13 @@ class RuleBasedPredictor:
             return Prediction(
                 label="ingestion-backpressure",
                 confidence=1.0,
-                recommendation="Inspect ingestion queue pressure and processing throughput.",
+                recommendation=recommendation_for("ingestion-backpressure", features),
+                model_version=RULES_MODEL_VERSION,
             )
 
         return Prediction(
             label="normal",
             confidence=1.0,
-            recommendation="No issues detected.",
+            recommendation=recommendation_for("normal", features),
+            model_version=RULES_MODEL_VERSION,
         )

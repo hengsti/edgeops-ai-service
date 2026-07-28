@@ -3,7 +3,7 @@ from edgeops_ai.schemas import FeatureVector, ObservationV1
 
 class FeatureExtractor:
     """
-    Keeps exactly on previous observation in memory.
+    Keeps exactly one previous observation in memory.
 
     The first observation cannot produce rates and therefore results in a warming-up response.
     """
