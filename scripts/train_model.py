@@ -27,8 +27,19 @@ from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
 from sklearn.tree import DecisionTreeClassifier
 
-from edgeops_ai.ml import ML_MODEL_VERSION, MODEL_FEATURE_COLUMNS, build_model_feature_row
-from scripts.common import LABELS
+from edgeops_ai.ml import (
+    ARTIFACT_SCHEMA_VERSION,
+    ML_MODEL_VERSION,
+    MODEL_FEATURE_COLUMNS,
+    build_model_feature_row,
+)
+from scripts.common import (
+    DATASET_SCHEMA_VERSION,
+    LABELS,
+)
+from scripts.common import (
+    FEATURE_COLUMNS as DATASET_FEATURE_COLUMNS,
+)
 
 FEATURE_COLUMNS = MODEL_FEATURE_COLUMNS
 
@@ -44,6 +55,7 @@ SOURCE_FEATURE_COLUMNS = (
 )
 
 METADATA_COLUMNS = (
+    "dataset_schema_version",
     "simulation_run_id",
     "simulation_seed",
     "simulation_phase",
@@ -133,7 +145,9 @@ def load_training_dataset(input_dir: Path) -> TrainingDataset:
     if not paths:
         raise DatasetError(f"No *-seed-*.csv files found in {input_dir}")
 
-    required_columns = set(METADATA_COLUMNS) | set(SOURCE_FEATURE_COLUMNS)
+    required_columns = (
+        set(METADATA_COLUMNS) | set(SOURCE_FEATURE_COLUMNS) | set(DATASET_FEATURE_COLUMNS)
+    )
 
     feature_rows: list[list[float]] = []
     labels: list[str] = []
@@ -156,6 +170,14 @@ def load_training_dataset(input_dir: Path) -> TrainingDataset:
 
             for line_number, row in enumerate(reader, start=2):
                 file_row_count += 1
+
+                dataset_version = (row.get("dataset_schema_version") or "").strip()
+
+                if dataset_version != DATASET_SCHEMA_VERSION:
+                    raise DatasetError(
+                        f"{path}:{line_number}: unsupported dataset_schema_version "
+                        f"{dataset_version!r}; expected {DATASET_SCHEMA_VERSION!r}"
+                    )
 
                 phase = row["simulation_phase"].strip().lower()
 
@@ -421,6 +443,7 @@ def train_model(
 
     report: dict[str, Any] = {
         "schema_version": "1.0",
+        "dataset_schema_version": DATASET_SCHEMA_VERSION,
         "model_version": model_version,
         "generated_at": datetime.now(UTC).isoformat(),
         "candidate_configuration": {name: repr(model) for name, model in CANDIDATE_MODELS.items()},
@@ -460,7 +483,8 @@ def train_model(
     classifier.fit(dataset.features, dataset.labels)
 
     artifact = {
-        "schema_version": "1.0",
+        "schema_version": ARTIFACT_SCHEMA_VERSION,
+        "dataset_schema_version": DATASET_SCHEMA_VERSION,
         "model_version": model_version,
         "model_name": selected_model,
         "trained_at": report["generated_at"],
@@ -495,7 +519,7 @@ def parse_args(
     parser.add_argument(
         "--artifact",
         type=Path,
-        default=Path("artifacts/model.joblib"),
+        default=Path("artifacts/model-candidate.joblib"),
     )
     parser.add_argument(
         "--report",
