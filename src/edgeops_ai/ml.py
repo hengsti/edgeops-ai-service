@@ -1,7 +1,7 @@
 """ML prediction backend: feature vectorization, artifact loading, and inference."""
 
 from collections.abc import Mapping
-from math import isfinite
+from math import isfinite, log1p
 from pathlib import Path
 from typing import Any, cast
 
@@ -10,8 +10,8 @@ import joblib
 from edgeops_ai.prediction import Prediction, PredictionBackendName, recommendation_for
 from edgeops_ai.schemas import FeatureVector, PredictionLabel
 
-ML_MODEL_VERSION = "lightweight-ml-0.2.0"
-ARTIFACT_SCHEMA_VERSION = "1.0"
+ML_MODEL_VERSION = "lightweight-ml-0.3.0"
+ARTIFACT_SCHEMA_VERSION = "2.0"
 
 MODEL_FEATURE_COLUMNS = (
     "queue_growth_ratio",
@@ -49,6 +49,17 @@ def _bounded_ratio(numerator: float, denominator: float) -> float:
         return 0.0
 
     return _bounded(numerator / denominator)
+
+
+def pipeline_duration_average_seconds(
+    pipeline_duration_delta: float, pipeline_count_delta: float
+) -> float:
+    if not isfinite(pipeline_duration_delta) or not isfinite(pipeline_count_delta):
+        raise ValueError("ML feature values must be finite.")
+
+    return (
+        log1p(pipeline_duration_delta / pipeline_count_delta) if pipeline_count_delta > 0 else 0.0
+    )
 
 
 def build_model_feature_row(
