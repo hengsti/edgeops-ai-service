@@ -121,7 +121,7 @@ Everything lives in `scripts/` and runs offline against the collector's
 simulation mode:
 
 ```powershell
-# collect labeled datasets, evaluate the rule baseline, train, all in one go
+# collect labeled datasets, evaluate the rule baseline, and train a candidate
 uv run python -m scripts.run_pipeline --train
 
 # or step by step
@@ -131,11 +131,19 @@ uv run python -m scripts.train_model
 uv run python -m scripts.evaluate_deployed_model --seed-range 62 66
 ```
 
-Datasets are CSVs under `data/` (gitignored, the JSON reports are kept). Training
-writes `artifacts/model.joblib` together with a training report and refuses to
-save a model that doesn't pass the quality gate. `evaluate_deployed_model.py` is
-the honest check: it uses holdout seeds the model has never seen and goes through
-the real HTTP endpoint instead of calling the model directly.
+Datasets are CSVs under `data/` (gitignored, the JSON reports are kept). Generated
+rows carry `dataset_schema_version="2.0"`; stale CSVs are regenerated instead of
+being silently reused. Training writes `artifacts/model-candidate.joblib` together
+with a training report and refuses to save a model that doesn't pass the quality
+gate. Promote the candidate to `artifacts/model.joblib` only after the full
+evaluation passes. `evaluate_deployed_model.py` is the honest check: it uses
+holdout seeds the model has never seen and goes through the real HTTP endpoint
+instead of calling the model directly.
+
+The checked-in production artifact is deliberately still the schema-`1.0`
+baseline and is rejected by the schema-`2.0` loader. Keep using the rules backend
+until a compatible `lightweight-ml-0.3.0` candidate has passed evaluation and
+been promoted.
 
 ## Adding another model
 
