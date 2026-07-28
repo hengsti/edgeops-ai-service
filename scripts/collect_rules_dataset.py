@@ -35,6 +35,7 @@ from edgeops_ai.schemas import FeatureVector, ObservationV1
 from edgeops_ai.settings import Settings
 from scripts.common import (
     DATASET_COLUMNS,
+    DATASET_SCHEMA_VERSION,
     LABELS,
     infer_expected_label,
     non_negative_float,
@@ -79,6 +80,7 @@ def build_dataset_row(
     metadata = observation.metadata
 
     row: dict[str, Any] = {
+        "dataset_schema_version": DATASET_SCHEMA_VERSION,
         "captured_at": metadata.captured_at.isoformat(),
         "source_host": metadata.source_host,
         "scenario_id": metadata.scenario_id,
@@ -122,6 +124,16 @@ def write_dataset(
     if suffix == ".csv":
         file_exists_with_content = output.exists() and output.stat().st_size > 0
 
+        if append and file_exists_with_content:
+            with output.open(
+                encoding="utf-8",
+                newline="",
+            ) as existing_file:
+                existing_header = next(csv.reader(existing_file), None)
+
+            if tuple(existing_header or ()) != DATASET_COLUMNS:
+                raise ValueError("Cannot append to a CSV with an incompatible dataset schema.")
+
         mode = "a" if append else "w"
 
         with output.open(
@@ -140,6 +152,27 @@ def write_dataset(
             writer.writerows(rows)
 
         return
+
+    file_exists_with_content = output.exists() and output.stat().st_size > 0
+
+    if append and file_exists_with_content:
+        with output.open(encoding="utf-8") as existing_file:
+            first_line = next(
+                (line for line in existing_file if line.strip()),
+                "",
+            )
+
+        try:
+            first_row = json.loads(first_line)
+        except json.JSONDecodeError as error:
+            raise ValueError("Cannot append to JSONL with invalid existing content.") from error
+
+        if (
+            not isinstance(first_row, dict)
+            or first_row.get("dataset_schema_version") != DATASET_SCHEMA_VERSION
+            or not set(DATASET_COLUMNS).issubset(first_row)
+        ):
+            raise ValueError("Cannot append to JSONL with an incompatible dataset schema.")
 
     mode = "a" if append else "w"
 
