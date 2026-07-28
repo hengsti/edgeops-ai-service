@@ -20,6 +20,8 @@ from collections.abc import Sequence
 from pathlib import Path
 
 from scripts.common import (
+    DATASET_SCHEMA_VERSION,
+    FEATURE_COLUMNS,
     SCENARIOS,
     ScriptError,
     dataset_path,
@@ -47,7 +49,9 @@ def dataset_is_complete(
     A reusable dataset must:
 
     - exist and contain data;
+    - use the current dataset schema version;
     - contain the required metadata columns;
+    - contain every current feature column;
     - contain only the requested scenario and seed;
     - contain normal and fault labels;
     - contain a recovery phase.
@@ -69,11 +73,12 @@ def dataset_is_complete(
             reader = csv.DictReader(dataset_file)
 
             required_columns = {
+                "dataset_schema_version",
                 "scenario_id",
                 "simulation_seed",
                 "simulation_phase",
                 "expected_label",
-            }
+            } | set(FEATURE_COLUMNS)
 
             if reader.fieldnames is None:
                 return False
@@ -88,21 +93,24 @@ def dataset_is_complete(
             for row in reader:
                 row_count += 1
 
-                row_scenario = row["scenario_id"].strip().lower()
+                if (row.get("dataset_schema_version") or "").strip() != DATASET_SCHEMA_VERSION:
+                    return False
+
+                row_scenario = (row.get("scenario_id") or "").strip().lower()
 
                 if row_scenario != scenario:
                     return False
 
                 try:
-                    row_seed = int(row["simulation_seed"])
+                    row_seed = int(row.get("simulation_seed") or "")
                 except (TypeError, ValueError):
                     return False
 
                 if row_seed != seed:
                     return False
 
-                expected_labels.add(row["expected_label"].strip().lower())
-                phases.add(row["simulation_phase"].strip().lower())
+                expected_labels.add((row.get("expected_label") or "").strip().lower())
+                phases.add((row.get("simulation_phase") or "").strip().lower())
 
     except (OSError, csv.Error):
         return False
@@ -476,8 +484,8 @@ def parse_args(
     parser.add_argument(
         "--model-artifact",
         type=Path,
-        default=Path("artifacts/model.joblib"),
-        help="Model artifact path used with --train.",
+        default=Path("artifacts/model-candidate.joblib"),
+        help="Candidate model artifact path used with --train.",
     )
 
     parser.add_argument(
