@@ -1,6 +1,13 @@
 from typing import Literal
 
-from pydantic import AwareDatetime, BaseModel, ConfigDict, Field, NonNegativeFloat
+from pydantic import (
+    AwareDatetime,
+    BaseModel,
+    ConfigDict,
+    Field,
+    NonNegativeFloat,
+    NonNegativeInt,
+)
 
 
 class StrictModel(BaseModel):
@@ -34,6 +41,12 @@ class IngestionMetrics(StrictModel):
     pipeline_duration_seconds_sum: NonNegativeFloat
     pipeline_duration_seconds_count: NonNegativeFloat
 
+    influx_write_success_total: NonNegativeFloat | None = None
+    ingest_queue_depth: NonNegativeFloat | None = None
+    ingest_queue_capacity: NonNegativeFloat | None = Field(default=None, gt=0)
+    ingest_sensor_messages_processed_total: NonNegativeFloat | None = None
+    ingest_status_messages_processed_total: NonNegativeFloat | None = None
+
 
 class DeviceObservation(StrictModel):
     device_id: str = Field(min_length=1)
@@ -58,13 +71,30 @@ class FeatureVector(StrictModel):
     queue_growth_rate: float
     processing_ratio: NonNegativeFloat
     queue_full_rate: NonNegativeFloat
+    queue_depth: NonNegativeFloat | None = None
+    queue_capacity: NonNegativeFloat | None = None
+    queue_utilization_ratio: NonNegativeFloat | None = None
+    queue_metrics_available: bool = Field(default=False)
 
     transform_failure_ratio: NonNegativeFloat
+
+    influx_write_failure_ratio: NonNegativeFloat | None = None
+    influx_write_metrics_available: bool = Field(default=False)
+    influxdb_healthy: NonNegativeFloat
     persistence_ratio: NonNegativeFloat
+
     pipeline_duration_average_seconds: NonNegativeFloat
 
     heartbeat_missing: bool
+    heartbeat_age_max_seconds: NonNegativeFloat | None = None
+    heartbeat_age_mean_seconds: NonNegativeFloat | None = None
+    heartbeat_age_available: bool = Field(default=False)
+
     missing_device_ids: list[str] = Field(default_factory=list)
+    observed_device_count: NonNegativeInt
+    missing_device_count: NonNegativeInt
+    missing_device_ratio: float = Field(default=0.0, ge=0, le=1)
+    device_metrics_available: bool = Field(default=False)
 
 
 PredictionLabel = Literal[

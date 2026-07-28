@@ -83,6 +83,14 @@ class FeatureExtractor:
         enqueued_delta = delta("messages_enqueued_total")
         processed_delta = delta("messages_processed_total")
         queue_full_delta = delta("queue_full_total")
+        queue_depth = current_metrics.ingest_queue_depth
+        queue_capacity = current_metrics.ingest_queue_capacity
+        queue_metrics_available = queue_depth is not None and queue_capacity is not None
+        queue_utilization_ratio = (
+            min(max(float(queue_depth) / float(queue_capacity), 0.0), 1.0)
+            if queue_metrics_available
+            else None
+        )
 
         transform_success_delta = delta("transform_success_total")
         transform_failed_delta = delta("transform_failed_total")
@@ -130,6 +138,41 @@ class FeatureExtractor:
         missing_device_ids = [
             device.device_id for device in current.devices if device.heartbeat_missing
         ]
+        observed_device_count = len(current.devices)
+        missing_device_count = len(missing_device_ids)
+        device_metrics_available = observed_device_count > 0
+
+        missing_device_ratio = (
+            (missing_device_count / observed_device_count) if observed_device_count > 0 else 0.0
+        )
+
+        heartbeat_ages = [
+            float(device.heartbeat_age_seconds)
+            for device in current.devices
+            if device.heartbeat_age_seconds is not None
+        ]
+        heartbeat_age_max_available = bool(heartbeat_ages)
+        heartbeat_age_max_seconds = max(heartbeat_ages) if heartbeat_ages else None
+        heartbeat_age_mean_seconds = (
+            sum(heartbeat_ages) / len(heartbeat_ages) if heartbeat_ages else None
+        )
+
+        def optional_delta(name: str) -> float | None:
+            if getattr(previous_metrics, name) is None or getattr(current_metrics, name) is None:
+                return None
+            return float(getattr(current_metrics, name) - getattr(previous_metrics, name))
+
+        success_delta = optional_delta("influx_write_success_total")
+
+        if success_delta is None:
+            influx_write_failure_ratio = None
+            influx_write_metrics_available = False
+        else:
+            write_attempts = success_delta + influx_write_failed_delta
+            influx_write_failure_ratio = (
+                influx_write_failed_delta / write_attempts if write_attempts > 0 else 0.0
+            )
+            influx_write_metrics_available = True
 
         return FeatureVector(
             elapsed_seconds=elapsed_seconds,
@@ -144,4 +187,18 @@ class FeatureExtractor:
             pipeline_duration_average_seconds=max(pipeline_average, 0.0),
             heartbeat_missing=bool(missing_device_ids),
             missing_device_ids=missing_device_ids,
+            observed_device_count=observed_device_count,
+            missing_device_count=missing_device_count,
+            missing_device_ratio=missing_device_ratio,
+            device_metrics_available=device_metrics_available,
+            queue_depth=queue_depth,
+            queue_capacity=queue_capacity,
+            queue_utilization_ratio=queue_utilization_ratio,
+            queue_metrics_available=queue_metrics_available,
+            influx_write_failure_ratio=influx_write_failure_ratio,
+            influx_write_metrics_available=influx_write_metrics_available,
+            influxdb_healthy=float(current_metrics.influxdb_healthy),
+            heartbeat_age_max_seconds=heartbeat_age_max_seconds,
+            heartbeat_age_mean_seconds=heartbeat_age_mean_seconds,
+            heartbeat_age_available=heartbeat_age_max_available,
         )
