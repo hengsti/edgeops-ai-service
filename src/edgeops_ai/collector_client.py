@@ -18,6 +18,14 @@ METRIC_MAPPING = {
     "ingest_pipeline_duration_seconds_count": "pipeline_duration_seconds_count",
 }
 
+OPTIONAL_METRIC_MAPPING = {
+    "influx_write_success_total": "influx_write_success_total",
+    "ingest_queue_depth": "queue_depth",
+    "ingest_queue_capacity": "queue_capacity",
+    "ingest_sensor_messages_processed_total": "sensor_messages_processed_total",
+    "ingest_status_messages_processed_total": "status_messages_processed_total",
+}
+
 
 class CollectorClient:
     def __init__(
