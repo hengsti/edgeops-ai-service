@@ -53,6 +53,52 @@ def observation() -> dict:
     }
 
 
+def enriched_observation() -> dict:
+    payload = observation()
+    payload["metrics"].update(
+        {
+            "influx_write_success_total": 998,
+            "queue_depth": 20,
+            "queue_capacity": 100,
+            "sensor_messages_processed_total": 800,
+            "status_messages_processed_total": 200,
+            "mqtt_messages_received_total": 1010,
+            "event_queue_full_total": 10,
+            "decode_success_total": 1000,
+            "incoming_oversized_total": 1,
+            "incoming_non_utf8_total": 2,
+            "incoming_invalid_json_total": 3,
+            "raw_validation_success_total": 990,
+            "raw_validation_ignored_total": 4,
+            "raw_validation_failed_total": 6,
+            "transform_attempt_total": 990,
+            "transform_deserialize_failed_total": 2,
+            "transform_ignored_total": 1,
+            "business_validation_success_total": 985,
+            "business_validation_failed_total": 3,
+            "wal_queue_full_total": 5,
+            "wal_queue_closed_total": 1,
+            "durability_ack_failed_total": 1,
+            "dlq_messages_published_total": 10,
+            "dlq_publish_errors_total": 1,
+            "wal_committed_total": 980,
+            "wal_drop_total": 2,
+            "wal_retry_total": 8,
+            "wal_commit_retry_total": 1,
+            "wal_retry_outage_active": 1,
+            "decode_duration_seconds_sum": 5,
+            "decode_duration_seconds_count": 1000,
+            "transform_duration_seconds_sum": 10,
+            "transform_duration_seconds_count": 990,
+            "persist_duration_seconds_sum": 8,
+            "persist_duration_seconds_count": 985,
+            "influx_write_duration_seconds_sum": 20,
+            "influx_write_duration_seconds_count": 1000,
+        }
+    )
+    return payload
+
+
 def test_health() -> None:
     with TestClient(create_app(make_settings())) as client:
         response = client.get("/health")
@@ -67,6 +113,14 @@ def test_first_observation_returns_warming_up() -> None:
         assert response.status_code == 200, response.json()
         assert response.json()["status"] == "warming-up"
         assert response.json()["prediction"] is None
+
+
+def test_enriched_observation_is_accepted() -> None:
+    with TestClient(create_app(make_settings())) as client:
+        response = client.post("/v1/observations", json=enriched_observation())
+
+    assert response.status_code == 200, response.json()
+    assert response.json()["status"] == "warming-up"
 
 
 def test_backpressure_is_detected() -> None:
