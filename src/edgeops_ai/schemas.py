@@ -42,10 +42,44 @@ class IngestionMetrics(StrictModel):
     pipeline_duration_seconds_count: NonNegativeFloat
 
     influx_write_success_total: NonNegativeFloat | None = None
-    ingest_queue_depth: NonNegativeFloat | None = None
-    ingest_queue_capacity: NonNegativeFloat | None = Field(default=None, gt=0)
-    ingest_sensor_messages_processed_total: NonNegativeFloat | None = None
-    ingest_status_messages_processed_total: NonNegativeFloat | None = None
+    queue_depth: NonNegativeFloat | None = None
+    queue_capacity: NonNegativeFloat | None = Field(default=None, gt=0)
+    sensor_messages_processed_total: NonNegativeFloat | None = None
+    status_messages_processed_total: NonNegativeFloat | None = None
+
+    mqtt_messages_received_total: NonNegativeFloat | None = None
+    event_queue_full_total: NonNegativeFloat | None = None
+    decode_success_total: NonNegativeFloat | None = None
+    incoming_oversized_total: NonNegativeFloat | None = None
+    incoming_non_utf8_total: NonNegativeFloat | None = None
+    incoming_invalid_json_total: NonNegativeFloat | None = None
+    raw_validation_success_total: NonNegativeFloat | None = None
+    raw_validation_ignored_total: NonNegativeFloat | None = None
+    raw_validation_failed_total: NonNegativeFloat | None = None
+    transform_attempt_total: NonNegativeFloat | None = None
+    transform_deserialize_failed_total: NonNegativeFloat | None = None
+    transform_ignored_total: NonNegativeFloat | None = None
+    business_validation_success_total: NonNegativeFloat | None = None
+    business_validation_failed_total: NonNegativeFloat | None = None
+    wal_queue_full_total: NonNegativeFloat | None = None
+    wal_queue_closed_total: NonNegativeFloat | None = None
+    durability_ack_failed_total: NonNegativeFloat | None = None
+    dlq_messages_published_total: NonNegativeFloat | None = None
+    dlq_publish_errors_total: NonNegativeFloat | None = None
+    wal_committed_total: NonNegativeFloat | None = None
+    wal_drop_total: NonNegativeFloat | None = None
+    wal_retry_total: NonNegativeFloat | None = None
+    wal_commit_retry_total: NonNegativeFloat | None = None
+    wal_retry_outage_active: float | None = Field(default=None, ge=0, le=1)
+
+    decode_duration_seconds_sum: NonNegativeFloat | None = None
+    decode_duration_seconds_count: NonNegativeFloat | None = None
+    transform_duration_seconds_sum: NonNegativeFloat | None = None
+    transform_duration_seconds_count: NonNegativeFloat | None = None
+    persist_duration_seconds_sum: NonNegativeFloat | None = None
+    persist_duration_seconds_count: NonNegativeFloat | None = None
+    influx_write_duration_seconds_sum: NonNegativeFloat | None = None
+    influx_write_duration_seconds_count: NonNegativeFloat | None = None
 
 
 class DeviceObservation(StrictModel):
