@@ -83,8 +83,8 @@ class FeatureExtractor:
         enqueued_delta = delta("messages_enqueued_total")
         processed_delta = delta("messages_processed_total")
         queue_full_delta = delta("queue_full_total")
-        queue_depth = current_metrics.ingest_queue_depth
-        queue_capacity = current_metrics.ingest_queue_capacity
+        queue_depth = current_metrics.queue_depth
+        queue_capacity = current_metrics.queue_capacity
         queue_metrics_available = queue_depth is not None and queue_capacity is not None
         queue_utilization_ratio = (
             min(max(float(queue_depth) / float(queue_capacity), 0.0), 1.0)
