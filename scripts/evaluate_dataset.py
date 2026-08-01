@@ -25,6 +25,7 @@ from typing import Any
 
 from scripts.common import (
     DATASET_COLUMNS,
+    DATASET_SCHEMA_VERSION,
     DEFAULT_SEEDS,
     LABELS,
     RECOVERY_PHASES,
@@ -111,6 +112,14 @@ def read_dataset(
             start=2,
         ):
             location = f"{path}:{source_row}"
+
+            dataset_version = (raw.get("dataset_schema_version") or "").strip()
+
+            if dataset_version != DATASET_SCHEMA_VERSION:
+                raise ValueError(
+                    f"{location}: unsupported dataset_schema_version "
+                    f"{dataset_version!r}; expected {DATASET_SCHEMA_VERSION!r}."
+                )
 
             scenario_id = normalize_label_value(raw["scenario_id"])
 
