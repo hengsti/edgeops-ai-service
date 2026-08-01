@@ -37,6 +37,7 @@ from edgeops_ai.ml import ML_MODEL_VERSION
 from edgeops_ai.schemas import ObservationV1
 from edgeops_ai.settings import Settings
 from scripts.common import (
+    DATASET_SCHEMA_VERSION,
     FEATURE_COLUMNS,
     LABELS,
     METADATA_COLUMNS,
@@ -152,6 +153,7 @@ def build_dataset_row(
         raise ScriptError(f"API confidence must be between 0 and 1, got {confidence!r}.")
 
     row: dict[str, Any] = {
+        "dataset_schema_version": DATASET_SCHEMA_VERSION,
         "captured_at": metadata.captured_at.isoformat(),
         "source_host": metadata.source_host,
         "scenario_id": metadata.scenario_id,
