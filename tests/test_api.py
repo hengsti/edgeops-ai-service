@@ -123,6 +123,27 @@ def test_enriched_observation_is_accepted() -> None:
     assert response.json()["status"] == "warming-up"
 
 
+def test_enriched_features_are_serialized() -> None:
+    with TestClient(create_app(make_settings())) as client:
+        first = enriched_observation()
+        client.post("/v1/observations", json=first)
+
+        second = deepcopy(first)
+        second["metadata"]["captured_at"] = "2024-01-01T00:00:10Z"
+        response = client.post("/v1/observations", json=second)
+
+    assert response.status_code == 200, response.json()
+    features = response.json()["features"]
+    assert features["queue_utilization_ratio"] == 0.2
+    assert features["queue_metrics_available"] is True
+    assert features["decode_failure_ratio"] == 0
+    assert features["decode_metrics_available"] is True
+    assert features["wal_retry_outage_active"] == 1
+    assert features["wal_metrics_available"] is True
+    assert features["decode_duration_average_seconds"] == 0
+    assert features["decode_duration_metrics_available"] is True
+
+
 def test_backpressure_is_detected() -> None:
     with TestClient(create_app(make_settings())) as client:
         first = observation()
