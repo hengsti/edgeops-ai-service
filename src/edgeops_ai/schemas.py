@@ -111,6 +111,33 @@ class FeatureVector(StrictModel):
     queue_metrics_available: bool = Field(default=False)
 
     transform_failure_ratio: NonNegativeFloat
+    transform_deserialize_failure_ratio: NonNegativeFloat | None = None
+    transform_ignored_ratio: NonNegativeFloat | None = None
+    transform_metrics_available: bool = Field(default=False)
+
+    decode_failure_ratio: NonNegativeFloat | None = None
+    decode_metrics_available: bool = Field(default=False)
+    raw_validation_failure_ratio: NonNegativeFloat | None = None
+    raw_validation_ignored_ratio: NonNegativeFloat | None = None
+    raw_validation_metrics_available: bool = Field(default=False)
+    business_validation_failure_ratio: NonNegativeFloat | None = None
+    business_validation_metrics_available: bool = Field(default=False)
+
+    event_queue_drop_ratio: NonNegativeFloat | None = None
+    input_queue_metrics_available: bool = Field(default=False)
+    wal_queue_full_ratio: NonNegativeFloat | None = None
+    wal_queue_closed_rate: NonNegativeFloat | None = None
+    wal_queue_metrics_available: bool = Field(default=False)
+    durability_ack_failure_rate: NonNegativeFloat | None = None
+    durability_ack_metrics_available: bool = Field(default=False)
+    dlq_publish_failure_ratio: NonNegativeFloat | None = None
+    dlq_metrics_available: bool = Field(default=False)
+
+    wal_retry_rate: NonNegativeFloat | None = None
+    wal_commit_retry_rate: NonNegativeFloat | None = None
+    wal_drop_ratio: NonNegativeFloat | None = None
+    wal_retry_outage_active: float | None = Field(default=None, ge=0, le=1)
+    wal_metrics_available: bool = Field(default=False)
 
     influx_write_failure_ratio: NonNegativeFloat | None = None
     influx_write_metrics_available: bool = Field(default=False)
@@ -118,6 +145,14 @@ class FeatureVector(StrictModel):
     persistence_ratio: NonNegativeFloat
 
     pipeline_duration_average_seconds: NonNegativeFloat
+    decode_duration_average_seconds: NonNegativeFloat | None = None
+    decode_duration_metrics_available: bool = Field(default=False)
+    transform_duration_average_seconds: NonNegativeFloat | None = None
+    transform_duration_metrics_available: bool = Field(default=False)
+    persist_duration_average_seconds: NonNegativeFloat | None = None
+    persist_duration_metrics_available: bool = Field(default=False)
+    influx_write_duration_average_seconds: NonNegativeFloat | None = None
+    influx_write_duration_metrics_available: bool = Field(default=False)
 
     heartbeat_missing: bool
     heartbeat_age_max_seconds: NonNegativeFloat | None = None
