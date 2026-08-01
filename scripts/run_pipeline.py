@@ -20,8 +20,8 @@ from collections.abc import Sequence
 from pathlib import Path
 
 from scripts.common import (
+    DATASET_COLUMNS,
     DATASET_SCHEMA_VERSION,
-    FEATURE_COLUMNS,
     SCENARIOS,
     ScriptError,
     dataset_path,
@@ -72,13 +72,7 @@ def dataset_is_complete(
         ) as dataset_file:
             reader = csv.DictReader(dataset_file)
 
-            required_columns = {
-                "dataset_schema_version",
-                "scenario_id",
-                "simulation_seed",
-                "simulation_phase",
-                "expected_label",
-            } | set(FEATURE_COLUMNS)
+            required_columns = set(DATASET_COLUMNS)
 
             if reader.fieldnames is None:
                 return False
