@@ -7,7 +7,7 @@ import csv
 import json
 import math
 from collections import Counter
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
@@ -36,6 +36,9 @@ from edgeops_ai.ml import (
 from scripts.common import (
     DATASET_SCHEMA_VERSION,
     LABELS,
+    RECOVERY_PHASES,
+    SCENARIOS,
+    normalize_label_value,
 )
 from scripts.common import (
     FEATURE_COLUMNS as DATASET_FEATURE_COLUMNS,
@@ -43,7 +46,6 @@ from scripts.common import (
 
 FEATURE_COLUMNS = MODEL_FEATURE_COLUMNS
 
-# Columns already present in the existing generated CSV datasets.
 SOURCE_FEATURE_COLUMNS = (
     "messages_enqueued_rate",
     "queue_growth_rate",
@@ -52,10 +54,35 @@ SOURCE_FEATURE_COLUMNS = (
     "transform_failure_ratio",
     "persistence_ratio",
     "heartbeat_missing",
+    "queue_utilization_ratio",
+    "influx_write_failure_ratio",
+    "influxdb_healthy",
+    "pipeline_duration_average_seconds",
+    "heartbeat_age_max_seconds",
+    "missing_device_ratio",
+    "device_metrics_available",
+    "decode_failure_ratio",
+    "raw_validation_failure_ratio",
+    "business_validation_failure_ratio",
+    "transform_deserialize_failure_ratio",
+    "event_queue_drop_ratio",
+    "wal_queue_full_ratio",
+    "durability_ack_failure_rate",
+    "dlq_publish_failure_ratio",
+    "wal_retry_rate",
+    "wal_drop_ratio",
+    "wal_retry_outage_active",
+    "decode_duration_average_seconds",
+    "transform_duration_average_seconds",
+    "persist_duration_average_seconds",
+    "influx_write_duration_average_seconds",
 )
 
 METADATA_COLUMNS = (
     "dataset_schema_version",
+    "captured_at",
+    "source_host",
+    "scenario_id",
     "simulation_run_id",
     "simulation_seed",
     "simulation_phase",
@@ -84,13 +111,13 @@ class TrainingDataset:
 
 
 def _parse_bool(
-    value: str,
+    value: str | None,
     *,
     column: str,
     path: Path,
     line_number: int,
 ) -> float:
-    normalized = value.strip().lower()
+    normalized = (value or "").strip().lower()
 
     if normalized in {"true", "1"}:
         return 1.0
@@ -104,7 +131,7 @@ def _parse_bool(
 
 
 def _parse_float(
-    value: str,
+    value: str | None,
     *,
     column: str,
     path: Path,
@@ -112,7 +139,7 @@ def _parse_float(
 ) -> float:
     try:
         parsed = float(value)
-    except ValueError as error:
+    except (TypeError, ValueError) as error:
         raise DatasetError(
             f"{path}:{line_number}: column {column!r} is not numeric: {value!r}"
         ) from error
@@ -123,18 +150,101 @@ def _parse_float(
     return parsed
 
 
+def _parse_optional_float(
+    value: str | None,
+    *,
+    column: str,
+    path: Path,
+    line_number: int,
+) -> float | None:
+    if value is None or not value.strip():
+        return None
+
+    return _parse_float(
+        value,
+        column=column,
+        path=path,
+        line_number=line_number,
+    )
+
+
 def _parse_seed(
-    value: str,
+    value: str | None,
     *,
     path: Path,
     line_number: int,
 ) -> int:
     try:
         return int(value)
-    except ValueError as error:
+    except (TypeError, ValueError) as error:
         raise DatasetError(
             f"{path}:{line_number}: simulation_seed is not an integer: {value!r}"
         ) from error
+
+
+def _build_model_row(
+    row: Mapping[str, str | None],
+    *,
+    path: Path,
+    line_number: int,
+) -> list[float]:
+    def required_float(column: str) -> float:
+        return _parse_float(
+            row.get(column),
+            column=column,
+            path=path,
+            line_number=line_number,
+        )
+
+    def optional_float(column: str) -> float | None:
+        return _parse_optional_float(
+            row.get(column),
+            column=column,
+            path=path,
+            line_number=line_number,
+        )
+
+    def required_bool(column: str) -> float:
+        return _parse_bool(
+            row.get(column),
+            column=column,
+            path=path,
+            line_number=line_number,
+        )
+
+    return build_model_feature_row(
+        messages_enqueued_rate=required_float("messages_enqueued_rate"),
+        queue_growth_rate=required_float("queue_growth_rate"),
+        processing_ratio=required_float("processing_ratio"),
+        queue_full_rate=required_float("queue_full_rate"),
+        transform_failure_ratio=required_float("transform_failure_ratio"),
+        persistence_ratio=required_float("persistence_ratio"),
+        heartbeat_missing=required_bool("heartbeat_missing"),
+        queue_utilization_ratio=optional_float("queue_utilization_ratio"),
+        influx_write_failure_ratio=optional_float("influx_write_failure_ratio"),
+        influxdb_healthy=required_float("influxdb_healthy"),
+        pipeline_duration_average_seconds=required_float("pipeline_duration_average_seconds"),
+        heartbeat_age_max_seconds=optional_float("heartbeat_age_max_seconds"),
+        missing_device_ratio=required_float("missing_device_ratio"),
+        device_metrics_available=required_bool("device_metrics_available"),
+        decode_failure_ratio=optional_float("decode_failure_ratio"),
+        raw_validation_failure_ratio=optional_float("raw_validation_failure_ratio"),
+        business_validation_failure_ratio=optional_float("business_validation_failure_ratio"),
+        transform_deserialize_failure_ratio=optional_float("transform_deserialize_failure_ratio"),
+        event_queue_drop_ratio=optional_float("event_queue_drop_ratio"),
+        wal_queue_full_ratio=optional_float("wal_queue_full_ratio"),
+        durability_ack_failure_rate=optional_float("durability_ack_failure_rate"),
+        dlq_publish_failure_ratio=optional_float("dlq_publish_failure_ratio"),
+        wal_retry_rate=optional_float("wal_retry_rate"),
+        wal_drop_ratio=optional_float("wal_drop_ratio"),
+        wal_retry_outage_active=optional_float("wal_retry_outage_active"),
+        decode_duration_average_seconds=optional_float("decode_duration_average_seconds"),
+        transform_duration_average_seconds=optional_float("transform_duration_average_seconds"),
+        persist_duration_average_seconds=optional_float("persist_duration_average_seconds"),
+        influx_write_duration_average_seconds=optional_float(
+            "influx_write_duration_average_seconds"
+        ),
+    )
 
 
 def load_training_dataset(input_dir: Path) -> TrainingDataset:
@@ -179,76 +289,52 @@ def load_training_dataset(input_dir: Path) -> TrainingDataset:
                         f"{dataset_version!r}; expected {DATASET_SCHEMA_VERSION!r}"
                     )
 
-                phase = row["simulation_phase"].strip().lower()
+                captured_at = (row.get("captured_at") or "").strip()
+                source_host = (row.get("source_host") or "").strip()
+                scenario = normalize_label_value(row.get("scenario_id") or "")
+                run_id = (row.get("simulation_run_id") or "").strip()
+                phase = normalize_label_value(row.get("simulation_phase") or "")
+                label = normalize_label_value(row.get("expected_label") or "")
 
-                if phase == "recovery":
-                    excluded_recovery_rows += 1
-                    continue
+                if not captured_at:
+                    raise DatasetError(f"{path}:{line_number}: captured_at is empty")
 
-                label = row["expected_label"].strip()
+                if not source_host:
+                    raise DatasetError(f"{path}:{line_number}: source_host is empty")
 
-                if label not in LABELS:
-                    raise DatasetError(f"{path}:{line_number}: unknown expected_label {label!r}")
-
-                run_id = row["simulation_run_id"].strip()
+                if scenario not in SCENARIOS:
+                    raise DatasetError(
+                        f"{path}:{line_number}: unsupported scenario_id {scenario!r}"
+                    )
 
                 if not run_id:
                     raise DatasetError(f"{path}:{line_number}: simulation_run_id is empty")
 
-                parsed_features = build_model_feature_row(
-                    messages_enqueued_rate=_parse_float(
-                        row["messages_enqueued_rate"],
-                        column="messages_enqueued_rate",
-                        path=path,
-                        line_number=line_number,
-                    ),
-                    queue_growth_rate=_parse_float(
-                        row["queue_growth_rate"],
-                        column="queue_growth_rate",
-                        path=path,
-                        line_number=line_number,
-                    ),
-                    processing_ratio=_parse_float(
-                        row["processing_ratio"],
-                        column="processing_ratio",
-                        path=path,
-                        line_number=line_number,
-                    ),
-                    queue_full_rate=_parse_float(
-                        row["queue_full_rate"],
-                        column="queue_full_rate",
-                        path=path,
-                        line_number=line_number,
-                    ),
-                    transform_failure_ratio=_parse_float(
-                        row["transform_failure_ratio"],
-                        column="transform_failure_ratio",
-                        path=path,
-                        line_number=line_number,
-                    ),
-                    persistence_ratio=_parse_float(
-                        row["persistence_ratio"],
-                        column="persistence_ratio",
-                        path=path,
-                        line_number=line_number,
-                    ),
-                    heartbeat_missing=_parse_bool(
-                        row["heartbeat_missing"],
-                        column="heartbeat_missing",
-                        path=path,
-                        line_number=line_number,
-                    ),
+                if not phase:
+                    raise DatasetError(f"{path}:{line_number}: simulation_phase is empty")
+
+                if label not in LABELS:
+                    raise DatasetError(f"{path}:{line_number}: unknown expected_label {label!r}")
+
+                seed = _parse_seed(
+                    row.get("simulation_seed"),
+                    path=path,
+                    line_number=line_number,
+                )
+
+                if phase in RECOVERY_PHASES:
+                    excluded_recovery_rows += 1
+                    continue
+
+                parsed_features = _build_model_row(
+                    row,
+                    path=path,
+                    line_number=line_number,
                 )
 
                 feature_rows.append(parsed_features)
                 labels.append(label)
-                seeds.append(
-                    _parse_seed(
-                        row["simulation_seed"],
-                        path=path,
-                        line_number=line_number,
-                    )
-                )
+                seeds.append(seed)
                 run_ids.append(run_id)
 
             if file_row_count == 0:
