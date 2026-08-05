@@ -16,8 +16,10 @@ import csv
 import os
 import subprocess
 import sys
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from pathlib import Path
+
+import httpx
 
 from scripts.common import (
     DATASET_COLUMNS,
@@ -33,9 +35,29 @@ from scripts.common import (
     selected_seeds,
     start_simulation,
 )
+from scripts.simulation_manifest import (
+    SIMULATION_CONTRACT_VERSION,
+    SIMULATION_VARIANTS,
+    SimulationManifestError,
+    entry_for_csv,
+    try_load_manifest,
+    upsert_manifest_run,
+    write_manifest_atomic,
+)
 
-DEFAULT_SIMULATION_URL = "http://localhost:8095/v1/simulation/runs"
-DEFAULT_API_KEY = "local-dev-admin-key"
+DEFAULT_SIMULATION_BASE_URL = "http://localhost:8097"
+DEFAULT_SIMULATION_READ_KEY = "local-dev-key"
+DEFAULT_SIMULATION_ADMIN_KEY = "local-dev-admin-key"
+
+
+def assigned_variants(seeds: Sequence[int]) -> dict[int, str]:
+    """Assign mild/degraded/severe in deterministic ordered-seed rotation."""
+
+    ordered = tuple(dict.fromkeys(seeds))
+    return {
+        seed: SIMULATION_VARIANTS[index % len(SIMULATION_VARIANTS)]
+        for index, seed in enumerate(ordered)
+    }
 
 
 def dataset_is_complete(
@@ -43,6 +65,9 @@ def dataset_is_complete(
     *,
     scenario: str,
     seed: int,
+    variant_id: str,
+    manifest: dict[str, object] | None,
+    output_dir: Path,
 ) -> bool:
     """Check whether an existing CSV represents a complete run.
 
@@ -59,7 +84,22 @@ def dataset_is_complete(
     Empty, truncated, or mismatched files are regenerated.
     """
 
-    if not path.is_file():
+    if not path.is_file() or manifest is None:
+        return False
+
+    manifest_match = entry_for_csv(
+        manifest,
+        output_dir=output_dir,
+        csv_path=path,
+    )
+    if manifest_match is None:
+        return False
+    manifest_run_id, manifest_entry = manifest_match
+    if (
+        manifest_entry["scenario_id"] != scenario
+        or manifest_entry["seed"] != seed
+        or manifest_entry["variant_id"] != variant_id
+    ):
         return False
 
     try:
@@ -83,6 +123,7 @@ def dataset_is_complete(
             row_count = 0
             expected_labels: set[str] = set()
             phases: set[str] = set()
+            run_ids: set[str] = set()
 
             for row in reader:
                 row_count += 1
@@ -105,6 +146,10 @@ def dataset_is_complete(
 
                 expected_labels.add((row.get("expected_label") or "").strip().lower())
                 phases.add((row.get("simulation_phase") or "").strip().lower())
+                run_id = (row.get("simulation_run_id") or "").strip()
+                if not run_id:
+                    return False
+                run_ids.add(run_id)
 
     except (OSError, csv.Error):
         return False
@@ -116,7 +161,12 @@ def dataset_is_complete(
 
     has_recovery_phase = bool({"recovery", "recovered"} & phases)
 
-    return row_count > 0 and has_required_labels and has_recovery_phase
+    return (
+        row_count > 0
+        and has_required_labels
+        and has_recovery_phase
+        and run_ids == {manifest_run_id}
+    )
 
 
 def partition_runs(
@@ -126,8 +176,8 @@ def partition_runs(
     seeds: Sequence[int],
     overwrite: bool,
 ) -> tuple[
-    list[tuple[str, int, Path]],
-    list[tuple[str, int, Path]],
+    list[tuple[str, int, str, Path]],
+    list[tuple[str, int, str, Path]],
 ]:
     """Check the complete matrix before starting simulations.
 
@@ -135,8 +185,10 @@ def partition_runs(
         A tuple containing reusable runs and pending runs.
     """
 
-    reusable: list[tuple[str, int, Path]] = []
-    pending: list[tuple[str, int, Path]] = []
+    reusable: list[tuple[str, int, str, Path]] = []
+    pending: list[tuple[str, int, str, Path]] = []
+    manifest = try_load_manifest(output_dir)
+    variants = assigned_variants(seeds)
 
     # Seed-first ordering ensures all scenarios for one seed
     # are completed before moving to the next seed.
@@ -147,7 +199,8 @@ def partition_runs(
                 scenario,
                 seed,
             )
-            run = (scenario, seed, output)
+            variant_id = variants[seed]
+            run = (scenario, seed, variant_id, output)
 
             if overwrite:
                 pending.append(run)
@@ -157,6 +210,9 @@ def partition_runs(
                 output,
                 scenario=scenario,
                 seed=seed,
+                variant_id=variant_id,
+                manifest=manifest,
+                output_dir=output_dir,
             ):
                 reusable.append(run)
             else:
@@ -170,6 +226,7 @@ def run_command(
     *,
     project_root: Path,
     stage: str,
+    environment_overrides: Mapping[str, str] | None = None,
 ) -> None:
     """Run a child script with the project root on PYTHONPATH."""
 
@@ -183,6 +240,8 @@ def run_command(
         if not existing_pythonpath
         else str(project_root) + os.pathsep + existing_pythonpath
     )
+    if environment_overrides:
+        environment.update(environment_overrides)
 
     try:
         result = subprocess.run(
@@ -196,6 +255,109 @@ def run_command(
 
     if result.returncode != 0:
         raise ScriptError(f"{stage} failed with exit code {result.returncode}.")
+
+
+def simulation_runs_url(base_url: str) -> str:
+    """Return the contract-v2 run endpoint for an independent collector."""
+
+    return f"{base_url.rstrip('/')}/v1/simulation/runs"
+
+
+def fetch_collector_version(*, base_url: str, api_key: str, timeout_seconds: float) -> str:
+    """Verify the target is a simulation collector and return its version."""
+
+    response = httpx.get(
+        f"{base_url.rstrip('/')}/v1/meta",
+        headers={"X-EdgeOps-Key": api_key},
+        timeout=timeout_seconds,
+    )
+    response.raise_for_status()
+    payload = response.json()
+    if not isinstance(payload, dict) or payload.get("mode") != "simulation":
+        raise ScriptError("Target collector /v1/meta does not report simulation mode.")
+    version = payload.get("version")
+    if not isinstance(version, str) or not version.strip():
+        raise ScriptError("Simulation collector /v1/meta did not return a version.")
+    return version.strip()
+
+
+def validate_started_run(
+    response: dict[str, object] | None,
+    *,
+    scenario: str,
+    seed: int,
+    variant_id: str,
+    speed: float,
+) -> tuple[str, dict[str, object]]:
+    """Validate the simulation contract-v2 start response."""
+
+    if response is None:
+        raise ScriptError("Simulation start returned no response body.")
+    if response.get("simulation_contract_version") != SIMULATION_CONTRACT_VERSION:
+        raise ScriptError("Simulation start response is not contract version 2.")
+    if (
+        response.get("scenario_id") != scenario
+        or response.get("seed") != seed
+        or response.get("variant_id") != variant_id
+    ):
+        raise ScriptError("Simulation start response does not match the requested run.")
+    response_speed = response.get("speed")
+    if not isinstance(response_speed, (int, float)) or float(response_speed) != speed:
+        raise ScriptError("Simulation start response has an unexpected speed.")
+    run_id = extract_run_id(response)
+    if run_id is None:
+        raise ScriptError("Simulation start response has no run_id.")
+    if not isinstance(response.get("resolved_effects"), dict):
+        raise ScriptError("Simulation start response has no resolved_effects object.")
+    workload_scale = response.get("workload_scale")
+    if (
+        not isinstance(workload_scale, (int, float))
+        or isinstance(workload_scale, bool)
+        or not 0.65 <= float(workload_scale) <= 1.50
+    ):
+        raise ScriptError("Simulation start response has an invalid workload_scale.")
+    unavailable = response.get("unavailable_metric_groups")
+    if not isinstance(unavailable, list):
+        raise ScriptError("Simulation start response has invalid unavailable_metric_groups.")
+    return run_id, response
+
+
+def validate_collected_csv(
+    path: Path,
+    *,
+    scenario: str,
+    seed: int,
+    run_id: str,
+) -> None:
+    """Validate identity and minimum lifecycle coverage before publishing a CSV."""
+
+    try:
+        with path.open(encoding="utf-8", newline="") as dataset_file:
+            reader = csv.DictReader(dataset_file)
+            if reader.fieldnames is None or not set(DATASET_COLUMNS).issubset(reader.fieldnames):
+                raise ScriptError(f"Generated dataset has a stale schema: {path}")
+            rows = list(reader)
+    except (OSError, csv.Error) as error:
+        raise ScriptError(f"Unable to validate generated dataset {path}: {error}") from error
+
+    labels = {(row.get("expected_label") or "").strip().lower() for row in rows}
+    phases = {(row.get("simulation_phase") or "").strip().lower() for row in rows}
+    if not rows or not {"normal", scenario}.issubset(labels):
+        raise ScriptError(f"Generated dataset lacks normal/fault coverage: {path}")
+    if not ({"recovery", "recovered"} & phases):
+        raise ScriptError(f"Generated dataset lacks a recovery phase: {path}")
+    for row in rows:
+        try:
+            row_seed = int(row.get("simulation_seed") or "")
+        except (TypeError, ValueError) as error:
+            raise ScriptError(f"Generated dataset has an invalid seed: {path}") from error
+        if (
+            (row.get("dataset_schema_version") or "").strip() != DATASET_SCHEMA_VERSION
+            or (row.get("scenario_id") or "").strip().lower() != scenario
+            or row_seed != seed
+            or (row.get("simulation_run_id") or "").strip() != run_id
+        ):
+            raise ScriptError(f"Generated dataset metadata does not match its run: {path}")
 
 
 def script_paths(
@@ -231,26 +393,41 @@ def generate_dataset(
     collection_script: Path,
     scenario: str,
     seed: int,
+    variant_id: str,
     output: Path,
 ) -> None:
     """Start and collect one complete simulation run."""
 
-    print(f"\nStarting simulation: scenario={scenario}, seed={seed}, speed={args.speed}")
+    print(
+        "\nStarting simulation: "
+        f"scenario={scenario}, seed={seed}, variant={variant_id}, speed={args.speed}"
+    )
+
+    collector_version = fetch_collector_version(
+        base_url=args.simulation_base_url,
+        api_key=args.simulation_read_key,
+        timeout_seconds=args.api_timeout,
+    )
 
     response = start_simulation(
-        url=args.simulation_url,
-        api_key=args.api_key,
+        url=simulation_runs_url(args.simulation_base_url),
+        api_key=args.simulation_admin_key,
         scenario=scenario,
         seed=seed,
         speed=args.speed,
         timeout_seconds=args.api_timeout,
+        variant_id=variant_id,
     )
+    run_id, run_state = validate_started_run(
+        response,
+        scenario=scenario,
+        seed=seed,
+        variant_id=variant_id,
+        speed=args.speed,
+    )
+    print(f"Simulation API run ID: {run_id}")
 
-    if response:
-        run_id = extract_run_id(response)
-
-        if run_id is not None:
-            print(f"Simulation API run ID: {run_id}")
+    temporary_output = output.with_suffix(".tmp.csv")
 
     command = [
         sys.executable,
@@ -264,7 +441,7 @@ def generate_dataset(
         "--wait-timeout",
         str(args.wait_timeout),
         "--output",
-        str(output),
+        str(temporary_output),
     ]
 
     if args.interval is not None:
@@ -279,22 +456,44 @@ def generate_dataset(
         command,
         project_root=project_root,
         stage=f"Collect {scenario}/seed-{seed}",
+        environment_overrides={
+            "COLLECTOR_BASE_URL": args.simulation_base_url,
+            "COLLECTOR_API_KEY": args.simulation_read_key,
+            "COLLECTOR_DEVICE_IDS": args.simulation_device_id,
+        },
     )
 
-    if not output.is_file():
-        raise ScriptError(f"Dataset collector did not create the expected file: {output}")
-
-    if output.stat().st_size == 0:
-        raise ScriptError(f"Dataset collector created an empty file: {output}")
-
-    if not dataset_is_complete(
-        output,
+    if not temporary_output.is_file() or temporary_output.stat().st_size == 0:
+        raise ScriptError(f"Dataset collector did not create a non-empty file: {temporary_output}")
+    validate_collected_csv(
+        temporary_output,
         scenario=scenario,
         seed=seed,
-    ):
-        raise ScriptError(
-            f"Generated dataset is incomplete or contains mismatched metadata: {output}"
-        )
+        run_id=run_id,
+    )
+
+    output.parent.mkdir(parents=True, exist_ok=True)
+    os.replace(temporary_output, output)
+    current_manifest = try_load_manifest(args.output_dir)
+    manifest = upsert_manifest_run(
+        current_manifest,
+        output_dir=args.output_dir,
+        run_id=run_id,
+        entry={
+            "scenario_id": scenario,
+            "seed": seed,
+            "variant_id": variant_id,
+            "speed": float(run_state["speed"]),
+            "resolved_effects": run_state["resolved_effects"],
+            "workload_scale": float(run_state["workload_scale"]),
+            "unavailable_metric_groups": sorted(
+                str(group) for group in run_state["unavailable_metric_groups"]
+            ),
+            "collector_version": collector_version,
+            "csv_path": output.resolve().relative_to(args.output_dir.resolve()).as_posix(),
+        },
+    )
+    write_manifest_atomic(args.output_dir, manifest)
 
 
 def evaluate_datasets(
@@ -407,18 +606,24 @@ def parse_args(
     )
 
     parser.add_argument(
-        "--simulation-url",
-        default=DEFAULT_SIMULATION_URL,
-        help=(f"Simulation start endpoint. Default: {DEFAULT_SIMULATION_URL}."),
+        "--simulation-base-url",
+        default=os.getenv("SIMULATION_COLLECTOR_BASE_URL", DEFAULT_SIMULATION_BASE_URL),
+        help=(f"Independent simulation collector URL. Default: {DEFAULT_SIMULATION_BASE_URL}."),
     )
-
     parser.add_argument(
-        "--api-key",
-        default=os.getenv(
-            "EDGEOPS_SIMULATION_API_KEY",
-            DEFAULT_API_KEY,
-        ),
-        help=("Simulation API key. Uses EDGEOPS_SIMULATION_API_KEY when set."),
+        "--simulation-read-key",
+        default=os.getenv("SIMULATION_COLLECTOR_API_KEY", DEFAULT_SIMULATION_READ_KEY),
+        help="Simulation collector read key.",
+    )
+    parser.add_argument(
+        "--simulation-admin-key",
+        default=os.getenv("SIMULATION_COLLECTOR_ADMIN_API_KEY", DEFAULT_SIMULATION_ADMIN_KEY),
+        help="Simulation collector admin key.",
+    )
+    parser.add_argument(
+        "--simulation-device-id",
+        default=os.getenv("SIMULATION_COLLECTOR_DEVICE_ID", "esp32-simulated-01"),
+        help="Device ID queried while collecting simulated heartbeat state.",
     )
 
     parser.add_argument(
@@ -478,7 +683,7 @@ def parse_args(
     parser.add_argument(
         "--model-artifact",
         type=Path,
-        default=Path("artifacts/model-candidate.joblib"),
+        default=Path("artifacts/model-contract-v2-experimental.joblib"),
         help="Candidate model artifact path used with --train.",
     )
 
@@ -548,7 +753,7 @@ def main(
             overwrite=args.overwrite,
         )
 
-        reusable_pairs = {(scenario, seed) for scenario, seed, _ in reusable_runs}
+        reusable_pairs = {(scenario, seed) for scenario, seed, _, _ in reusable_runs}
 
         complete_seeds = [
             seed
@@ -556,7 +761,7 @@ def main(
             if all((scenario, seed) in reusable_pairs for scenario in scenarios)
         ]
 
-        pending_seeds = list(dict.fromkeys(seed for _, seed, _ in pending_runs))
+        pending_seeds = list(dict.fromkeys(seed for _, seed, _, _ in pending_runs))
 
         print(
             f"Pipeline matrix: {len(scenarios)} scenarios x {len(seeds)} seeds = {total_runs} runs"
@@ -583,13 +788,14 @@ def main(
 
         # Only missing, incomplete, or explicitly
         # overwritten datasets are generated.
-        for scenario, seed, output in pending_runs:
+        for scenario, seed, variant_id, output in pending_runs:
             generate_dataset(
                 args=args,
                 project_root=project_root,
                 collection_script=collection_script,
                 scenario=scenario,
                 seed=seed,
+                variant_id=variant_id,
                 output=output,
             )
 
@@ -616,7 +822,7 @@ def main(
                 training_script=training_script,
             )
 
-    except (OSError, ScriptError) as error:
+    except (httpx.HTTPError, OSError, ScriptError, SimulationManifestError) as error:
         print(
             f"Pipeline failed: {error}",
             file=sys.stderr,
