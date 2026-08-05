@@ -20,6 +20,11 @@ from scripts.common import (
     SCENARIOS,
     normalize_label_value,
 )
+from scripts.simulation_manifest import (
+    OPTIONAL_METRIC_GROUPS,
+    SimulationManifestError,
+    validate_manifest_datasets,
+)
 from scripts.train_model import DatasetError, load_training_dataset
 
 ANALYSIS_SCHEMA_VERSION = "1.0"
@@ -128,9 +133,11 @@ def load_feature_rows(
     if not paths:
         raise FeatureAnalysisError(f"No {pattern} files found in {input_dir}")
 
+    _, provenance = validate_manifest_datasets(input_dir, pattern=pattern)
     rows: list[dict[str, Any]] = []
 
     for path in paths:
+        run_id, manifest_entry = provenance[path.name]
         with path.open(newline="", encoding="utf-8") as handle:
             reader = csv.DictReader(handle)
             actual_columns = set(reader.fieldnames or ())
@@ -166,6 +173,10 @@ def load_feature_rows(
                 parsed_row: dict[str, Any] = {
                     "scenario_id": scenario,
                     "simulation_phase": phase,
+                    "simulation_run_id": run_id,
+                    "simulation_seed": int(manifest_entry["seed"]),
+                    "variant_id": str(manifest_entry["variant_id"]),
+                    "unavailable_metric_groups": tuple(manifest_entry["unavailable_metric_groups"]),
                 }
 
                 for column in NUMERIC_FEATURE_COLUMNS:
@@ -257,6 +268,42 @@ def build_feature_report(
     phase_rows = {
         phase: [row for row in rows if row["simulation_phase"] == phase] for phase in phases
     }
+    variants = sorted({str(row["variant_id"]) for row in rows})
+    variant_rows = {
+        variant: [row for row in rows if row["variant_id"] == variant] for variant in variants
+    }
+    scenario_variant_rows = {
+        scenario: {
+            variant: [row for row in selected_rows if row["variant_id"] == variant]
+            for variant in variants
+        }
+        for scenario, selected_rows in scenario_rows.items()
+    }
+    unique_runs = {str(row["simulation_run_id"]): row for row in rows}
+
+    def optional_availability(selected_rows: Sequence[Mapping[str, Any]]) -> dict[str, Any]:
+        total_cells = len(selected_rows) * len(OPTIONAL_METRIC_GROUPS)
+        by_group = {
+            group: (
+                sum(group not in row["unavailable_metric_groups"] for row in selected_rows)
+                / len(selected_rows)
+                if selected_rows
+                else None
+            )
+            for group in OPTIONAL_METRIC_GROUPS
+        }
+        available_cells = sum(
+            group not in row["unavailable_metric_groups"]
+            for row in selected_rows
+            for group in OPTIONAL_METRIC_GROUPS
+        )
+        return {
+            "rows": len(selected_rows),
+            "available_cells": available_cells,
+            "total_cells": total_cells,
+            "available_ratio": available_cells / total_cells if total_cells else None,
+            "by_group": by_group,
+        }
 
     return {
         "schema_version": ANALYSIS_SCHEMA_VERSION,
@@ -267,6 +314,27 @@ def build_feature_report(
             "scenarios": scenarios,
             "phases": phases,
             "stable_model_matrix_is_finite": stable_model_matrix_is_finite,
+            "simulation_runs": len(unique_runs),
+            "variants": variants,
+            "run_counts_by_scenario_variant": {
+                scenario: {
+                    variant: len(
+                        {
+                            row["simulation_run_id"]
+                            for row in selected_rows
+                            if row["variant_id"] == variant
+                        }
+                    )
+                    for variant in variants
+                }
+                for scenario, selected_rows in scenario_rows.items()
+            },
+            "row_counts_by_scenario_variant": {
+                scenario: {
+                    variant: len(selected_rows) for variant, selected_rows in variants_rows.items()
+                }
+                for scenario, variants_rows in scenario_variant_rows.items()
+            },
         },
         "feature_distributions": {
             column: summarize_numeric(rows, column) for column in NUMERIC_FEATURE_COLUMNS
@@ -283,11 +351,39 @@ def build_feature_report(
             }
             for column in AVAILABILITY_COLUMNS
         },
+        "optional_group_availability": {
+            "overall": optional_availability(rows),
+            "by_scenario": {
+                scenario: optional_availability(selected_rows)
+                for scenario, selected_rows in scenario_rows.items()
+            },
+            "by_variant": {
+                variant: optional_availability(selected_rows)
+                for variant, selected_rows in variant_rows.items()
+            },
+        },
+        "unavailable_group_combinations": dict(
+            sorted(
+                {
+                    ",".join(row["unavailable_metric_groups"]) or "none": sum(
+                        candidate["unavailable_metric_groups"] == row["unavailable_metric_groups"]
+                        for candidate in unique_runs.values()
+                    )
+                    for row in unique_runs.values()
+                }.items()
+            )
+        ),
         "a2_by_scenario": {
             scenario: {
                 column: summarize_numeric(selected_rows, column) for column in A2_SOURCE_COLUMNS
             }
             for scenario, selected_rows in scenario_rows.items()
+        },
+        "a2_by_variant": {
+            variant: {
+                column: summarize_numeric(selected_rows, column) for column in A2_SOURCE_COLUMNS
+            }
+            for variant, selected_rows in variant_rows.items()
         },
         "failure_signals_by_phase": {
             phase: {
@@ -302,6 +398,24 @@ def build_feature_report(
                 if summarize_numeric(selected_rows, column)["unique"] <= 1
             ]
             for scenario, selected_rows in scenario_rows.items()
+        },
+        "constant_feature_counts_by_scenario": {
+            scenario: sum(
+                summarize_numeric(selected_rows, column)["unique"] <= 1
+                for column in NUMERIC_FEATURE_COLUMNS
+            )
+            for scenario, selected_rows in scenario_rows.items()
+        },
+        "constant_features_by_scenario_variant": {
+            scenario: {
+                variant: [
+                    column
+                    for column in NUMERIC_FEATURE_COLUMNS
+                    if summarize_numeric(selected_rows, column)["unique"] <= 1
+                ]
+                for variant, selected_rows in variants_rows.items()
+            }
+            for scenario, variants_rows in scenario_variant_rows.items()
         },
         "bounded_transform_clipping": {
             column: {
@@ -398,7 +512,12 @@ def main(argv: Sequence[str] | None = None) -> int:
             input_dir=args.input_dir,
             output=args.output,
         )
-    except (DatasetError, FeatureAnalysisError, OSError) as error:
+    except (
+        DatasetError,
+        FeatureAnalysisError,
+        OSError,
+        SimulationManifestError,
+    ) as error:
         print(f"Feature analysis failed: {error}")
         return 1
 
