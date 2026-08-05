@@ -9,14 +9,23 @@ from dataclasses import replace
 from pathlib import Path
 from typing import Any
 
+import numpy as np
+
 from edgeops_ai.ml import MODEL_FEATURE_COLUMNS
 from scripts.common import DATASET_SCHEMA_VERSION
+from scripts.simulation_manifest import (
+    OPTIONAL_METRIC_GROUPS,
+    SIMULATION_VARIANTS,
+    SimulationManifestError,
+    validate_manifest_datasets,
+)
 from scripts.train_model import (
     CANDIDATE_MODELS,
     DatasetError,
     TrainingDataset,
-    evaluate_candidate,
+    cross_validated_predictions,
     load_training_dataset,
+    metrics_for_predictions,
 )
 
 ABLATION_SCHEMA_VERSION = "1.0"
@@ -108,7 +117,62 @@ def _metric_delta(
     }
 
 
-def build_ablation_report(dataset: TrainingDataset) -> dict[str, Any]:
+def _slice_metrics(
+    expected: np.ndarray,
+    predicted: np.ndarray,
+    mask: np.ndarray,
+) -> dict[str, Any]:
+    rows = int(mask.sum())
+    if rows == 0:
+        return {"rows": 0, "accuracy": None, "macro_f1": None}
+    return {"rows": rows, **metrics_for_predictions(expected[mask], predicted[mask])}
+
+
+def _candidate_evaluation(
+    dataset: TrainingDataset,
+    candidate: Any,
+    provenance: Sequence[Mapping[str, Any]],
+) -> dict[str, Any]:
+    predicted, per_seed = cross_validated_predictions(dataset, candidate)
+    variants = np.asarray([entry["variant_id"] for entry in provenance], dtype=object)
+    unavailable = [tuple(entry["unavailable_metric_groups"]) for entry in provenance]
+    unavailable_counts = np.asarray([len(groups) for groups in unavailable], dtype=np.int64)
+    metrics = {
+        "strategy": "leave-one-simulation-seed-out",
+        **metrics_for_predictions(dataset.labels, predicted),
+        "per_seed": per_seed,
+    }
+    metrics["slices"] = {
+        "by_variant": {
+            variant: _slice_metrics(dataset.labels, predicted, variants == variant)
+            for variant in SIMULATION_VARIANTS
+        },
+        "by_unavailable_group_count": {
+            str(count): _slice_metrics(
+                dataset.labels,
+                predicted,
+                unavailable_counts == count,
+            )
+            for count in range(4)
+        },
+        "by_unavailable_group": {
+            group: _slice_metrics(
+                dataset.labels,
+                predicted,
+                np.asarray([group in groups for groups in unavailable], dtype=bool),
+            )
+            for group in OPTIONAL_METRIC_GROUPS
+        },
+    }
+    return metrics
+
+
+def build_ablation_report(
+    dataset: TrainingDataset,
+    provenance: Sequence[Mapping[str, Any]],
+) -> dict[str, Any]:
+    if len(provenance) != dataset.row_count:
+        raise SimulationManifestError("Ablation provenance does not align with stable rows")
     evaluated_sets: dict[str, dict[str, Any]] = {}
 
     for set_name, columns in feature_sets().items():
@@ -117,7 +181,7 @@ def build_ablation_report(dataset: TrainingDataset) -> dict[str, Any]:
             "feature_columns": list(columns),
             "feature_count": len(columns),
             "candidates": {
-                candidate_name: evaluate_candidate(subset, candidate)
+                candidate_name: _candidate_evaluation(subset, candidate, provenance)
                 for candidate_name, candidate in CANDIDATE_MODELS.items()
             },
         }
@@ -155,8 +219,15 @@ def evaluate_feature_ablation(
     input_dir: Path,
     output: Path,
 ) -> dict[str, Any]:
+    manifest, _ = validate_manifest_datasets(input_dir)
     dataset = load_training_dataset(input_dir)
-    report = build_ablation_report(dataset)
+    try:
+        provenance = [manifest["runs"][str(run_id)] for run_id in dataset.run_ids]
+    except KeyError as error:
+        raise SimulationManifestError(
+            f"Stable row references unknown simulation run ID: {error.args[0]}"
+        ) from error
+    report = build_ablation_report(dataset, provenance)
     output.parent.mkdir(parents=True, exist_ok=True)
     output.write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
     return report
@@ -216,7 +287,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             input_dir=args.input_dir,
             output=args.output,
         )
-    except (DatasetError, OSError, ValueError) as error:
+    except (DatasetError, OSError, SimulationManifestError, ValueError) as error:
         print(f"Feature ablation failed: {error}")
         return 1
 
