@@ -206,18 +206,23 @@ def start_simulation(
     seed: int,
     speed: float,
     timeout_seconds: float,
+    variant_id: str | None = None,
 ) -> dict[str, Any] | None:
     """Start one simulation through the simulation API."""
 
     try:
+        request_body: dict[str, Any] = {
+            "scenario_id": scenario,
+            "seed": seed,
+            "speed": speed,
+        }
+        if variant_id is not None:
+            request_body["variant_id"] = variant_id
+
         response = httpx.post(
             url,
             headers={"X-EdgeOps-Key": api_key},
-            json={
-                "scenario_id": scenario,
-                "seed": seed,
-                "speed": speed,
-            },
+            json=request_body,
             timeout=timeout_seconds,
         )
         response.raise_for_status()
