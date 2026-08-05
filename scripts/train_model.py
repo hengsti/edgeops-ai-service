@@ -410,11 +410,11 @@ def _classification_metrics(
     }
 
 
-def evaluate_candidate(
+def cross_validated_predictions(
     dataset: TrainingDataset,
     candidate: Any,
-) -> dict[str, Any]:
-    """Evaluate one candidate using leave-one-seed-out folds."""
+) -> tuple[np.ndarray, list[dict[str, Any]]]:
+    """Return leave-one-seed-out predictions and fold metrics."""
 
     predicted = np.empty(dataset.labels.shape, dtype=object)
     per_seed: list[dict[str, Any]] = []
@@ -442,6 +442,10 @@ def evaluate_candidate(
 
         predicted[test_indices] = fold_predictions
 
+        fold_per_label = _classification_metrics(
+            dataset.labels[test_indices],
+            fold_predictions,
+        )
         per_seed.append(
             {
                 "held_out_seed": test_seeds[0],
@@ -453,30 +457,47 @@ def evaluate_candidate(
                         fold_predictions,
                     )
                 ),
+                "macro_f1": float(
+                    sum(values["f1"] for values in fold_per_label.values()) / len(LABELS)
+                ),
             }
         )
 
-    per_label = _classification_metrics(
-        dataset.labels,
-        predicted,
-    )
+    return predicted, sorted(per_seed, key=lambda item: item["held_out_seed"])
 
+
+def metrics_for_predictions(
+    expected: np.ndarray,
+    predicted: np.ndarray,
+) -> dict[str, Any]:
+    """Calculate the shared multiclass metrics for existing predictions."""
+
+    per_label = _classification_metrics(expected, predicted)
     macro_f1 = sum(values["f1"] for values in per_label.values()) / len(LABELS)
-
     return {
-        "strategy": "leave-one-simulation-seed-out",
-        "accuracy": float(accuracy_score(dataset.labels, predicted)),
+        "accuracy": float(accuracy_score(expected, predicted)),
         "macro_f1": float(macro_f1),
         "confusion_matrix": confusion_matrix(
-            dataset.labels,
+            expected,
             predicted,
             labels=list(LABELS),
         ).tolist(),
         "per_label": per_label,
-        "per_seed": sorted(
-            per_seed,
-            key=lambda item: item["held_out_seed"],
-        ),
+    }
+
+
+def evaluate_candidate(
+    dataset: TrainingDataset,
+    candidate: Any,
+) -> dict[str, Any]:
+    """Evaluate one candidate using leave-one-seed-out folds."""
+
+    predicted, per_seed = cross_validated_predictions(dataset, candidate)
+
+    return {
+        "strategy": "leave-one-simulation-seed-out",
+        **metrics_for_predictions(dataset.labels, predicted),
+        "per_seed": per_seed,
     }
 
 
