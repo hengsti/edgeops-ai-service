@@ -22,12 +22,16 @@ from scripts.evaluate_deployed_model import (
 from scripts.evaluate_deployed_model import (
     build_dataset_row as build_deployed_dataset_row,
 )
+from scripts.evaluate_deployed_model import (
+    parse_args as parse_holdout_args,
+)
 from scripts.run_pipeline import (
     dataset_is_complete,
 )
 from scripts.run_pipeline import (
     parse_args as parse_pipeline_args,
 )
+from scripts.simulation_manifest import empty_manifest, upsert_manifest_run, write_manifest_atomic
 from scripts.train_model import (
     SOURCE_FEATURE_COLUMNS,
     DatasetError,
@@ -279,11 +283,31 @@ def test_deployed_holdout_rejects_missing_enriched_feature(make_features) -> Non
 def test_current_dataset_is_reusable(tmp_path: Path) -> None:
     path = tmp_path / "ingestion-backpressure-seed-42.csv"
     write_csv(path, list(DATASET_COLUMNS), reusable_dataset_rows())
+    manifest = upsert_manifest_run(
+        empty_manifest(),
+        output_dir=tmp_path,
+        run_id="0",
+        entry={
+            "scenario_id": "ingestion-backpressure",
+            "seed": 42,
+            "variant_id": "mild",
+            "speed": 1.0,
+            "resolved_effects": {},
+            "workload_scale": 1.0,
+            "unavailable_metric_groups": [],
+            "collector_version": "0.1.0",
+            "csv_path": path.name,
+        },
+    )
+    write_manifest_atomic(tmp_path, manifest)
 
     assert dataset_is_complete(
         path,
         scenario="ingestion-backpressure",
         seed=42,
+        variant_id="mild",
+        manifest=manifest,
+        output_dir=tmp_path,
     )
 
 
@@ -321,6 +345,9 @@ def test_stale_or_incomplete_dataset_is_not_reusable(
         path,
         scenario="ingestion-backpressure",
         seed=42,
+        variant_id="mild",
+        manifest=None,
+        output_dir=tmp_path,
     )
 
 
@@ -550,7 +577,18 @@ def test_fewer_than_two_seeds_are_rejected(tmp_path: Path) -> None:
 
 def test_training_defaults_to_candidate_artifact() -> None:
     assert parse_training_args([]).artifact == Path("artifacts/model-candidate.joblib")
-    assert parse_pipeline_args([]).model_artifact == Path("artifacts/model-candidate.joblib")
+    assert parse_pipeline_args([]).model_artifact == Path(
+        "artifacts/model-contract-v2-experimental.joblib"
+    )
+
+
+def test_holdout_defaults_to_independent_simulation_collector() -> None:
+    args = parse_holdout_args([])
+
+    assert args.simulation_base_url == "http://localhost:8097"
+    assert args.simulation_read_key == "local-dev-key"
+    assert args.simulation_admin_key == "local-dev-admin-key"
+    assert args.simulation_device_id == "esp32-simulated-01"
 
 
 def test_append_rejects_legacy_dataset_header(tmp_path: Path) -> None:

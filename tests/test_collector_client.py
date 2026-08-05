@@ -170,10 +170,22 @@ def test_missing_or_null_optional_metrics_validate(optional_metrics_present: boo
 
 def test_missing_required_metric_fails_visibly() -> None:
     metrics = collector_metrics()
-    metrics.pop("mqtt_messages_received_total")
+    metrics.pop("ingest_messages_enqueued_total")
 
-    with pytest.raises(KeyError, match="mqtt_messages_received_total"):
+    with pytest.raises(KeyError, match="ingest_messages_enqueued_total"):
         asyncio.run(fetch_observation(metrics))
+
+
+def test_masked_a2_group_remains_nullable_and_keeps_legacy_shape() -> None:
+    metrics = collector_metrics()
+    for source_name in EXPECTED_A2_MAPPING:
+        metrics[source_name] = None
+
+    observation = asyncio.run(fetch_observation(metrics))
+
+    assert observation.metrics.queue_full_total == 0.0
+    for target_name in EXPECTED_A2_MAPPING.values():
+        assert getattr(observation.metrics, target_name) is None
 
 
 def test_explicit_zero_failure_counters_are_preserved() -> None:
