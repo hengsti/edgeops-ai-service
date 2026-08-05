@@ -15,6 +15,9 @@ REQUIRED_METRIC_MAPPING = {
     "influxdb_healthy": "influxdb_healthy",
     "ingest_pipeline_duration_seconds_sum": "pipeline_duration_seconds_sum",
     "ingest_pipeline_duration_seconds_count": "pipeline_duration_seconds_count",
+}
+
+OPTIONAL_METRIC_MAPPING = {
     "mqtt_messages_received_total": "mqtt_messages_received_total",
     "ingest_event_queue_full_total": "event_queue_full_total",
     "ingest_decode_success_total": "decode_success_total",
@@ -47,9 +50,6 @@ REQUIRED_METRIC_MAPPING = {
     "ingest_persist_duration_seconds_count": "persist_duration_seconds_count",
     "influx_write_duration_seconds_sum": "influx_write_duration_seconds_sum",
     "influx_write_duration_seconds_count": "influx_write_duration_seconds_count",
-}
-
-OPTIONAL_METRIC_MAPPING = {
     "influx_write_success_total": "influx_write_success_total",
     "ingest_queue_depth": "queue_depth",
     "ingest_queue_capacity": "queue_capacity",
@@ -86,7 +86,7 @@ class CollectorClient:
         }
         # Preserve the legacy pushed-observation field while using the collector's
         # unambiguous event-queue counter. WAL queue pressure remains separate.
-        metrics["queue_full_total"] = collector_metrics["ingest_event_queue_full_total"]
+        metrics["queue_full_total"] = collector_metrics.get("ingest_event_queue_full_total") or 0.0
         metrics.update(
             {
                 target_name: collector_metrics.get(source_name)
