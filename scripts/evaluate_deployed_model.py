@@ -44,7 +44,6 @@ from scripts.common import (
     SCENARIOS,
     ScriptError,
     dataset_path,
-    extract_run_id,
     infer_expected_label,
     non_negative_float,
     normalize_label_value,
@@ -54,10 +53,21 @@ from scripts.common import (
     selected_seeds,
     start_simulation,
 )
+from scripts.run_pipeline import (
+    DEFAULT_SIMULATION_ADMIN_KEY,
+    DEFAULT_SIMULATION_BASE_URL,
+    DEFAULT_SIMULATION_READ_KEY,
+    assigned_variants,
+    fetch_collector_version,
+    simulation_runs_url,
+    validate_started_run,
+)
+from scripts.simulation_manifest import (
+    upsert_manifest_run,
+    write_manifest_atomic,
+)
 
 DEFAULT_HOLDOUT_SEEDS = tuple(range(62, 67))
-DEFAULT_SIMULATION_URL = "http://localhost:8095/v1/simulation/runs"
-DEFAULT_SIMULATION_API_KEY = "local-dev-admin-key"
 DEFAULT_AI_BASE_URL = "http://localhost:8096"
 EXPECTED_MODEL_VERSION = ML_MODEL_VERSION
 
@@ -275,31 +285,38 @@ async def collect_run(
     api_client: httpx.AsyncClient,
     scenario: str,
     seed: int,
+    variant_id: str,
     speed: float,
-    simulation_url: str,
-    simulation_api_key: str,
+    simulation_base_url: str,
+    simulation_admin_key: str,
     ai_base_url: str,
     interval_seconds: float,
     wait_timeout_seconds: float,
     max_samples: int,
     api_timeout_seconds: float,
     start_phase: str,
-) -> tuple[list[dict[str, Any]], int, int]:
-    run_id = extract_run_id(
-        start_simulation(
-            url=simulation_url,
-            api_key=simulation_api_key,
-            scenario=scenario,
-            seed=seed,
-            speed=speed,
-            timeout_seconds=api_timeout_seconds,
-        )
+) -> tuple[list[dict[str, Any]], int, int, dict[str, object]]:
+    start_response = start_simulation(
+        url=simulation_runs_url(simulation_base_url),
+        api_key=simulation_admin_key,
+        scenario=scenario,
+        seed=seed,
+        speed=speed,
+        timeout_seconds=api_timeout_seconds,
+        variant_id=variant_id,
+    )
+    run_id, run_state = validate_started_run(
+        start_response,
+        scenario=scenario,
+        seed=seed,
+        variant_id=variant_id,
+        speed=speed,
     )
 
-    if run_id is None:
-        raise ScriptError("Simulation start response does not contain a usable run ID.")
-
-    print(f"\nStarted deployed evaluation: scenario={scenario}, seed={seed}, run_id={run_id}")
+    print(
+        "\nStarted candidate evaluation: "
+        f"scenario={scenario}, seed={seed}, variant={variant_id}, run_id={run_id}"
+    )
 
     rows: list[dict[str, Any]] = []
 
@@ -389,6 +406,7 @@ async def collect_run(
         rows,
         collected_observations,
         warming_up_observations,
+        run_state,
     )
 
 
@@ -452,10 +470,10 @@ async def evaluate(
     )
 
     collector = CollectorClient(
-        base_url=settings.collector_base_url,
-        api_key=settings.collector_api_key,
-        timeout_seconds=settings.collector_timeout_seconds,
-        device_ids=settings.device_ids,
+        base_url=args.simulation_base_url,
+        api_key=args.simulation_read_key,
+        timeout_seconds=args.api_timeout,
+        device_ids=(args.simulation_device_id,),
     )
 
     api_client = httpx.AsyncClient(timeout=args.api_timeout)
@@ -463,6 +481,8 @@ async def evaluate(
     total_rows = 0
     total_observations = 0
     total_warming_up = 0
+    manifest: dict[str, Any] | None = None
+    variants = assigned_variants(args.seeds)
 
     try:
         await require_ml_backend(
@@ -476,14 +496,16 @@ async def evaluate(
                     rows,
                     observations,
                     warming_up,
+                    run_state,
                 ) = await collect_run(
                     collector=collector,
                     api_client=api_client,
                     scenario=scenario,
                     seed=seed,
+                    variant_id=variants[seed],
                     speed=args.speed,
-                    simulation_url=args.simulation_url,
-                    simulation_api_key=args.api_key,
+                    simulation_base_url=args.simulation_base_url,
+                    simulation_admin_key=args.simulation_admin_key,
                     ai_base_url=args.ai_base_url,
                     interval_seconds=interval_seconds,
                     wait_timeout_seconds=args.wait_timeout,
@@ -502,6 +524,28 @@ async def evaluate(
                     rows,
                     output,
                 )
+                run_id = str(run_state["run_id"])
+                manifest = upsert_manifest_run(
+                    manifest,
+                    output_dir=args.output_dir,
+                    run_id=run_id,
+                    entry={
+                        "scenario_id": scenario,
+                        "seed": seed,
+                        "variant_id": variants[seed],
+                        "speed": float(run_state["speed"]),
+                        "resolved_effects": run_state["resolved_effects"],
+                        "workload_scale": float(run_state["workload_scale"]),
+                        "unavailable_metric_groups": sorted(
+                            str(group) for group in run_state["unavailable_metric_groups"]
+                        ),
+                        "collector_version": args.collector_version,
+                        "csv_path": output.resolve()
+                        .relative_to(args.output_dir.resolve())
+                        .as_posix(),
+                    },
+                )
+                write_manifest_atomic(args.output_dir, manifest)
 
                 print(f"Dataset: {output}")
 
@@ -557,18 +601,24 @@ def parse_args(
     )
 
     parser.add_argument(
-        "--simulation-url",
-        default=DEFAULT_SIMULATION_URL,
-        help=(f"Simulation start endpoint (default: {DEFAULT_SIMULATION_URL})."),
+        "--simulation-base-url",
+        default=os.getenv("SIMULATION_COLLECTOR_BASE_URL", DEFAULT_SIMULATION_BASE_URL),
+        help=f"Independent simulation collector URL (default: {DEFAULT_SIMULATION_BASE_URL}).",
     )
-
     parser.add_argument(
-        "--api-key",
-        default=os.getenv(
-            "EDGEOPS_SIMULATION_API_KEY",
-            DEFAULT_SIMULATION_API_KEY,
-        ),
-        help="Simulation admin API key.",
+        "--simulation-read-key",
+        default=os.getenv("SIMULATION_COLLECTOR_API_KEY", DEFAULT_SIMULATION_READ_KEY),
+        help="Simulation collector read key.",
+    )
+    parser.add_argument(
+        "--simulation-admin-key",
+        default=os.getenv("SIMULATION_COLLECTOR_ADMIN_API_KEY", DEFAULT_SIMULATION_ADMIN_KEY),
+        help="Simulation collector admin key.",
+    )
+    parser.add_argument(
+        "--simulation-device-id",
+        default=os.getenv("SIMULATION_COLLECTOR_DEVICE_ID", "esp32-simulated-01"),
+        help="Simulation device ID used for heartbeat evaluation.",
     )
 
     parser.add_argument(
@@ -661,6 +711,11 @@ def main(
         args.output_dir.mkdir(
             parents=True,
             exist_ok=True,
+        )
+        args.collector_version = fetch_collector_version(
+            base_url=args.simulation_base_url,
+            api_key=args.simulation_read_key,
+            timeout_seconds=args.api_timeout,
         )
 
         print(
