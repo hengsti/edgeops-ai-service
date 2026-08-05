@@ -117,25 +117,62 @@ change.
 
 ## Training and evaluation pipeline
 
-Everything lives in `scripts/` and runs offline against the collector's
-simulation mode:
+Everything lives in `scripts/`. Production polling keeps its default
+`http://localhost:8095`; dataset generation talks only to the independent
+simulation collector on `http://localhost:8097`:
 
 ```powershell
-# collect labeled datasets, evaluate the rule baseline, and train a candidate
-uv run python -m scripts.run_pipeline --train
+# collect 20 grouped seeds, evaluate rules, and train a new experimental artifact
+uv run python -m scripts.run_pipeline --seed-range 42 61 --speed 100 --interval 0.05 --train `
+  --output-dir data/feature-v2-realistic-<timestamp> `
+  --evaluation-report data/feature-v2-realistic-<timestamp>/rule-report.json `
+  --training-report data/feature-v2-realistic-<timestamp>/training-report.json `
+  --model-artifact artifacts/model-contract-v2-experimental-<timestamp>.joblib
 
 # or step by step
 uv run python -m scripts.collect_rules_dataset --simulation-seed 42
 uv run python -m scripts.evaluate_dataset --input-dir data/generated --output data/generated/rule-baseline-report.json
 uv run python -m scripts.train_model
 uv run python -m scripts.evaluate_deployed_model --seed-range 62 66
+
+# contract-v2 evidence and deterministic acceptance gates
+uv run python -m scripts.analyze_features --input-dir data/feature-v2-realistic-<timestamp>
+uv run python -m scripts.evaluate_feature_ablation --input-dir data/feature-v2-realistic-<timestamp>
+uv run python -m scripts.validate_phase6_acceptance `
+  --input-dir data/feature-v2-realistic-<timestamp> `
+  --holdout-report data/holdout/deployed-ml-report.json
 ```
+
+Before promotion, run the selected experimental artifact through the real API on
+unused contract-v2 seeds. Start the AI service with `PREDICTION_BACKEND=ml`,
+`MODEL_ARTIFACT_PATH=<experimental artifact>`, and collector polling disabled,
+then run:
+
+```powershell
+uv run python -m scripts.evaluate_deployed_model `
+  --seed-range 62 71 `
+  --speed 50 `
+  --interval 0.05 `
+  --simulation-base-url http://localhost:8097 `
+  --ai-base-url http://localhost:8096 `
+  --output-dir data/candidate-holdout-<timestamp> `
+  --report data/candidate-holdout-<timestamp>/candidate-report.json
+```
+
+The holdout command sends explicit balanced variants, uses separate simulation
+read/admin keys, and writes a contract-v2 `simulation-manifest.json` beside the
+CSVs. It does not load the model directly; predictions must come from the running
+FastAPI ML backend.
 
 Datasets are CSVs under `data/` (gitignored, the JSON reports are kept). Generated
 rows carry `dataset_schema_version="2.0"`; stale CSVs are regenerated instead of
-being silently reused. Training writes `artifacts/model-candidate.joblib` together
-with a training report and refuses to save a model that doesn't pass the quality
-gate. Promote the candidate to `artifacts/model.joblib` only after the full
+being silently reused. Reuse also requires a matching contract-v2
+`simulation-manifest.json`, including the planned severity variant, resolved effects,
+masked optional groups, collector version, and exact CSV run ID. The pipeline passes
+separate simulation read/admin keys to child processes and never relies on the
+production `.env`. Training writes only the explicitly selected experimental path
+together with a training report and refuses to save a model that doesn't pass the
+quality gate. Promote a candidate to `artifacts/model.joblib` only after the full
 evaluation passes. `evaluate_deployed_model.py` is the honest check: it uses
 holdout seeds the model has never seen and goes through the real HTTP endpoint
 instead of calling the model directly.
