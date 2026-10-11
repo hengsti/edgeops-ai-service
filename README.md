@@ -54,7 +54,16 @@ Or with Docker:
 
 ```powershell
 docker build -t edgeops-ai-service .
-docker run --rm -p 8080:8080 -e PREDICTION_BACKEND=ml edgeops-ai-service
+docker run --rm -p 8080:8080 edgeops-ai-service
+```
+
+The quickstart uses the default `rules` backend. No checked-in model artifact is
+compatible with the current ML loader yet (see the training section), so the image
+ships without one. To run the ML backend, mount an artifact that passes the loader:
+
+```powershell
+docker run --rm -p 8080:8080 -e PREDICTION_BACKEND=ml `
+  -v ${PWD}/artifacts/model.joblib:/app/artifacts/model.joblib:ro edgeops-ai-service
 ```
 
 Configuration is plain environment variables (a `.env` file works too):
@@ -204,8 +213,8 @@ need retraining; changing their version string does not fix their learned decisi
 The checked-in `artifacts/model.joblib` is still the old six-feature baseline, so using
 the ML backend with that file fails validation. Load the candidate explicitly for evaluation.
 After the training and holdout gates pass, promote the selected artifact with
-`Copy-Item $candidate artifacts/model.joblib -Force`, rebuild the AI image (its Dockerfile
-copies that file), and restart the AI service. Use the rules backend until promotion.
+`Copy-Item $candidate artifacts/model.joblib -Force` and restart the AI service (mount the
+file into the container as shown in the quickstart). Use the rules backend until promotion.
 
 ## Adding another model
 
