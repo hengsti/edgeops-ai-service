@@ -254,7 +254,36 @@ Two extension points, depending on what you want:
 uv run pytest
 uv run ruff check .
 uv run ruff format .
+uv run mypy src
 ```
 
 Tests cover the API surface, the rule thresholds, feature vectorization and the
 model artifact validation.
+
+CI (`.github/workflows/ci.yml`) runs on every push to `main`, every pull request and
+every `v*` tag. It installs the locked dependencies (`uv sync --locked`), runs ruff,
+mypy and pytest, then builds the image and checks that `/health` reports the
+`rules` backend.
+
+## Release
+
+Only revisions with a green CI run on `main` get released:
+
+1. Bump `version` in `pyproject.toml` and `__version__` in
+   `src/edgeops_ai/__init__.py`, run `uv lock`, merge to `main` and wait for CI.
+2. Tag that commit and push the tag (CI runs again on the tag):
+
+   ```powershell
+   git tag v0.2.0 <green main commit>
+   git push origin v0.2.0
+   ```
+
+3. Build the release image from the tag:
+
+   ```powershell
+   git checkout v0.2.0
+   docker build -t edgeops-ai-service:0.2.0 .
+   ```
+
+Images are not published to a registry. A model artifact is not part of a release;
+mount it at runtime as shown in the quickstart.
