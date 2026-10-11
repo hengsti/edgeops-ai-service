@@ -10,7 +10,7 @@ import joblib
 from edgeops_ai.prediction import Prediction, PredictionBackendName, recommendation_for
 from edgeops_ai.schemas import FeatureVector, PredictionLabel
 
-ML_MODEL_VERSION = "lightweight-ml-0.3.0"
+ML_MODEL_VERSION = "lightweight-ml-0.4.0"
 ARTIFACT_SCHEMA_VERSION = "2.0"
 
 MODEL_FEATURE_COLUMNS = (
