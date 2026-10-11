@@ -6,7 +6,11 @@ requires-python = ">=3.13"
 dependencies = ["fastapi", "uvicorn", "pydantic", "pydantic-settings", "httpx", "scikit-learn", "joblib"]
 
 [dependency-groups]
-dev = ["pytest", "ruff"]
+dev = [
+    "mypy>=2.4.0",
+    "pytest",
+    "ruff",
+]
 
 
 [build-system]
@@ -39,3 +43,7 @@ select = [
 ]
 
 [tool.ruff.format]
+
+[[tool.mypy.overrides]]
+module = ["joblib"]
+ignore_missing_imports = true
