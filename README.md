@@ -86,7 +86,7 @@ A detection looks like this:
   "captured_at": "2024-01-01T02:03:03+01:00",
   "prediction": "ingestion-backpressure",
   "confidence": 0.98,
-  "model_version": "lightweight-ml-0.2.0",
+  "model_version": "lightweight-ml-0.4.0",
   "recommendation": "Inspect ingestion queue pressure and processing throughput.",
   "features": { "queue_growth_rate": 14.2, "processing_ratio": 0.61, "...": "..." }
 }
@@ -106,9 +106,9 @@ regression and a depth-6 decision tree); the tree won. Features are
 workload-independent ratios rather than raw counters, so the model doesn't just
 memorize the simulation's message rates.
 
-On five completely unseen simulation seeds, evaluated end-to-end through the
-deployed API, the model classified all 1120 stable-phase samples correctly and
-flagged every fault at the first sample of the fault phase
+The old six-feature model classified all 1120 stable-phase samples correctly across
+five unseen simulation seeds evaluated through the deployed API, and flagged every
+fault at the first sample of the fault phase
 (`data/holdout/deployed-ml-report.json`).
 
 Both backends implement the same `Predictor` protocol
@@ -122,25 +122,26 @@ Everything lives in `scripts/`. Production polling keeps its default
 simulation collector on `http://localhost:8097`:
 
 ```powershell
-# collect 20 grouped seeds, evaluate rules, and train a new experimental artifact
-uv run python -m scripts.run_pipeline --seed-range 42 61 --speed 100 --interval 0.05 --train `
-  --output-dir data/feature-v2-realistic-<timestamp> `
-  --evaluation-report data/feature-v2-realistic-<timestamp>/rule-report.json `
-  --training-report data/feature-v2-realistic-<timestamp>/training-report.json `
-  --model-artifact artifacts/model-contract-v2-experimental-<timestamp>.joblib
+# Start the updated simulation collector first (see its README).
+# Use a fresh directory: version 0.4 requires regenerated schema-2.1 data.
+$run = Get-Date -Format 'yyyyMMdd-HHmmss'
+$training = "data/model-v0.4-$run"
+$candidate = "artifacts/model-v0.4-$run.joblib"
 
-# or step by step
-uv run python -m scripts.collect_rules_dataset --simulation-seed 42
-uv run python -m scripts.evaluate_dataset --input-dir data/generated --output data/generated/rule-baseline-report.json
-uv run python -m scripts.train_model
-uv run python -m scripts.evaluate_deployed_model --seed-range 62 66
+# collect 20 grouped seeds, evaluate rules, and train a version 0.4 candidate
+uv run python -m scripts.run_pipeline --seed-range 42 61 --speed 100 --interval 0.05 --train `
+  --output-dir $training `
+  --evaluation-report "$training/rule-report.json" `
+  --training-report "$training/training-report.json" `
+  --model-artifact $candidate
+
+# repeat offline training on the freshly generated dataset
+uv run python -m scripts.train_model --input-dir $training `
+  --artifact $candidate --report "$training/training-report.json"
 
 # contract-v2 evidence and deterministic acceptance gates
-uv run python -m scripts.analyze_features --input-dir data/feature-v2-realistic-<timestamp>
-uv run python -m scripts.evaluate_feature_ablation --input-dir data/feature-v2-realistic-<timestamp>
-uv run python -m scripts.validate_phase6_acceptance `
-  --input-dir data/feature-v2-realistic-<timestamp> `
-  --holdout-report data/holdout/deployed-ml-report.json
+uv run python -m scripts.analyze_features --input-dir $training
+uv run python -m scripts.evaluate_feature_ablation --input-dir $training
 ```
 
 Before promotion, run the selected experimental artifact through the real API on
@@ -149,14 +150,26 @@ unused contract-v2 seeds. Start the AI service with `PREDICTION_BACKEND=ml`,
 then run:
 
 ```powershell
+# In a separate terminal, from edgeops-ai-service:
+$env:PREDICTION_BACKEND = 'ml'
+$env:MODEL_ARTIFACT_PATH = '<path printed as $candidate above>'
+$env:COLLECTOR_POLLING_ENABLED = 'false'
+uv run uvicorn edgeops_ai.main:create_app --factory --port 8096
+
+# In the training terminal:
 uv run python -m scripts.evaluate_deployed_model `
   --seed-range 62 71 `
   --speed 50 `
   --interval 0.05 `
   --simulation-base-url http://localhost:8097 `
   --ai-base-url http://localhost:8096 `
-  --output-dir data/candidate-holdout-<timestamp> `
-  --report data/candidate-holdout-<timestamp>/candidate-report.json
+  --output-dir "data/holdout-v0.4-$run" `
+  --report "data/holdout-v0.4-$run/candidate-report.json"
+
+uv run python -m scripts.validate_candidate_holdout --input-dir "data/holdout-v0.4-$run"
+uv run python -m scripts.validate_phase6_acceptance `
+  --input-dir $training `
+  --holdout-report "data/holdout-v0.4-$run/candidate-report.json"
 ```
 
 The holdout command sends explicit balanced variants, uses separate simulation
@@ -165,7 +178,7 @@ CSVs. It does not load the model directly; predictions must come from the runnin
 FastAPI ML backend.
 
 Datasets are CSVs under `data/` (gitignored, the JSON reports are kept). Generated
-rows carry `dataset_schema_version="2.0"`; stale CSVs are regenerated instead of
+rows carry `dataset_schema_version="2.1"`; stale CSVs are regenerated instead of
 being silently reused. Reuse also requires a matching contract-v2
 `simulation-manifest.json`, including the planned severity variant, resolved effects,
 masked optional groups, collector version, and exact CSV run ID. The pipeline passes
@@ -177,10 +190,22 @@ evaluation passes. `evaluate_deployed_model.py` is the honest check: it uses
 holdout seeds the model has never seen and goes through the real HTTP endpoint
 instead of calling the model directly.
 
-The checked-in production artifact is deliberately still the schema-`1.0`
-baseline and is rejected by the schema-`2.0` loader. Keep using the rules backend
-until a compatible `lightweight-ml-0.3.0` candidate has passed evaluation and
-been promoted.
+Version 0.4 fixes two training-data errors: healthy simulated devices previously had
+exactly zero heartbeat age on every read, which let the tree learn a false heartbeat
+cutoff below the normal two-second publishing interval; accelerated counters also used
+wall-clock timestamps, inflating rate features by the simulation speed. The updated
+simulation uses periodic heartbeat ages and timestamps in simulated seconds. Its profile's
+`heartbeat_interval_seconds` defaults to `2.0`, matching the ESP32 firmware; adjust it to the
+device cadence before collecting data for other hardware. Restart or rebuild the simulation
+collector before generating new data. Old schema-2.0 CSVs must be regenerated, not relabeled.
+
+Training, loading, and deployed evaluation use `lightweight-ml-0.4.0`. Existing 0.3 artifacts
+need retraining; changing their version string does not fix their learned decisions.
+The checked-in `artifacts/model.joblib` is still the old six-feature baseline, so using
+the ML backend with that file fails validation. Load the candidate explicitly for evaluation.
+After the training and holdout gates pass, promote the selected artifact with
+`Copy-Item $candidate artifacts/model.joblib -Force`, rebuild the AI image (its Dockerfile
+copies that file), and restart the AI service. Use the rules backend until promotion.
 
 ## Adding another model
 
