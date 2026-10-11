@@ -1,5 +1,6 @@
 """ML prediction backend: feature vectorization, artifact loading, and inference."""
 
+import hashlib
 from collections.abc import Mapping
 from math import isfinite, log1p
 from pathlib import Path
@@ -316,9 +317,19 @@ class MlPredictor:
         )
 
 
-def load_ml_predictor(artifact_path: Path) -> MlPredictor:
+def load_ml_predictor(artifact_path: Path, expected_sha256: str | None = None) -> MlPredictor:
     if not artifact_path.is_file():
         raise ModelArtifactError(f"Artifact file does not exist: {artifact_path}")
+
+    # joblib.load unpickles and can execute code, so verify the file before loading it.
+    if expected_sha256 is not None:
+        with artifact_path.open("rb") as file:
+            actual_sha256 = hashlib.file_digest(file, "sha256").hexdigest()
+
+        if actual_sha256 != expected_sha256.strip().lower():
+            raise ModelArtifactError(
+                f"Artifact SHA-256 mismatch for {artifact_path}: {actual_sha256}."
+            )
 
     try:
         artifact = joblib.load(artifact_path)

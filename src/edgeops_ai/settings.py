@@ -17,6 +17,7 @@ class Settings(BaseSettings):
 
     prediction_backend: PredictionBackendName = PredictionBackendName.RULES
     model_artifact_path: Path = Path("artifacts/model.joblib")
+    model_artifact_sha256: str | None = None
 
     @property
     def device_ids(self) -> tuple[str, ...]:

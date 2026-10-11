@@ -9,7 +9,7 @@ from fastapi import FastAPI, HTTPException, Request, status
 from edgeops_ai import __version__
 from edgeops_ai.collector_client import CollectorClient
 from edgeops_ai.features import FeatureExtractor
-from edgeops_ai.ml import load_ml_predictor
+from edgeops_ai.ml import ModelArtifactError, load_ml_predictor
 from edgeops_ai.prediction import PredictionBackendName, Predictor
 from edgeops_ai.rules import RuleBasedPredictor
 from edgeops_ai.schemas import AnalysisResult, ObservationV1
@@ -90,7 +90,12 @@ def create_app(
         if runtime_settings.prediction_backend is PredictionBackendName.RULES:
             app.state.predictor = RuleBasedPredictor()
         else:
-            app.state.predictor = load_ml_predictor(runtime_settings.model_artifact_path)
+            if not runtime_settings.model_artifact_sha256:
+                raise ModelArtifactError("MODEL_ARTIFACT_SHA256 is required for the ml backend.")
+
+            app.state.predictor = load_ml_predictor(
+                runtime_settings.model_artifact_path, runtime_settings.model_artifact_sha256
+            )
 
         if runtime_settings.collector_polling_enabled:
             collector_client = CollectorClient(
