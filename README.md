@@ -47,7 +47,7 @@ Requires Python 3.13 and [uv](https://docs.astral.sh/uv/).
 
 ```powershell
 uv sync
-uv run uvicorn edgeops_ai.main:create_app --factory --reload
+uv run uvicorn edgeops_ai.main:create_app --factory --reload --port 8080
 ```
 
 Or with Docker:
@@ -65,6 +65,22 @@ ships without one. To run the ML backend, mount an artifact that passes the load
 docker run --rm -p 8080:8080 -e PREDICTION_BACKEND=ml `
   -v ${PWD}/artifacts/model.joblib:/app/artifacts/model.joblib:ro edgeops-ai-service
 ```
+
+### Ports
+
+The container always listens on port `8080`; `-p HOST:CONTAINER` publishes it on a
+host port. Which URL to use depends on where the caller runs:
+
+| Caller | AI service URL |
+| --- | --- |
+| Host (browser, scripts, `uv run` tools) | `http://localhost:<host port>`, e.g. `http://localhost:8080` for `-p 8080:8080` |
+| Another container on the same Docker network | `http://<container name>:8080` (container port, no `-p` needed) |
+
+The same applies in reverse to `COLLECTOR_BASE_URL`: inside the container,
+`localhost` is the container itself. Point it at a collector container on the same
+network (`http://<collector container>:<container port>`) or, for a collector on the
+host, `http://host.docker.internal:8095` (Docker Desktop; on Linux add
+`--add-host=host.docker.internal:host-gateway`).
 
 Configuration is plain environment variables (a `.env` file works too):
 
@@ -165,7 +181,11 @@ $env:MODEL_ARTIFACT_PATH = '<path printed as $candidate above>'
 $env:COLLECTOR_POLLING_ENABLED = 'false'
 uv run uvicorn edgeops_ai.main:create_app --factory --port 8096
 
-# In the training terminal:
+# Or the same in Docker, publishing container port 8080 on host port 8096:
+docker run --rm -p 8096:8080 -e PREDICTION_BACKEND=ml -e COLLECTOR_POLLING_ENABLED=false `
+  -v "${PWD}/$($env:MODEL_ARTIFACT_PATH):/app/artifacts/model.joblib:ro" edgeops-ai-service
+
+# In the training terminal (the script runs on the host, so it uses host ports):
 uv run python -m scripts.evaluate_deployed_model `
   --seed-range 62 71 `
   --speed 50 `
