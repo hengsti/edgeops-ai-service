@@ -318,3 +318,7 @@ Only revisions with a green CI run on `main` get released:
 
 Images are not published to a registry. A model artifact is not part of a release;
 mount it at runtime as shown in the quickstart.
+
+## License
+
+[MIT](LICENSE)
