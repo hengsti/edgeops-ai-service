@@ -5,7 +5,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from edgeops_ai.main import create_app
-from edgeops_ai.ml import ML_MODEL_VERSION, MlPredictor, ModelArtifactError
+from edgeops_ai.ml import ML_MODEL_VERSION, MlPredictor, ModelArtifactError, load_ml_predictor
 from edgeops_ai.prediction import PredictionBackendName
 from edgeops_ai.settings import Settings
 
@@ -104,6 +104,25 @@ def test_health() -> None:
         response = client.get("/health")
 
         assert response.status_code == 200
+
+
+def test_documented_quickstart_starts_with_rules_backend(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.delenv("PREDICTION_BACKEND", raising=False)
+    settings = Settings(_env_file=None, collector_polling_enabled=False)
+
+    with TestClient(create_app(settings)) as client:
+        response = client.get("/health")
+
+    assert response.status_code == 200
+    assert response.json()["prediction_backend"] == "rules"
+
+
+def test_docker_image_bundles_only_loadable_artifacts() -> None:
+    for line in Path("Dockerfile").read_text(encoding="utf-8").splitlines():
+        if line.startswith("COPY") and ".joblib" in line:
+            load_ml_predictor(Path(line.split()[1]))
 
 
 def test_first_observation_returns_warming_up() -> None:
