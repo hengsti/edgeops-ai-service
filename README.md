@@ -84,19 +84,59 @@ network (`http://<collector container>:<container port>`) or, for a collector on
 host, `http://host.docker.internal:8095` (Docker Desktop; on Linux add
 `--add-host=host.docker.internal:host-gateway`).
 
-Configuration is plain environment variables (a `.env` file works too):
+Configuration is plain environment variables. Copy `.env.example` to `.env` (never
+commit it; `COLLECTOR_API_KEY` is a secret):
 
 | Variable | Default | Purpose |
 | --- | --- | --- |
 | `PREDICTION_BACKEND` | `rules` | `rules` or `ml` |
 | `MODEL_ARTIFACT_PATH` | `artifacts/model.joblib` | trained model, only used by the ml backend |
 | `MODEL_ARTIFACT_SHA256` | *(empty)* | required for the ml backend; the artifact is refused unless its SHA-256 matches |
-| `COLLECTOR_BASE_URL` | `http://localhost:8095` | collector metrics API |
+| `COLLECTOR_BASE_URL` | `http://localhost:8095` (Compose: `http://edgeops-collector:8095`) | collector metrics API |
 | `COLLECTOR_API_KEY` | `local-dev-key` | sent as `X-EdgeOps-Key` |
 | `COLLECTOR_POLLING_ENABLED` | `true` | disable if you only push observations |
 | `COLLECTOR_POLL_INTERVAL_SECONDS` | `10` | polling interval |
 | `COLLECTOR_TIMEOUT_SECONDS` | `3` | request timeout |
 | `COLLECTOR_DEVICE_IDS` | *(empty)* | comma-separated devices for heartbeat checks |
+
+### Docker Compose
+
+`compose.yaml` defines the service as this repo owns it: build from `.`, `expose: 8080`
+(no host port), the optional `.env`, and the image `HEALTHCHECK` on `/health`.
+`COLLECTOR_BASE_URL` defaults to `http://edgeops-collector:8095`; a value in the shell
+or in this repo's `.env` replaces it, so leave it unset there unless you need another
+collector.
+
+Standalone:
+
+```powershell
+docker compose up -d --build
+docker compose ps    # edgeops-ai-service becomes healthy
+```
+
+Without the collector on the same network, polling only logs errors. To reach the
+service from the host, add a local `compose.override.yaml` (merged automatically):
+
+```yaml
+services:
+  edgeops-ai-service:
+    ports: ["8096:8080"]
+```
+
+In the Server stack, this repo is checked out at `./edgeops-ai/service` and included
+together with a stack-side override that adds the `8096:8080` publish and
+`depends_on: edgeops-collector`:
+
+```yaml
+include:
+  - path:
+      - ./edgeops-ai/service/compose.yaml
+      - ./edgeops-ai-service.override.yaml
+    env_file: ./.env
+```
+
+Inside the stack network, consumers such as control-ui use
+`http://edgeops-ai-service:8080`.
 
 ## API
 
