@@ -22,7 +22,7 @@ DEFAULT_SEEDS = (42, 43, 44)
 
 LABELS: tuple[str, ...] = get_args(PredictionLabel)
 
-DATASET_SCHEMA_VERSION = "2.0"
+DATASET_SCHEMA_VERSION = "2.1"
 
 NORMAL_PHASES = {
     "baseline",

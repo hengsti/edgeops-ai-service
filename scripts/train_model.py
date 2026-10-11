@@ -533,6 +533,11 @@ def train_model(
     min_accuracy: float = 0.95,
     min_label_recall: float = 0.90,
 ) -> dict[str, Any]:
+    if model_version != ML_MODEL_VERSION:
+        raise DatasetError(
+            f"Unsupported model version {model_version!r}; expected {ML_MODEL_VERSION!r}"
+        )
+
     dataset = load_training_dataset(input_dir)
 
     selected_model, candidates = evaluate_candidates(dataset)
