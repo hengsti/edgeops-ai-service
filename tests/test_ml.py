@@ -397,9 +397,10 @@ def test_rejects_old_artifact_schema(tmp_path: Path) -> None:
         load_ml_predictor(path)
 
 
-def test_rejects_old_model_version(tmp_path: Path) -> None:
+@pytest.mark.parametrize("version", ["lightweight-ml-0.2.0", "lightweight-ml-0.3.0"])
+def test_rejects_old_model_version(tmp_path: Path, version: str) -> None:
     value = artifact()
-    value["model_version"] = "lightweight-ml-0.2.0"
+    value["model_version"] = version
     path = save_artifact(tmp_path / "model.joblib", value)
 
     with pytest.raises(ModelArtifactError, match="Unsupported ML model version"):

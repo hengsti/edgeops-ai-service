@@ -42,7 +42,12 @@ from scripts.train_model import (
     parse_args as parse_training_args,
 )
 
-from edgeops_ai.ml import MODEL_FEATURE_COLUMNS, build_model_feature_row
+from edgeops_ai.ml import (
+    ML_MODEL_VERSION,
+    MODEL_FEATURE_COLUMNS,
+    build_model_feature_row,
+    load_ml_predictor,
+)
 
 OPTIONAL_SOURCE_COLUMNS = (
     "queue_utilization_ratio",
@@ -243,7 +248,7 @@ def test_deployed_holdout_row_contains_version_and_every_feature(make_features) 
             "features": features,
             "prediction": "normal",
             "confidence": 0.9,
-            "model_version": "lightweight-ml-0.3.0",
+            "model_version": ML_MODEL_VERSION,
         },
         "normal",
     )
@@ -274,7 +279,7 @@ def test_deployed_holdout_rejects_missing_enriched_feature(make_features) -> Non
                 "features": features,
                 "prediction": "ingestion-backpressure",
                 "confidence": 0.9,
-                "model_version": "lightweight-ml-0.3.0",
+                "model_version": ML_MODEL_VERSION,
             },
             "ingestion-backpressure",
         )
@@ -351,11 +356,12 @@ def test_stale_or_incomplete_dataset_is_not_reusable(
     )
 
 
-def test_direct_training_rejects_old_dataset_version(tmp_path: Path) -> None:
+@pytest.mark.parametrize("version", ["1.0", "2.0"])
+def test_direct_training_rejects_old_dataset_version(tmp_path: Path, version: str) -> None:
     row = dict.fromkeys(DATASET_COLUMNS, "0")
     row.update(
         {
-            "dataset_schema_version": "1.0",
+            "dataset_schema_version": version,
             "simulation_run_id": "run-42",
             "simulation_seed": "42",
             "simulation_phase": "normal",
@@ -426,6 +432,94 @@ def test_valid_release_a_dataset_trains_candidate_artifact(tmp_path: Path) -> No
     assert tuple(artifact["feature_columns"]) == MODEL_FEATURE_COLUMNS
     assert artifact["training_rows"] == 10
     assert artifact["simulation_seeds"] == [42, 43]
+
+
+def test_training_rejects_version_the_runtime_cannot_load(tmp_path: Path) -> None:
+    artifact_path = tmp_path / "model.joblib"
+    artifact_path.write_bytes(b"previous model")
+    with pytest.raises(DatasetError, match="model version"):
+        train_model(
+            input_dir=tmp_path,
+            artifact_path=artifact_path,
+            report_path=tmp_path / "report.json",
+            model_version="lightweight-ml-999.0.0",
+        )
+    assert artifact_path.read_bytes() == b"previous model"
+
+
+def test_training_defaults_to_loadable_v04_artifact(tmp_path: Path) -> None:
+    write_training_matrix(tmp_path)
+    artifact_path = tmp_path / "candidate.joblib"
+    train_model(
+        input_dir=tmp_path,
+        artifact_path=artifact_path,
+        report_path=tmp_path / "report.json",
+        min_accuracy=0,
+        min_label_recall=0,
+    )
+    assert load_ml_predictor(artifact_path).model_version == "lightweight-ml-0.4.0"
+    assert parse_training_args([]).model_version == ML_MODEL_VERSION
+
+
+def test_retrained_model_accepts_healthy_production_heartbeat_age(
+    tmp_path: Path, make_features
+) -> None:
+    faults = {
+        "normal": {},
+        "missing-device-heartbeat": {"heartbeat_age_max_seconds": 30, "heartbeat_missing": True},
+        "ingestion-backpressure": {"processing_ratio": 0.5, "queue_growth_rate": 5},
+        "malformed-sensor-payload": {"transform_failure_ratio": 0.5},
+        "influxdb-write-failure": {"influx_write_failure_ratio": 0.5, "influxdb_healthy": 0},
+    }
+    for seed in (42, 43):
+        rows = []
+        for label, overrides in faults.items():
+            for sample in range(20):
+                features = make_features(
+                    **{"heartbeat_age_max_seconds": (sample + 0.5) / 10, **overrides}
+                )
+                row = training_row(
+                    label=label,
+                    seed=seed,
+                    phase="normal" if label == "normal" else label,
+                    run_suffix=label,
+                )
+                row.update(features.model_dump())
+                rows.append(row)
+        write_csv(tmp_path / f"matrix-seed-{seed}.csv", list(DATASET_COLUMNS), rows)
+
+    artifact_path = tmp_path / "candidate.joblib"
+    report = train_model(
+        input_dir=tmp_path,
+        artifact_path=artifact_path,
+        report_path=tmp_path / "report.json",
+    )
+    assert report["quality_gate"]["passed"]
+    predictor = load_ml_predictor(artifact_path)
+    # Production incident report: all four devices present, oldest reading 1.887 seconds old.
+    healthy = make_features(
+        elapsed_seconds=5.115,
+        messages_enqueued_rate=2.541,
+        messages_processed_rate=2.541,
+        transform_success_rate=2.541,
+        queue_utilization_ratio=None,
+        queue_metrics_available=False,
+        pipeline_duration_average_seconds=0.006,
+        persist_duration_average_seconds=0.005,
+        influx_write_duration_average_seconds=0.009,
+        heartbeat_age_max_seconds=1.887,
+        heartbeat_age_mean_seconds=1.106,
+        heartbeat_age_available=True,
+        observed_device_count=4,
+        device_metrics_available=True,
+    )
+    assert predictor.predict(healthy).label == "normal"
+    assert (
+        predictor.predict(
+            healthy.model_copy(update={"heartbeat_missing": True, "heartbeat_age_max_seconds": 30})
+        ).label
+        == "missing-device-heartbeat"
+    )
 
 
 def test_training_loader_passes_every_source_to_shared_builder(

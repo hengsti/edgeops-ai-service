@@ -1,5 +1,5 @@
 import numpy as np
-from scripts.common import LABELS, SCENARIOS
+from scripts.common import DATASET_SCHEMA_VERSION, LABELS, SCENARIOS
 from scripts.evaluate_feature_ablation import _candidate_evaluation
 from scripts.simulation_manifest import SIMULATION_VARIANTS, empty_manifest
 from scripts.train_model import TrainingDataset
@@ -7,7 +7,7 @@ from scripts.validate_candidate_holdout import build_holdout_validation
 from scripts.validate_phase6_acceptance import build_acceptance_report
 from sklearn.tree import DecisionTreeClassifier
 
-from edgeops_ai.ml import MODEL_FEATURE_COLUMNS
+from edgeops_ai.ml import ML_MODEL_VERSION, MODEL_FEATURE_COLUMNS
 
 
 def test_ablation_slices_include_all_variants_and_empty_missingness_buckets() -> None:
@@ -159,7 +159,7 @@ def test_candidate_holdout_validation_passes_unseen_balanced_evidence() -> None:
     report = build_holdout_validation(
         manifest=manifest,
         evaluation_report=evaluation,
-        model_versions={"lightweight-ml-0.3.0"},
+        model_versions={ML_MODEL_VERSION},
         stable_matrix_finite=True,
         training_seeds=set(range(42, 62)),
     )
@@ -172,7 +172,7 @@ def test_candidate_holdout_validation_rejects_training_seed_overlap() -> None:
     report = build_holdout_validation(
         manifest={
             "simulation_contract_version": 2,
-            "dataset_schema_version": "2.0",
+            "dataset_schema_version": DATASET_SCHEMA_VERSION,
             "runs": {
                 "overlap": {
                     "scenario_id": "ingestion-backpressure",
