@@ -24,6 +24,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
+      - run: docker compose -f compose.yaml config -q
       - run: docker build -t edgeops-ai-service .
       - name: Smoke test /health
         run: |
