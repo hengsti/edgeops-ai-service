@@ -2,6 +2,8 @@
 name = "edgeops-ai-service"
 version = "0.1.0"
 description = "Anomaly Detection Service for EdgeOps"
+license = "MIT"
+license-files = ["LICENSE"]
 requires-python = ">=3.13"
 dependencies = ["fastapi", "uvicorn", "pydantic", "pydantic-settings", "httpx", "scikit-learn", "joblib"]
 
