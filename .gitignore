@@ -15,3 +15,6 @@ data/generated/*
 !data/holdout/
 data/holdout/*
 !data/holdout/deployed-ml-report.json
+
+artifacts/*
+!artifacts/model.joblib
