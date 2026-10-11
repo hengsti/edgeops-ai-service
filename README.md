@@ -59,10 +59,12 @@ docker run --rm -p 8080:8080 edgeops-ai-service
 
 The quickstart uses the default `rules` backend. No checked-in model artifact is
 compatible with the current ML loader yet (see the training section), so the image
-ships without one. To run the ML backend, mount an artifact that passes the loader:
+ships without one. To run the ML backend, mount an approved artifact and pass its
+SHA-256 (see [Model artifacts](#model-artifacts-and-reports)):
 
 ```powershell
 docker run --rm -p 8080:8080 -e PREDICTION_BACKEND=ml `
+  -e "MODEL_ARTIFACT_SHA256=$((Get-FileHash artifacts/model.joblib -Algorithm SHA256).Hash)" `
   -v ${PWD}/artifacts/model.joblib:/app/artifacts/model.joblib:ro edgeops-ai-service
 ```
 
@@ -88,6 +90,7 @@ Configuration is plain environment variables (a `.env` file works too):
 | --- | --- | --- |
 | `PREDICTION_BACKEND` | `rules` | `rules` or `ml` |
 | `MODEL_ARTIFACT_PATH` | `artifacts/model.joblib` | trained model, only used by the ml backend |
+| `MODEL_ARTIFACT_SHA256` | *(empty)* | required for the ml backend; the artifact is refused unless its SHA-256 matches |
 | `COLLECTOR_BASE_URL` | `http://localhost:8095` | collector metrics API |
 | `COLLECTOR_API_KEY` | `local-dev-key` | sent as `X-EdgeOps-Key` |
 | `COLLECTOR_POLLING_ENABLED` | `true` | disable if you only push observations |
@@ -178,11 +181,13 @@ then run:
 # In a separate terminal, from edgeops-ai-service:
 $env:PREDICTION_BACKEND = 'ml'
 $env:MODEL_ARTIFACT_PATH = '<path printed as $candidate above>'
+$env:MODEL_ARTIFACT_SHA256 = (Get-FileHash $env:MODEL_ARTIFACT_PATH -Algorithm SHA256).Hash
 $env:COLLECTOR_POLLING_ENABLED = 'false'
 uv run uvicorn edgeops_ai.main:create_app --factory --port 8096
 
 # Or the same in Docker, publishing container port 8080 on host port 8096:
 docker run --rm -p 8096:8080 -e PREDICTION_BACKEND=ml -e COLLECTOR_POLLING_ENABLED=false `
+  -e MODEL_ARTIFACT_SHA256=$env:MODEL_ARTIFACT_SHA256 `
   -v "${PWD}/$($env:MODEL_ARTIFACT_PATH):/app/artifacts/model.joblib:ro" edgeops-ai-service
 
 # In the training terminal (the script runs on the host, so it uses host ports):
@@ -233,8 +238,34 @@ need retraining; changing their version string does not fix their learned decisi
 The checked-in `artifacts/model.joblib` is still the old six-feature baseline, so using
 the ML backend with that file fails validation. Load the candidate explicitly for evaluation.
 After the training and holdout gates pass, promote the selected artifact with
-`Copy-Item $candidate artifacts/model.joblib -Force` and restart the AI service (mount the
-file into the container as shown in the quickstart). Use the rules backend until promotion.
+`Copy-Item $candidate artifacts/model.joblib -Force`, record it in
+[Model artifacts and reports](#model-artifacts-and-reports), and restart the AI service with
+the new `MODEL_ARTIFACT_SHA256` (mount the file into the container as shown in the
+quickstart). Use the rules backend until promotion.
+
+## Model artifacts and reports
+
+joblib files are pickles: loading one can run arbitrary code. The ML backend therefore
+only loads an artifact whose SHA-256 matches `MODEL_ARTIFACT_SHA256`, and the hash is
+checked before `joblib.load`. Only use hashes of artifacts you trained yourself with
+`scripts/train_model.py` and recorded below.
+
+`artifacts/model.joblib` is the only tracked artifact. Experimental and candidate
+artifacts stay local (`artifacts/*` is gitignored); delete or archive them outside
+git once a candidate is promoted or rejected.
+
+| Artifact | Status | SHA-256 | Provenance | Validation |
+| --- | --- | --- | --- | --- |
+| `artifacts/model.joblib` | Retired: last deployed ML model, rejected by the current loader (schema 1.0) | `71403725dcc6fb0b136f2e1581a3f95ec4d58eaa8164a3a32c63788249bcb238` | `lightweight-ml-0.2.0`, decision tree, 6 features, trained 2026-07-26 on 4720 rows from seeds 42-61, committed in `76ea0d2` | `data/holdout/deployed-ml-report.json` (seeds 62-66) |
+
+No artifact is currently approved for deployment; run the rules backend. When promoting
+a candidate, replace the row above with its version, hash, training run directory,
+seeds, and the holdout/acceptance report that approved it.
+
+Tracked reports are kept as evidence for claims in this README:
+`data/generated/rule-baseline-report.json` (rule baseline) and
+`data/holdout/deployed-ml-report.json` (holdout of the retired v0.2 model). All other
+generated data under `data/` is gitignored.
 
 ## Adding another model
 
