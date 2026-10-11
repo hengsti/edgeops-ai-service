@@ -18,3 +18,4 @@ data/holdout/*
 
 artifacts/*
 !artifacts/model.joblib
+compose.override.yaml
