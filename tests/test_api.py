@@ -245,12 +245,13 @@ def test_unknown_fields_are_rejected() -> None:
 def test_ml_health_reports_artifact_version(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(
         "edgeops_ai.main.load_ml_predictor",
-        lambda _: MlPredictor(model=object()),
+        lambda *_: MlPredictor(model=object()),
     )
     settings = Settings(
         collector_polling_enabled=False,
         prediction_backend="ml",
         model_artifact_path=Path("artifacts/model.joblib"),
+        model_artifact_sha256="0" * 64,
     )
 
     with TestClient(create_app(settings)) as client:
@@ -266,12 +267,13 @@ def test_ml_warming_up_uses_ml_model_version(
 ) -> None:
     monkeypatch.setattr(
         "edgeops_ai.main.load_ml_predictor",
-        lambda _: MlPredictor(model=object()),
+        lambda *_: MlPredictor(model=object()),
     )
     settings = Settings(
         collector_polling_enabled=False,
         prediction_backend="ml",
         model_artifact_path=Path("artifacts/model.joblib"),
+        model_artifact_sha256="0" * 64,
     )
 
     with TestClient(create_app(settings)) as client:
@@ -292,6 +294,7 @@ def test_ml_startup_fails_when_artifact_is_missing(
         collector_polling_enabled=False,
         prediction_backend="ml",
         model_artifact_path=tmp_path / "missing.joblib",
+        model_artifact_sha256="0" * 64,
     )
 
     with (
@@ -299,6 +302,20 @@ def test_ml_startup_fails_when_artifact_is_missing(
             ModelArtifactError,
             match="does not exist",
         ),
+        TestClient(create_app(settings)),
+    ):
+        pass
+
+
+def test_ml_startup_requires_artifact_sha256() -> None:
+    settings = Settings(
+        collector_polling_enabled=False,
+        prediction_backend="ml",
+        model_artifact_path=Path("artifacts/model.joblib"),
+    )
+
+    with (
+        pytest.raises(ModelArtifactError, match="MODEL_ARTIFACT_SHA256 is required"),
         TestClient(create_app(settings)),
     ):
         pass

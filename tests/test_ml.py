@@ -1,3 +1,4 @@
+import hashlib
 from math import isfinite, log1p
 from pathlib import Path
 from typing import Any
@@ -372,6 +373,21 @@ def test_loads_valid_ml_artifact(tmp_path: Path) -> None:
 
     assert predictor.backend_name is PredictionBackendName.ML
     assert predictor.model_version == ML_MODEL_VERSION
+
+
+def test_loads_artifact_with_matching_sha256(tmp_path: Path) -> None:
+    path = save_artifact(tmp_path / "model.joblib")
+    sha256 = hashlib.sha256(path.read_bytes()).hexdigest()
+
+    assert load_ml_predictor(path, sha256.upper()).model_version == ML_MODEL_VERSION
+
+
+def test_rejects_artifact_with_wrong_sha256(tmp_path: Path, monkeypatch) -> None:
+    path = save_artifact(tmp_path / "model.joblib")
+    monkeypatch.setattr(joblib, "load", lambda _: pytest.fail("joblib.load must not run"))
+
+    with pytest.raises(ModelArtifactError, match="SHA-256 mismatch"):
+        load_ml_predictor(path, "0" * 64)
 
 
 def test_missing_artifact_fails(tmp_path: Path) -> None:
