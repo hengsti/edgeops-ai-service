@@ -166,7 +166,7 @@ class FeatureExtractor:
         queue_metrics_available = queue_depth is not None and queue_capacity is not None
         queue_utilization_ratio = (
             min(max(safe_ratio(float(queue_depth), float(queue_capacity)), 0.0), 1.0)
-            if queue_metrics_available
+            if queue_depth is not None and queue_capacity is not None
             else None
         )
 
@@ -178,7 +178,7 @@ class FeatureExtractor:
         transform_metrics_available = (
             transform_attempt_delta is not None and transform_deserialize_failed_delta is not None
         )
-        if transform_metrics_available:
+        if transform_attempt_delta is not None and transform_deserialize_failed_delta is not None:
             transform_deserialize_failure_ratio = safe_ratio(
                 transform_deserialize_failed_delta,
                 transform_attempt_delta,
@@ -265,7 +265,7 @@ class FeatureExtractor:
         input_queue_metrics_available = (
             mqtt_received_delta is not None and event_queue_full_delta is not None
         )
-        if input_queue_metrics_available:
+        if mqtt_received_delta is not None and event_queue_full_delta is not None:
             decode_input_attempts = mqtt_received_delta + event_queue_full_delta
             event_queue_drop_ratio = safe_ratio(event_queue_full_delta, decode_input_attempts)
         else:
@@ -280,7 +280,10 @@ class FeatureExtractor:
                 oversized_delta + non_utf8_delta + invalid_json_delta,
                 decode_input_attempts,
             )
-            if decode_metrics_available
+            if decode_input_attempts is not None
+            and oversized_delta is not None
+            and non_utf8_delta is not None
+            and invalid_json_delta is not None
             else None
         )
 
@@ -290,7 +293,11 @@ class FeatureExtractor:
         raw_validation_metrics_available = all(
             value is not None for value in (raw_success_delta, raw_ignored_delta, raw_failed_delta)
         )
-        if raw_validation_metrics_available:
+        if (
+            raw_success_delta is not None
+            and raw_ignored_delta is not None
+            and raw_failed_delta is not None
+        ):
             raw_validation_outcomes = raw_success_delta + raw_ignored_delta + raw_failed_delta
             raw_validation_failure_ratio = safe_ratio(
                 raw_failed_delta,
@@ -314,7 +321,7 @@ class FeatureExtractor:
                 business_failed_delta,
                 business_success_delta + business_failed_delta,
             )
-            if business_validation_metrics_available
+            if business_success_delta is not None and business_failed_delta is not None
             else None
         )
 
@@ -323,7 +330,7 @@ class FeatureExtractor:
         wal_queue_metrics_available = (
             wal_queue_full_delta is not None and wal_queue_closed_delta is not None
         )
-        if wal_queue_metrics_available:
+        if wal_queue_full_delta is not None and wal_queue_closed_delta is not None:
             wal_enqueue_attempts = enqueued_delta + wal_queue_full_delta + wal_queue_closed_delta
             wal_queue_full_ratio = safe_ratio(wal_queue_full_delta, wal_enqueue_attempts)
             wal_queue_closed_rate = wal_queue_closed_delta / elapsed_seconds
@@ -335,7 +342,7 @@ class FeatureExtractor:
         durability_ack_metrics_available = durability_ack_failed_delta is not None
         durability_ack_failure_rate = (
             durability_ack_failed_delta / elapsed_seconds
-            if durability_ack_metrics_available
+            if durability_ack_failed_delta is not None
             else None
         )
 
@@ -344,7 +351,7 @@ class FeatureExtractor:
         dlq_metrics_available = dlq_published_delta is not None and dlq_errors_delta is not None
         dlq_publish_failure_ratio = (
             safe_ratio(dlq_errors_delta, dlq_published_delta + dlq_errors_delta)
-            if dlq_metrics_available
+            if dlq_published_delta is not None and dlq_errors_delta is not None
             else None
         )
 
