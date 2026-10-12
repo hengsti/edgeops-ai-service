@@ -2,7 +2,7 @@
 
 Anomaly detection for the EdgeOps smart-home stack. The service watches pipeline
 metrics coming from the edge collector, classifies the current state as normal or
-one of four fault types, and tells you what to check first.
+one of five fault types, and tells you what to check first.
 
 Fault labels it knows about:
 
@@ -10,6 +10,7 @@ Fault labels it knows about:
 - `missing-device-heartbeat` – a device went silent
 - `malformed-sensor-payload` – payloads fail transformation and land in the DLQ
 - `influxdb-write-failure` – data gets transformed but never persisted
+- `mqtt-broker-unavailable` – the EMQX broker is confirmed down, so devices look silent
 
 There are two interchangeable prediction backends: a hand-written rule baseline and
 a small scikit-learn classifier. More on why below.
@@ -57,16 +58,18 @@ docker build -t edgeops-ai-service .
 docker run --rm -p 8080:8080 edgeops-ai-service
 ```
 
-The quickstart uses the default `rules` backend. No checked-in model artifact is
-compatible with the current ML loader yet (see the training section), so the image
-ships without one. To run the ML backend, mount an approved artifact and pass its
-SHA-256 (see [Model artifacts](#model-artifacts-and-reports)):
+The quickstart uses the default `rules` backend. The image bundles the approved
+`artifacts/model.joblib`; to run the ML backend, pass its SHA-256 (see
+[Model artifacts](#model-artifacts-and-reports)):
 
 ```powershell
 docker run --rm -p 8080:8080 -e PREDICTION_BACKEND=ml `
   -e "MODEL_ARTIFACT_SHA256=$((Get-FileHash artifacts/model.joblib -Algorithm SHA256).Hash)" `
-  -v ${PWD}/artifacts/model.joblib:/app/artifacts/model.joblib:ro edgeops-ai-service
+  edgeops-ai-service
 ```
+
+To test another artifact, mount it over the bundled one with
+`-v <path>:/app/artifacts/model.joblib:ro` and pass that file's SHA-256.
 
 ### Ports
 
@@ -154,7 +157,7 @@ A detection looks like this:
   "captured_at": "2024-01-01T02:03:03+01:00",
   "prediction": "ingestion-backpressure",
   "confidence": 0.98,
-  "model_version": "lightweight-ml-0.4.0",
+  "model_version": "lightweight-ml-0.5.0",
   "recommendation": "Inspect ingestion queue pressure and processing throughput.",
   "features": { "queue_growth_rate": 14.2, "processing_ratio": 0.61, "...": "..." }
 }
@@ -170,13 +173,14 @@ importantly, it produced labeled training data.
 
 The ML backend is a scikit-learn model trained on exactly that data. Two
 candidates get compared with leave-one-seed-out cross-validation (logistic
-regression and a depth-6 decision tree); the tree won. Features are
+regression and a depth-7 decision tree; depth 6 lost ingestion-backpressure recall once the
+broker label was added); the tree won. Features are
 workload-independent ratios rather than raw counters, so the model doesn't just
 memorize the simulation's message rates.
 
-The old six-feature model classified all 1120 stable-phase samples correctly across
-five unseen simulation seeds evaluated through the deployed API, and flagged every
-fault at the first sample of the fault phase
+The deployed `lightweight-ml-0.5.0` model classified 3782 of 3810 stable-phase samples
+(99.3 %) correctly across ten unseen simulation seeds (62-71) evaluated through the
+deployed API, and detected all 50 incidents with a mean delay of 2.1 s
 (`data/holdout/deployed-ml-report.json`).
 
 Both backends implement the same `Predictor` protocol
@@ -191,12 +195,12 @@ simulation collector on `http://localhost:8097`:
 
 ```powershell
 # Start the updated simulation collector first (see its README).
-# Use a fresh directory: version 0.4 requires regenerated schema-2.1 data.
+# Use a fresh directory: version 0.5 requires regenerated schema-2.2 data.
 $run = Get-Date -Format 'yyyyMMdd-HHmmss'
-$training = "data/model-v0.4-$run"
-$candidate = "artifacts/model-v0.4-$run.joblib"
+$training = "data/model-v0.5-$run"
+$candidate = "artifacts/model-v0.5-$run.joblib"
 
-# collect 20 grouped seeds, evaluate rules, and train a version 0.4 candidate
+# collect 20 grouped seeds, evaluate rules, and train a version 0.5 candidate
 uv run python -m scripts.run_pipeline --seed-range 42 61 --speed 100 --interval 0.05 --train `
   --output-dir $training `
   --evaluation-report "$training/rule-report.json" `
@@ -237,13 +241,13 @@ uv run python -m scripts.evaluate_deployed_model `
   --interval 0.05 `
   --simulation-base-url http://localhost:8097 `
   --ai-base-url http://localhost:8096 `
-  --output-dir "data/holdout-v0.4-$run" `
-  --report "data/holdout-v0.4-$run/candidate-report.json"
+  --output-dir "data/holdout-v0.5-$run" `
+  --report "data/holdout-v0.5-$run/candidate-report.json"
 
-uv run python -m scripts.validate_candidate_holdout --input-dir "data/holdout-v0.4-$run"
+uv run python -m scripts.validate_candidate_holdout --input-dir "data/holdout-v0.5-$run"
 uv run python -m scripts.validate_phase6_acceptance `
   --input-dir $training `
-  --holdout-report "data/holdout-v0.4-$run/candidate-report.json"
+  --holdout-report "data/holdout-v0.5-$run/candidate-report.json"
 ```
 
 The holdout command sends explicit balanced variants, uses separate simulation
@@ -252,7 +256,7 @@ CSVs. It does not load the model directly; predictions must come from the runnin
 FastAPI ML backend.
 
 Datasets are CSVs under `data/` (gitignored, the JSON reports are kept). Generated
-rows carry `dataset_schema_version="2.1"`; stale CSVs are regenerated instead of
+rows carry `dataset_schema_version="2.2"`; stale CSVs are regenerated instead of
 being silently reused. Reuse also requires a matching contract-v2
 `simulation-manifest.json`, including the planned severity variant, resolved effects,
 masked optional groups, collector version, and exact CSV run ID. The pipeline passes
@@ -273,15 +277,53 @@ simulation uses periodic heartbeat ages and timestamps in simulated seconds. Its
 device cadence before collecting data for other hardware. Restart or rebuild the simulation
 collector before generating new data. Old schema-2.0 CSVs must be regenerated, not relabeled.
 
-Training, loading, and deployed evaluation use `lightweight-ml-0.4.0`. Existing 0.3 artifacts
-need retraining; changing their version string does not fix their learned decisions.
-The checked-in `artifacts/model.joblib` is still the old six-feature baseline, so using
-the ML backend with that file fails validation. Load the candidate explicitly for evaluation.
-After the training and holdout gates pass, promote the selected artifact with
-`Copy-Item $candidate artifacts/model.joblib -Force`, record it in
+Training, loading, and deployed evaluation use `lightweight-ml-0.5.0`. Version 0.5 adds the
+`mqtt-broker-unavailable` label and two broker columns (`broker_unavailable`,
+`broker_metrics_available`), so 0.4 and older artifacts need retraining on schema-2.2 data;
+changing their version string does not fix their learned decisions. Training requires every
+label; the simulation collector's `mqtt-broker-unavailable` scenario provides it (EMQX unhealthy,
+restarting or exited, stale heartbeats and dropping traffic, then recovery), while the other
+scenarios report a healthy broker. Rebuild the simulation collector before collecting 0.5 data.
+The checked-in `artifacts/model.joblib` is the promoted 0.5 model. Load new candidates
+explicitly for evaluation. After the training and holdout gates pass, promote the selected
+artifact with `Copy-Item $candidate artifacts/model.joblib -Force`, record it in
 [Model artifacts and reports](#model-artifacts-and-reports), and restart the AI service with
 the new `MODEL_ARTIFACT_SHA256` (mount the file into the container as shown in the
-quickstart). Use the rules backend until promotion.
+quickstart).
+
+## Broker versus device diagnosis
+
+A stopped EMQX broker makes every device heartbeat stale, so the service reads the broker
+state from the collector (`GET /v1/services/emqx`) on every poll and stores it as
+`broker_available` in the observation and the features:
+
+| Collector response | `broker_available` |
+| --- | --- |
+| `status=running`, `health=healthy` | `true` |
+| `status` `exited`, `dead`, `restarting`, `paused`, `created`, `removing`, or `health=unhealthy` | `false` (confirmed outage) |
+| `status=unavailable` (Docker inspection failed), `health=starting` or missing, HTTP error, timeout | `null` (unknown) |
+
+Failed broker HTTP requests are retried once within the same poll. If both attempts fail,
+the service logs the request error and reports `null`; it does not reuse a previous broker
+state. A retry can add up to one additional collector request timeout to the poll.
+
+Pushed observations without the field are accepted and treated as unknown. Only a confirmed
+outage produces `mqtt-broker-unavailable`, and it takes precedence over
+`missing-device-heartbeat`. Unknown broker telemetry and zero message traffic never do: the
+analysis continues with the remaining signals. The health status comes from the EMQX
+healthcheck (`emqx ctl status`) in the Server stack; there is no separate MQTT reachability
+probe. After the broker comes back, the first observation with restarted counters returns
+`warming-up` and the next one is classified normally.
+
+To validate against a real broker, use a test or staging stack, never production:
+
+1. Run the AI service with the rules backend and collector polling, and wait for `normal`.
+2. `docker stop emqx`, wait two poll intervals, and confirm `GET /v1/detections/latest`
+   reports `mqtt-broker-unavailable` with the EMQX recommendation.
+3. `docker start emqx`, wait for the container to report `healthy` and the devices to
+   reconnect, and confirm the detection returns to `normal`.
+
+Record the outcome separately from the simulation reports.
 
 ## Model artifacts and reports
 
@@ -296,15 +338,14 @@ git once a candidate is promoted or rejected.
 
 | Artifact | Status | SHA-256 | Provenance | Validation |
 | --- | --- | --- | --- | --- |
-| `artifacts/model.joblib` | Retired: last deployed ML model, rejected by the current loader (schema 1.0) | `71403725dcc6fb0b136f2e1581a3f95ec4d58eaa8164a3a32c63788249bcb238` | `lightweight-ml-0.2.0`, decision tree, 6 features, trained 2026-07-26 on 4720 rows from seeds 42-61, committed in `76ea0d2` | `data/holdout/deployed-ml-report.json` (seeds 62-66) |
+| `artifacts/model.joblib` | Approved | `6112373eb459e3c824f562afef96c2fdff51cf151cb319eb0033be41a3db515a` | `lightweight-ml-0.5.0`, decision tree (max depth 7), 46 features, dataset schema 2.2, trained 2026-10-11 on 3174 stable rows from seeds 42-61 (run `data/model-v0.5-20261011-221326`); leave-one-seed-out accuracy 0.977 | `data/holdout/deployed-ml-report.json` (seeds 62-71, stable accuracy 0.993); holdout and acceptance gates passed |
 
-No artifact is currently approved for deployment; run the rules backend. When promoting
-a candidate, replace the row above with its version, hash, training run directory,
-seeds, and the holdout/acceptance report that approved it.
+When promoting a new candidate, replace the row above with its version, hash, training run
+directory, seeds, and the holdout/acceptance report that approved it.
 
 Tracked reports are kept as evidence for claims in this README:
 `data/generated/rule-baseline-report.json` (rule baseline) and
-`data/holdout/deployed-ml-report.json` (holdout of the retired v0.2 model). All other
+`data/holdout/deployed-ml-report.json` (holdout of the approved v0.5 model). All other
 generated data under `data/` is gitignored.
 
 ## Adding another model
