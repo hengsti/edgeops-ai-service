@@ -96,6 +96,8 @@ def test_model_feature_columns_match_release_a_contract() -> None:
         "persist_duration_metrics_available",
         "influx_write_duration_log_seconds",
         "influx_write_duration_metrics_available",
+        "broker_unavailable",
+        "broker_metrics_available",
     )
 
 
@@ -130,6 +132,7 @@ def test_build_model_feature_row_normalizes_and_bounds() -> None:
         transform_duration_average_seconds=3.0,
         persist_duration_average_seconds=3.0,
         influx_write_duration_average_seconds=3.0,
+        broker_available=False,
     )
 
     log_four = log1p(3.0)
@@ -179,6 +182,8 @@ def test_build_model_feature_row_normalizes_and_bounds() -> None:
             1.0,
             log_four,
             1.0,
+            1.0,
+            1.0,
         ]
     )
     assert len(row) == len(MODEL_FEATURE_COLUMNS)
@@ -201,6 +206,18 @@ def base_model_row(**overrides: Any) -> list[float]:
 
 def named_row(row: list[float]) -> dict[str, float]:
     return dict(zip(MODEL_FEATURE_COLUMNS, row, strict=True))
+
+
+@pytest.mark.parametrize(
+    ("broker_available", "expected"),
+    [(None, (0.0, 0.0)), (True, (0.0, 1.0)), (False, (1.0, 1.0))],
+)
+def test_broker_unknown_is_distinct_from_confirmed_outage(
+    broker_available: bool | None, expected: tuple[float, float]
+) -> None:
+    row = named_row(base_model_row(broker_available=broker_available))
+
+    assert (row["broker_unavailable"], row["broker_metrics_available"]) == expected
 
 
 def test_optional_a1_values_distinguish_missing_from_real_zero() -> None:

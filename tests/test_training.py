@@ -68,6 +68,7 @@ OPTIONAL_SOURCE_COLUMNS = (
     "transform_duration_average_seconds",
     "persist_duration_average_seconds",
     "influx_write_duration_average_seconds",
+    "broker_available",
 )
 
 
@@ -151,6 +152,7 @@ def training_rows(seed: int) -> list[dict[str, Any]]:
         "missing-device-heartbeat",
         "malformed-sensor-payload",
         "influxdb-write-failure",
+        "mqtt-broker-unavailable",
     )
     rows = [
         training_row(
@@ -396,15 +398,16 @@ def test_valid_release_a_dataset_loads_without_preprocessing(tmp_path: Path) -> 
 
     dataset = load_training_dataset(tmp_path)
 
-    assert dataset.row_count == 10
+    assert dataset.row_count == 12
     assert dataset.excluded_recovery_rows == 2
-    assert dataset.features.shape == (10, len(MODEL_FEATURE_COLUMNS))
+    assert dataset.features.shape == (12, len(MODEL_FEATURE_COLUMNS))
     assert set(dataset.labels) == {
         "normal",
         "ingestion-backpressure",
         "missing-device-heartbeat",
         "malformed-sensor-payload",
         "influxdb-write-failure",
+        "mqtt-broker-unavailable",
     }
     assert set(dataset.seeds) == {42, 43}
 
@@ -426,11 +429,11 @@ def test_valid_release_a_dataset_trains_candidate_artifact(tmp_path: Path) -> No
 
     artifact = joblib.load(artifact_path)
     assert report["quality_gate"]["passed"]
-    assert report["dataset"]["stable_rows"] == 10
+    assert report["dataset"]["stable_rows"] == 12
     assert report["dataset"]["excluded_recovery_rows"] == 2
     assert artifact["dataset_schema_version"] == DATASET_SCHEMA_VERSION
     assert tuple(artifact["feature_columns"]) == MODEL_FEATURE_COLUMNS
-    assert artifact["training_rows"] == 10
+    assert artifact["training_rows"] == 12
     assert artifact["simulation_seeds"] == [42, 43]
 
 
@@ -447,7 +450,7 @@ def test_training_rejects_version_the_runtime_cannot_load(tmp_path: Path) -> Non
     assert artifact_path.read_bytes() == b"previous model"
 
 
-def test_training_defaults_to_loadable_v04_artifact(tmp_path: Path) -> None:
+def test_training_defaults_to_loadable_v05_artifact(tmp_path: Path) -> None:
     write_training_matrix(tmp_path)
     artifact_path = tmp_path / "candidate.joblib"
     train_model(
@@ -457,7 +460,7 @@ def test_training_defaults_to_loadable_v04_artifact(tmp_path: Path) -> None:
         min_accuracy=0,
         min_label_recall=0,
     )
-    assert load_ml_predictor(artifact_path).model_version == "lightweight-ml-0.4.0"
+    assert load_ml_predictor(artifact_path).model_version == "lightweight-ml-0.5.0"
     assert parse_training_args([]).model_version == ML_MODEL_VERSION
 
 
@@ -470,13 +473,23 @@ def test_retrained_model_accepts_healthy_production_heartbeat_age(
         "ingestion-backpressure": {"processing_ratio": 0.5, "queue_growth_rate": 5},
         "malformed-sensor-payload": {"transform_failure_ratio": 0.5},
         "influxdb-write-failure": {"influx_write_failure_ratio": 0.5, "influxdb_healthy": 0},
+        "mqtt-broker-unavailable": {
+            "heartbeat_age_max_seconds": 30,
+            "heartbeat_missing": True,
+            "broker_available": False,
+        },
     }
     for seed in (42, 43):
         rows = []
         for label, overrides in faults.items():
             for sample in range(20):
                 features = make_features(
-                    **{"heartbeat_age_max_seconds": (sample + 0.5) / 10, **overrides}
+                    **{
+                        "heartbeat_age_max_seconds": (sample + 0.5) / 10,
+                        # Cover healthy and unknown broker telemetry for every other label.
+                        "broker_available": True if sample % 2 else None,
+                        **overrides,
+                    }
                 )
                 row = training_row(
                     label=label,
@@ -519,6 +532,15 @@ def test_retrained_model_accepts_healthy_production_heartbeat_age(
             healthy.model_copy(update={"heartbeat_missing": True, "heartbeat_age_max_seconds": 30})
         ).label
         == "missing-device-heartbeat"
+    )
+    stale = {"heartbeat_missing": True, "heartbeat_age_max_seconds": 30}
+    assert (
+        predictor.predict(healthy.model_copy(update={**stale, "broker_available": True})).label
+        == "missing-device-heartbeat"
+    )
+    assert (
+        predictor.predict(healthy.model_copy(update={**stale, "broker_available": False})).label
+        == "mqtt-broker-unavailable"
     )
 
 
@@ -565,6 +587,7 @@ def test_blank_optional_values_remain_unavailable(tmp_path: Path) -> None:
         "transform_duration_metrics_available",
         "persist_duration_metrics_available",
         "influx_write_duration_metrics_available",
+        "broker_metrics_available",
     ):
         assert first[MODEL_FEATURE_COLUMNS.index(availability_column)] == 0
 
@@ -625,7 +648,7 @@ def test_recovery_rows_are_validated_then_excluded(tmp_path: Path) -> None:
     dataset = load_training_dataset(tmp_path)
 
     assert dataset.excluded_recovery_rows == 2
-    assert dataset.row_count == 10
+    assert dataset.row_count == 12
     assert all("recovery" not in run_id for run_id in dataset.run_ids)
 
 

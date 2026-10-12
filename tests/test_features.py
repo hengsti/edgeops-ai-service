@@ -165,6 +165,10 @@ def test_no_devices_are_explicitly_unavailable() -> None:
     assert features.heartbeat_age_available is False
 
 
+def test_observation_without_broker_field_is_unknown() -> None:
+    assert extract_features().broker_available is None
+
+
 def test_missing_device_is_counted_and_named() -> None:
     devices = [
         {"device_id": "sensor-a", "heartbeat_missing": True, "heartbeat_age_seconds": None},

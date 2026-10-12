@@ -1,3 +1,5 @@
+import pytest
+
 from edgeops_ai.prediction import PredictionBackendName
 from edgeops_ai.rules import RULES_MODEL_VERSION, RuleBasedPredictor
 
@@ -58,3 +60,41 @@ def test_growing_queue_with_slow_processing_is_backpressure(make_features) -> No
     result = predictor.predict(features)
 
     assert result.label == "ingestion-backpressure"
+
+
+def test_confirmed_broker_outage_wins_over_stale_heartbeats(make_features) -> None:
+    features = make_features(
+        broker_available=False,
+        heartbeat_missing=True,
+        missing_device_ids=["sensor-a", "sensor-b"],
+    )
+
+    result = predictor.predict(features)
+
+    assert result.label == "mqtt-broker-unavailable"
+    assert "EMQX" in result.recommendation
+
+
+@pytest.mark.parametrize("broker_available", [True, None])
+def test_missing_device_without_confirmed_outage_stays_device_issue(
+    make_features, broker_available: bool | None
+) -> None:
+    features = make_features(
+        broker_available=broker_available,
+        heartbeat_missing=True,
+        missing_device_ids=["sensor-a"],
+    )
+
+    assert predictor.predict(features).label == "missing-device-heartbeat"
+
+
+@pytest.mark.parametrize("broker_available", [True, None])
+def test_idle_traffic_is_not_a_broker_outage(make_features, broker_available: bool | None) -> None:
+    features = make_features(
+        broker_available=broker_available,
+        messages_enqueued_rate=0.0,
+        messages_processed_rate=0.0,
+        transform_success_rate=0.0,
+    )
+
+    assert predictor.predict(features).label == "normal"

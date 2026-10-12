@@ -1,9 +1,12 @@
 import asyncio
+from datetime import timedelta
 
 import httpx
 import pytest
 
 from edgeops_ai.collector_client import CollectorClient
+from edgeops_ai.features import FeatureExtractor
+from edgeops_ai.rules import RuleBasedPredictor
 from edgeops_ai.schemas import ObservationV1
 
 EXPECTED_A2_MAPPING = {
@@ -86,6 +89,7 @@ def envelope(data: object) -> dict[str, object]:
 def transport_for(
     metrics: dict[str, float | None],
     devices: dict[str, dict[str, object]] | None = None,
+    emqx: object = None,
 ) -> httpx.MockTransport:
     device_responses = devices or {}
 
@@ -93,6 +97,14 @@ def transport_for(
         assert request.headers["X-EdgeOps-Key"] == "test-key"
         if request.url.path == "/v1/metrics/ingestion":
             return httpx.Response(200, json=envelope(metrics))
+
+        if request.url.path == "/v1/services/emqx" and emqx is not None:
+            reply = emqx.pop(0) if isinstance(emqx, list) else emqx
+            if isinstance(reply, Exception):
+                raise reply
+            if isinstance(reply, httpx.Response):
+                return reply
+            return httpx.Response(200, json=envelope(reply))
 
         prefix = "/v1/devices/"
         if request.url.path.startswith(prefix):
@@ -109,13 +121,14 @@ async def fetch_observation(
     *,
     devices: dict[str, dict[str, object]] | None = None,
     device_ids: tuple[str, ...] = (),
+    emqx: object = None,
 ) -> ObservationV1:
     client = CollectorClient(
         base_url="http://collector.test",
         api_key="test-key",
         timeout_seconds=1,
         device_ids=device_ids,
-        transport=transport_for(metrics, devices),
+        transport=transport_for(metrics, devices, emqx),
     )
     try:
         return await client.fetch_observation()
@@ -235,3 +248,96 @@ def test_maps_populated_and_null_device_age(
     assert observation.devices[0].device_id == device_id
     assert observation.devices[0].heartbeat_age_seconds == heartbeat_age_seconds
     assert observation.devices[0].heartbeat_missing is (heartbeat_age_seconds is None)
+
+
+def emqx_state(status: str, health: str | None) -> dict[str, object]:
+    return {"service": "emqx", "status": status, "health": health, "restart_count": 0}
+
+
+@pytest.mark.parametrize(
+    ("emqx", "expected"),
+    [
+        (emqx_state("running", "healthy"), True),
+        (emqx_state("exited", None), False),
+        (emqx_state("restarting", None), False),
+        (emqx_state("running", "unhealthy"), False),
+        (emqx_state("unavailable", None), None),
+        (emqx_state("running", "starting"), None),
+        (emqx_state("running", None), None),
+        (httpx.Response(503), None),
+        (httpx.ReadTimeout("timed out"), None),
+        (None, None),
+    ],
+)
+def test_maps_emqx_service_to_broker_evidence(emqx: object, expected: bool | None) -> None:
+    observation = asyncio.run(fetch_observation(collector_metrics(), emqx=emqx))
+
+    assert observation.broker_available is expected
+
+
+@pytest.mark.parametrize(
+    "failure",
+    [httpx.ReadTimeout("timed out"), httpx.ConnectError("connection lost"), httpx.Response(503)],
+)
+@pytest.mark.parametrize(
+    ("state", "expected"),
+    [(emqx_state("exited", None), False), (emqx_state("running", "healthy"), True)],
+)
+def test_transient_broker_request_failure_is_retried(
+    failure: object, state: dict[str, object], expected: bool
+) -> None:
+    replies = [failure, state]
+
+    observation = asyncio.run(fetch_observation(collector_metrics(), emqx=replies))
+
+    assert observation.broker_available is expected
+    assert replies == []
+
+
+def test_persistent_broker_request_failure_is_unknown_and_logged(caplog) -> None:
+    replies = [httpx.ReadTimeout("timed out"), httpx.ReadTimeout("still timed out")]
+
+    observation = asyncio.run(fetch_observation(collector_metrics(), emqx=replies))
+
+    assert observation.broker_available is None
+    assert replies == []
+    assert "EMQX broker telemetry request failed after retry" in caplog.text
+    assert "still timed out" in caplog.text
+
+
+def test_broker_outage_and_recovery_from_collection_to_prediction() -> None:
+    device_ids = ("sensor-a", "sensor-b")
+    stale = {device_id: {"available": False} for device_id in device_ids}
+    fresh = {
+        device_id: {"available": True, "heartbeat_age_seconds": 1.0} for device_id in device_ids
+    }
+    extractor = FeatureExtractor()
+    predictor = RuleBasedPredictor()
+
+    def analyze(
+        seconds: int, devices: dict[str, dict[str, object]], emqx: object, scale: float = 1.0
+    ) -> str | None:
+        metrics = {
+            name: value * scale if value is not None and name.endswith("_total") else value
+            for name, value in collector_metrics().items()
+        }
+        observation = asyncio.run(
+            fetch_observation(metrics, devices=devices, device_ids=device_ids, emqx=emqx)
+        )
+        captured_at = observation.metadata.captured_at + timedelta(seconds=seconds)
+        observation = observation.model_copy(
+            update={
+                "metadata": observation.metadata.model_copy(update={"captured_at": captured_at})
+            }
+        )
+        features = extractor.update(observation)
+        return predictor.predict(features).label if features else None
+
+    down = emqx_state("exited", None)
+    healthy = emqx_state("running", "healthy")
+    assert analyze(0, stale, down) is None
+    assert analyze(5, stale, down) == "mqtt-broker-unavailable"
+    assert analyze(10, stale, httpx.ReadTimeout("timed out")) == "missing-device-heartbeat"
+    # Restarted counters force one warmup interval before diagnosing again.
+    assert analyze(15, fresh, healthy, scale=0.5) is None
+    assert analyze(20, fresh, healthy, scale=0.5) == "normal"
