@@ -1,9 +1,12 @@
+import logging
 from typing import Any
 from urllib.parse import quote
 
 import httpx
 
 from edgeops_ai.schemas import DeviceObservation, ObservationV1
+
+logger = logging.getLogger(__name__)
 
 REQUIRED_METRIC_MAPPING = {
     "ingest_messages_enqueued_total": "messages_enqueued_total",
@@ -57,6 +60,8 @@ OPTIONAL_METRIC_MAPPING = {
     "ingest_status_messages_processed_total": "status_messages_processed_total",
 }
 
+BROKER_DOWN_STATUSES = frozenset({"created", "restarting", "removing", "paused", "exited", "dead"})
+
 
 class CollectorClient:
     def __init__(
@@ -102,8 +107,35 @@ class CollectorClient:
                 "metadata": payload["metadata"],
                 "metrics": metrics,
                 "devices": devices,
+                "broker_available": await self._fetch_broker_available(),
             }
         )
+
+    async def _fetch_broker_available(self) -> bool | None:
+        for attempt in range(2):
+            try:
+                service = (await self._get_json("/v1/services/emqx"))["data"]
+                status, health = service.get("status"), service.get("health")
+            except httpx.HTTPError as error:
+                if attempt == 0:
+                    continue
+                logger.warning(
+                    "EMQX broker telemetry request failed after retry: %s: %s",
+                    type(error).__name__,
+                    error,
+                )
+                # Broker telemetry is optional evidence; failures mean unknown, not down.
+                return None
+            except (ValueError, KeyError, TypeError, AttributeError):
+                return None
+            break
+
+        if status in BROKER_DOWN_STATUSES or (status == "running" and health == "unhealthy"):
+            return False
+        if status == "running" and health == "healthy":
+            return True
+        # "unavailable" (Docker inspection failed), "starting" or no healthcheck.
+        return None
 
     async def _fetch_device(self, device_id: str) -> DeviceObservation:
         encoded_device_id = quote(device_id, safe="")
