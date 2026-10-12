@@ -11,7 +11,7 @@ import joblib
 from edgeops_ai.prediction import Prediction, PredictionBackendName, recommendation_for
 from edgeops_ai.schemas import FeatureVector, PredictionLabel
 
-ML_MODEL_VERSION = "lightweight-ml-0.4.0"
+ML_MODEL_VERSION = "lightweight-ml-0.5.0"
 ARTIFACT_SCHEMA_VERSION = "2.0"
 
 MODEL_FEATURE_COLUMNS = (
@@ -59,6 +59,8 @@ MODEL_FEATURE_COLUMNS = (
     "persist_duration_metrics_available",
     "influx_write_duration_log_seconds",
     "influx_write_duration_metrics_available",
+    "broker_unavailable",
+    "broker_metrics_available",
 )
 
 REQUIRED_ARTIFACT_FIELDS = frozenset(
@@ -142,6 +144,7 @@ def build_model_feature_row(
     transform_duration_average_seconds: float | None = None,
     persist_duration_average_seconds: float | None = None,
     influx_write_duration_average_seconds: float | None = None,
+    broker_available: bool | float | None = None,
 ) -> list[float]:
     """
     Build the workload-independent feature vector used for training
@@ -238,6 +241,8 @@ def build_model_feature_row(
         persist_duration_available,
         influx_write_duration,
         influx_write_duration_available,
+        float(broker_available is not None and not broker_available),
+        float(broker_available is not None),
     ]
 
     if len(row) != len(MODEL_FEATURE_COLUMNS):
@@ -277,6 +282,7 @@ def vectorize_model_features(features: FeatureVector) -> list[float]:
         transform_duration_average_seconds=features.transform_duration_average_seconds,
         persist_duration_average_seconds=features.persist_duration_average_seconds,
         influx_write_duration_average_seconds=features.influx_write_duration_average_seconds,
+        broker_available=features.broker_available,
     )
 
 

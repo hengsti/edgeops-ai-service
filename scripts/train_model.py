@@ -76,6 +76,7 @@ SOURCE_FEATURE_COLUMNS = (
     "transform_duration_average_seconds",
     "persist_duration_average_seconds",
     "influx_write_duration_average_seconds",
+    "broker_available",
 )
 
 METADATA_COLUMNS = (
@@ -212,6 +213,11 @@ def _build_model_row(
             line_number=line_number,
         )
 
+    def optional_bool(column: str) -> float | None:
+        if not (row.get(column) or "").strip():
+            return None
+        return required_bool(column)
+
     return build_model_feature_row(
         messages_enqueued_rate=required_float("messages_enqueued_rate"),
         queue_growth_rate=required_float("queue_growth_rate"),
@@ -244,6 +250,7 @@ def _build_model_row(
         influx_write_duration_average_seconds=optional_float(
             "influx_write_duration_average_seconds"
         ),
+        broker_available=optional_bool("broker_available"),
     )
 
 
@@ -380,7 +387,7 @@ CANDIDATE_MODELS: dict[str, Any] = {
         ]
     ),
     "decision-tree": DecisionTreeClassifier(
-        max_depth=6,
+        max_depth=7,
         min_samples_leaf=3,
         class_weight="balanced",
         random_state=42,

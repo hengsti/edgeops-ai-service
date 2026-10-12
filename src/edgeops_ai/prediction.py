@@ -36,6 +36,7 @@ RECOMMENDATIONS: dict[str, str] = {
     "ingestion-backpressure": "Inspect ingestion queue pressure and processing throughput.",
     "malformed-sensor-payload": "Inspect DLQ messages and validate sensor payload schemas.",
     "missing-device-heartbeat": "Check device connectivity and power state.",
+    "mqtt-broker-unavailable": "Check the EMQX broker: container state, health and logs.",
 }
 
 

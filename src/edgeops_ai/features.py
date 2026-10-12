@@ -459,4 +459,5 @@ class FeatureExtractor:
             missing_device_count=missing_device_count,
             missing_device_ratio=missing_device_ratio,
             device_metrics_available=device_metrics_available,
+            broker_available=current.broker_available,
         )

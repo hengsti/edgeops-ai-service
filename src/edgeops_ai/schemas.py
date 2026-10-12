@@ -93,6 +93,8 @@ class ObservationV1(StrictModel):
     metadata: ObservationMetadata
     metrics: IngestionMetrics
     devices: list[DeviceObservation] = Field(default_factory=list)
+    # EMQX evidence: True = running and healthy, False = confirmed down, None = unknown.
+    broker_available: bool | None = None
 
 
 class FeatureVector(StrictModel):
@@ -165,6 +167,8 @@ class FeatureVector(StrictModel):
     missing_device_ratio: float = Field(default=0.0, ge=0, le=1)
     device_metrics_available: bool = Field(default=False)
 
+    broker_available: bool | None = None
+
 
 PredictionLabel = Literal[
     "normal",
@@ -172,6 +176,7 @@ PredictionLabel = Literal[
     "ingestion-backpressure",
     "malformed-sensor-payload",
     "missing-device-heartbeat",
+    "mqtt-broker-unavailable",
 ]
 
 
