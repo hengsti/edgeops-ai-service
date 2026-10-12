@@ -28,6 +28,15 @@ class RuleBasedPredictor:
         return RULES_MODEL_VERSION
 
     def predict(self, features: FeatureVector) -> Prediction:
+        # A confirmed broker outage explains stale heartbeats, so it must win over them.
+        if features.broker_available is False:
+            return Prediction(
+                label="mqtt-broker-unavailable",
+                confidence=1.0,
+                recommendation=recommendation_for("mqtt-broker-unavailable", features),
+                model_version=RULES_MODEL_VERSION,
+            )
+
         if features.heartbeat_missing:
             return Prediction(
                 label="missing-device-heartbeat",
