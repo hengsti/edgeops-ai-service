@@ -16,13 +16,14 @@ SCENARIOS = (
     "missing-device-heartbeat",
     "malformed-sensor-payload",
     "influxdb-write-failure",
+    "mqtt-broker-unavailable",
 )
 
 DEFAULT_SEEDS = (42, 43, 44)
 
 LABELS: tuple[str, ...] = get_args(PredictionLabel)
 
-DATASET_SCHEMA_VERSION = "2.1"
+DATASET_SCHEMA_VERSION = "2.2"
 
 NORMAL_PHASES = {
     "baseline",

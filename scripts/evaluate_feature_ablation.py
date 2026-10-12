@@ -71,6 +71,10 @@ FEATURE_GROUPS: dict[str, tuple[str, ...]] = {
         "influx_write_duration_log_seconds",
         "influx_write_duration_metrics_available",
     ),
+    "broker": (
+        "broker_unavailable",
+        "broker_metrics_available",
+    ),
 }
 
 
