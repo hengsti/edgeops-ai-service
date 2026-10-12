@@ -1,462 +1,980 @@
 {
   "all_phase_metrics": {
-    "accuracy": 0.990506329113924,
+    "accuracy": 0.8194236526946108,
     "confusion_matrix": {
       "influxdb-write-failure": {
-        "influxdb-write-failure": 170,
+        "influxdb-write-failure": 447,
         "ingestion-backpressure": 0,
         "malformed-sensor-payload": 0,
         "missing-device-heartbeat": 0,
-        "normal": 0
+        "mqtt-broker-unavailable": 0,
+        "normal": 8
       },
       "ingestion-backpressure": {
         "influxdb-write-failure": 0,
-        "ingestion-backpressure": 170,
+        "ingestion-backpressure": 455,
         "malformed-sensor-payload": 0,
         "missing-device-heartbeat": 0,
-        "normal": 0
+        "mqtt-broker-unavailable": 0,
+        "normal": 7
       },
       "malformed-sensor-payload": {
         "influxdb-write-failure": 0,
         "ingestion-backpressure": 0,
-        "malformed-sensor-payload": 170,
+        "malformed-sensor-payload": 449,
         "missing-device-heartbeat": 0,
-        "normal": 0
+        "mqtt-broker-unavailable": 0,
+        "normal": 8
       },
       "missing-device-heartbeat": {
         "influxdb-write-failure": 0,
         "ingestion-backpressure": 0,
         "malformed-sensor-payload": 0,
-        "missing-device-heartbeat": 170,
+        "missing-device-heartbeat": 468,
+        "mqtt-broker-unavailable": 0,
+        "normal": 3
+      },
+      "mqtt-broker-unavailable": {
+        "influxdb-write-failure": 0,
+        "ingestion-backpressure": 0,
+        "malformed-sensor-payload": 0,
+        "missing-device-heartbeat": 1,
+        "mqtt-broker-unavailable": 468,
         "normal": 0
       },
       "normal": {
-        "influxdb-write-failure": 5,
-        "ingestion-backpressure": 5,
-        "malformed-sensor-payload": 5,
-        "missing-device-heartbeat": 0,
-        "normal": 885
+        "influxdb-write-failure": 195,
+        "ingestion-backpressure": 193,
+        "malformed-sensor-payload": 194,
+        "missing-device-heartbeat": 355,
+        "mqtt-broker-unavailable": 1,
+        "normal": 2092
       }
     },
-    "correct": 1565,
+    "correct": 4379,
     "labels": [
       "normal",
       "influxdb-write-failure",
       "ingestion-backpressure",
       "malformed-sensor-payload",
-      "missing-device-heartbeat"
+      "missing-device-heartbeat",
+      "mqtt-broker-unavailable"
     ],
-    "macro_f1": 0.9896236755571793,
+    "macro_f1": 0.8307539764679318,
     "per_label": {
       "influxdb-write-failure": {
-        "f1": 0.9855072463768115,
-        "precision": 0.9714285714285714,
-        "recall": 1.0,
-        "support": 170
+        "f1": 0.8149498632634459,
+        "precision": 0.6962616822429907,
+        "recall": 0.9824175824175824,
+        "support": 455
       },
       "ingestion-backpressure": {
-        "f1": 0.9855072463768115,
-        "precision": 0.9714285714285714,
-        "recall": 1.0,
-        "support": 170
+        "f1": 0.8198198198198199,
+        "precision": 0.7021604938271605,
+        "recall": 0.9848484848484849,
+        "support": 462
       },
       "malformed-sensor-payload": {
-        "f1": 0.9855072463768115,
-        "precision": 0.9714285714285714,
-        "recall": 1.0,
-        "support": 170
+        "f1": 0.8163636363636364,
+        "precision": 0.6982892690513219,
+        "recall": 0.9824945295404814,
+        "support": 457
       },
       "missing-device-heartbeat": {
-        "f1": 1.0,
-        "precision": 1.0,
-        "recall": 1.0,
-        "support": 170
+        "f1": 0.7227799227799228,
+        "precision": 0.5679611650485437,
+        "recall": 0.9936305732484076,
+        "support": 471
+      },
+      "mqtt-broker-unavailable": {
+        "f1": 0.997867803837953,
+        "precision": 0.997867803837953,
+        "recall": 0.997867803837953,
+        "support": 469
       },
       "normal": {
-        "f1": 0.9915966386554621,
-        "precision": 1.0,
-        "recall": 0.9833333333333333,
-        "support": 900
+        "f1": 0.8127428127428128,
+        "precision": 0.987724268177526,
+        "recall": 0.6904290429042904,
+        "support": 3030
       }
     },
-    "rows": 1580
+    "rows": 5344
   },
   "dataset": {
-    "files": 20,
-    "rows": 1580,
-    "runs": 20,
+    "files": 50,
+    "rows": 5344,
+    "runs": 50,
     "scenarios": [
       "influxdb-write-failure",
       "ingestion-backpressure",
       "malformed-sensor-payload",
-      "missing-device-heartbeat"
+      "missing-device-heartbeat",
+      "mqtt-broker-unavailable"
     ],
     "seeds": [
       62,
       63,
       64,
       65,
-      66
+      66,
+      67,
+      68,
+      69,
+      70,
+      71
     ],
     "validated_runs": [
       {
-        "rows": 79,
+        "rows": 101,
         "scenario_id": "influxdb-write-failure",
-        "simulation_run_id": "c274e63c-e767-4f9e-bcf9-8c5c84fdc1c1",
+        "simulation_run_id": "a7212c1b-2a8f-371b-72ca-fd33ea7c1e93",
         "simulation_seed": 62,
         "source_file": "influxdb-write-failure-seed-62.csv"
       },
       {
-        "rows": 79,
+        "rows": 112,
         "scenario_id": "influxdb-write-failure",
-        "simulation_run_id": "8a70750a-eeba-4c89-920b-741c461f4c21",
+        "simulation_run_id": "63871a70-fd4d-32dc-6935-e85633f96f06",
         "simulation_seed": 63,
         "source_file": "influxdb-write-failure-seed-63.csv"
       },
       {
-        "rows": 79,
+        "rows": 113,
         "scenario_id": "influxdb-write-failure",
-        "simulation_run_id": "8427b413-84a7-429d-8885-1123ee1abd4e",
+        "simulation_run_id": "f7da3ce9-3422-3221-2d46-a8bf718d26f1",
         "simulation_seed": 64,
         "source_file": "influxdb-write-failure-seed-64.csv"
       },
       {
-        "rows": 79,
+        "rows": 97,
         "scenario_id": "influxdb-write-failure",
-        "simulation_run_id": "503b073a-3c17-43b0-9f04-3f63e90cf616",
+        "simulation_run_id": "7a693fd9-015f-be7a-c527-a38498c38421",
         "simulation_seed": 65,
         "source_file": "influxdb-write-failure-seed-65.csv"
       },
       {
-        "rows": 79,
+        "rows": 104,
         "scenario_id": "influxdb-write-failure",
-        "simulation_run_id": "3be4b762-ddda-4b2e-87db-91f39ba2f0c0",
+        "simulation_run_id": "274b52c9-724a-ed03-618c-988e6b7917a9",
         "simulation_seed": 66,
         "source_file": "influxdb-write-failure-seed-66.csv"
       },
       {
-        "rows": 79,
+        "rows": 111,
+        "scenario_id": "influxdb-write-failure",
+        "simulation_run_id": "b11c5141-678a-9682-d511-abcf848bd4c8",
+        "simulation_seed": 67,
+        "source_file": "influxdb-write-failure-seed-67.csv"
+      },
+      {
+        "rows": 94,
+        "scenario_id": "influxdb-write-failure",
+        "simulation_run_id": "d9653600-48ee-204a-06e0-c566f2ebaf9f",
+        "simulation_seed": 68,
+        "source_file": "influxdb-write-failure-seed-68.csv"
+      },
+      {
+        "rows": 106,
+        "scenario_id": "influxdb-write-failure",
+        "simulation_run_id": "8802b58b-08a2-f750-804c-ec288b76fb75",
+        "simulation_seed": 69,
+        "source_file": "influxdb-write-failure-seed-69.csv"
+      },
+      {
+        "rows": 118,
+        "scenario_id": "influxdb-write-failure",
+        "simulation_run_id": "a13de5dc-3c4f-9a27-cac5-666f13cdae59",
+        "simulation_seed": 70,
+        "source_file": "influxdb-write-failure-seed-70.csv"
+      },
+      {
+        "rows": 104,
+        "scenario_id": "influxdb-write-failure",
+        "simulation_run_id": "0cffcb0f-8b1c-5832-9ad1-09f0a8589abd",
+        "simulation_seed": 71,
+        "source_file": "influxdb-write-failure-seed-71.csv"
+      },
+      {
+        "rows": 93,
         "scenario_id": "ingestion-backpressure",
-        "simulation_run_id": "28115661-ac28-44fd-81d5-d0e3ac5a8d2c",
+        "simulation_run_id": "15487ab5-8be7-eb24-49f8-8cb7db920eac",
         "simulation_seed": 62,
         "source_file": "ingestion-backpressure-seed-62.csv"
       },
       {
-        "rows": 79,
+        "rows": 103,
         "scenario_id": "ingestion-backpressure",
-        "simulation_run_id": "06f95563-ae80-4dc0-8ccc-bc6327d7a3eb",
+        "simulation_run_id": "d0690f6f-44bb-1193-c578-5eccf00b6631",
         "simulation_seed": 63,
         "source_file": "ingestion-backpressure-seed-63.csv"
       },
       {
-        "rows": 79,
+        "rows": 116,
         "scenario_id": "ingestion-backpressure",
-        "simulation_run_id": "d1939e71-6b66-4d37-8a71-54fbab8801fc",
+        "simulation_run_id": "7c13e9ef-f080-1999-5731-194a398bbe7c",
         "simulation_seed": 64,
         "source_file": "ingestion-backpressure-seed-64.csv"
       },
       {
-        "rows": 79,
+        "rows": 101,
         "scenario_id": "ingestion-backpressure",
-        "simulation_run_id": "6f0bd822-690a-484c-aa41-33636665a887",
+        "simulation_run_id": "721e015d-13d3-824a-84df-7bd69431e905",
         "simulation_seed": 65,
         "source_file": "ingestion-backpressure-seed-65.csv"
       },
       {
-        "rows": 79,
+        "rows": 109,
         "scenario_id": "ingestion-backpressure",
-        "simulation_run_id": "3fdb933e-3b65-4e79-8422-163e62866584",
+        "simulation_run_id": "8229db95-2d13-516b-db1e-300fd5c23902",
         "simulation_seed": 66,
         "source_file": "ingestion-backpressure-seed-66.csv"
       },
       {
-        "rows": 79,
+        "rows": 118,
+        "scenario_id": "ingestion-backpressure",
+        "simulation_run_id": "dbdab94a-57d9-b655-0e82-57c5fea5bf8f",
+        "simulation_seed": 67,
+        "source_file": "ingestion-backpressure-seed-67.csv"
+      },
+      {
+        "rows": 104,
+        "scenario_id": "ingestion-backpressure",
+        "simulation_run_id": "449a5d5d-8ddd-41b3-cc33-96d55527d64a",
+        "simulation_seed": 68,
+        "source_file": "ingestion-backpressure-seed-68.csv"
+      },
+      {
+        "rows": 108,
+        "scenario_id": "ingestion-backpressure",
+        "simulation_run_id": "19031d98-e70e-3d24-69e4-d14b8df05fee",
+        "simulation_seed": 69,
+        "source_file": "ingestion-backpressure-seed-69.csv"
+      },
+      {
+        "rows": 113,
+        "scenario_id": "ingestion-backpressure",
+        "simulation_run_id": "b01be53d-2a30-23bc-882e-ff7ea5969b5f",
+        "simulation_seed": 70,
+        "source_file": "ingestion-backpressure-seed-70.csv"
+      },
+      {
+        "rows": 101,
+        "scenario_id": "ingestion-backpressure",
+        "simulation_run_id": "f5a42b2b-c4b4-0a47-fef9-7a29a10e0ef0",
+        "simulation_seed": 71,
+        "source_file": "ingestion-backpressure-seed-71.csv"
+      },
+      {
+        "rows": 99,
         "scenario_id": "malformed-sensor-payload",
-        "simulation_run_id": "2db4d469-cc2d-4111-b775-2fa402d8f5dd",
+        "simulation_run_id": "b6e5bcc5-da08-94b3-522a-c8c38f870557",
         "simulation_seed": 62,
         "source_file": "malformed-sensor-payload-seed-62.csv"
       },
       {
-        "rows": 79,
+        "rows": 110,
         "scenario_id": "malformed-sensor-payload",
-        "simulation_run_id": "51a3b4bb-f9a2-49de-a996-a2e50c65ea35",
+        "simulation_run_id": "c39fae3d-5f8c-fdaf-7a10-fd391819e6e1",
         "simulation_seed": 63,
         "source_file": "malformed-sensor-payload-seed-63.csv"
       },
       {
-        "rows": 79,
+        "rows": 121,
         "scenario_id": "malformed-sensor-payload",
-        "simulation_run_id": "339cb4a1-bc23-473f-9786-568bc316f38f",
+        "simulation_run_id": "25765388-b637-01e4-e28f-18be53513494",
         "simulation_seed": 64,
         "source_file": "malformed-sensor-payload-seed-64.csv"
       },
       {
-        "rows": 79,
+        "rows": 96,
         "scenario_id": "malformed-sensor-payload",
-        "simulation_run_id": "db9d1e7f-c16c-4aee-bb48-1a2e391f86ba",
+        "simulation_run_id": "9852ad53-cc86-d39e-f93c-b7220ea95ca9",
         "simulation_seed": 65,
         "source_file": "malformed-sensor-payload-seed-65.csv"
       },
       {
-        "rows": 79,
+        "rows": 105,
         "scenario_id": "malformed-sensor-payload",
-        "simulation_run_id": "33d89670-538e-4771-838d-9ba803105b4a",
+        "simulation_run_id": "aaa4099b-dc33-0bbb-9896-b401733fb071",
         "simulation_seed": 66,
         "source_file": "malformed-sensor-payload-seed-66.csv"
       },
       {
-        "rows": 79,
+        "rows": 117,
+        "scenario_id": "malformed-sensor-payload",
+        "simulation_run_id": "6c68ed94-8c82-460a-9388-92671f2fc57c",
+        "simulation_seed": 67,
+        "source_file": "malformed-sensor-payload-seed-67.csv"
+      },
+      {
+        "rows": 96,
+        "scenario_id": "malformed-sensor-payload",
+        "simulation_run_id": "52e55478-79de-2f51-1dca-abe85f5719a5",
+        "simulation_seed": 68,
+        "source_file": "malformed-sensor-payload-seed-68.csv"
+      },
+      {
+        "rows": 104,
+        "scenario_id": "malformed-sensor-payload",
+        "simulation_run_id": "32da2a74-5fb7-7b8a-1e14-edc843c2fd22",
+        "simulation_seed": 69,
+        "source_file": "malformed-sensor-payload-seed-69.csv"
+      },
+      {
+        "rows": 116,
+        "scenario_id": "malformed-sensor-payload",
+        "simulation_run_id": "59b74e25-c96f-c416-c202-bc84158e63d7",
+        "simulation_seed": 70,
+        "source_file": "malformed-sensor-payload-seed-70.csv"
+      },
+      {
+        "rows": 98,
+        "scenario_id": "malformed-sensor-payload",
+        "simulation_run_id": "7eb494d6-f636-7d91-608d-9233ed3663ab",
+        "simulation_seed": 71,
+        "source_file": "malformed-sensor-payload-seed-71.csv"
+      },
+      {
+        "rows": 100,
         "scenario_id": "missing-device-heartbeat",
-        "simulation_run_id": "c8b8d7f2-8677-453b-b098-9adbde3b086e",
+        "simulation_run_id": "83f42717-a6f7-3f28-68af-b7e3d1ae4b67",
         "simulation_seed": 62,
         "source_file": "missing-device-heartbeat-seed-62.csv"
       },
       {
-        "rows": 79,
+        "rows": 104,
         "scenario_id": "missing-device-heartbeat",
-        "simulation_run_id": "d48a2258-bb02-4699-8cac-829f3217c01f",
+        "simulation_run_id": "8b7e1662-4c36-0864-ec5f-9aff7ae91ca1",
         "simulation_seed": 63,
         "source_file": "missing-device-heartbeat-seed-63.csv"
       },
       {
-        "rows": 79,
+        "rows": 121,
         "scenario_id": "missing-device-heartbeat",
-        "simulation_run_id": "69962ecd-fe32-4cd0-a1b7-eb82d8d2793f",
+        "simulation_run_id": "d793859c-50d7-7b26-ba16-627fb6699d9d",
         "simulation_seed": 64,
         "source_file": "missing-device-heartbeat-seed-64.csv"
       },
       {
-        "rows": 79,
+        "rows": 100,
         "scenario_id": "missing-device-heartbeat",
-        "simulation_run_id": "cfe3e43f-b55d-4b51-9b3d-a5de027bda49",
+        "simulation_run_id": "dd588bf4-ac38-8de2-0998-d0131eb07b7f",
         "simulation_seed": 65,
         "source_file": "missing-device-heartbeat-seed-65.csv"
       },
       {
-        "rows": 79,
+        "rows": 111,
         "scenario_id": "missing-device-heartbeat",
-        "simulation_run_id": "a00443d2-5907-49ce-9ace-7a13f9fe41a6",
+        "simulation_run_id": "9a9ef2f1-5379-4291-a4d1-11d07106f868",
         "simulation_seed": 66,
         "source_file": "missing-device-heartbeat-seed-66.csv"
+      },
+      {
+        "rows": 110,
+        "scenario_id": "missing-device-heartbeat",
+        "simulation_run_id": "07b9db48-bb43-77f5-eef6-8639414f8432",
+        "simulation_seed": 67,
+        "source_file": "missing-device-heartbeat-seed-67.csv"
+      },
+      {
+        "rows": 103,
+        "scenario_id": "missing-device-heartbeat",
+        "simulation_run_id": "e9e1f547-efe3-7e34-0794-d25a8144c008",
+        "simulation_seed": 68,
+        "source_file": "missing-device-heartbeat-seed-68.csv"
+      },
+      {
+        "rows": 114,
+        "scenario_id": "missing-device-heartbeat",
+        "simulation_run_id": "93a626a4-0bde-037b-3591-b42d688a36b2",
+        "simulation_seed": 69,
+        "source_file": "missing-device-heartbeat-seed-69.csv"
+      },
+      {
+        "rows": 113,
+        "scenario_id": "missing-device-heartbeat",
+        "simulation_run_id": "18f9cd4d-c58f-b5c1-bf85-b952eea61c60",
+        "simulation_seed": 70,
+        "source_file": "missing-device-heartbeat-seed-70.csv"
+      },
+      {
+        "rows": 103,
+        "scenario_id": "missing-device-heartbeat",
+        "simulation_run_id": "06da6136-4c4f-6901-ca4c-57594bcadded",
+        "simulation_seed": 71,
+        "source_file": "missing-device-heartbeat-seed-71.csv"
+      },
+      {
+        "rows": 97,
+        "scenario_id": "mqtt-broker-unavailable",
+        "simulation_run_id": "990242a5-8bbf-0ff4-4643-839451f4f162",
+        "simulation_seed": 62,
+        "source_file": "mqtt-broker-unavailable-seed-62.csv"
+      },
+      {
+        "rows": 112,
+        "scenario_id": "mqtt-broker-unavailable",
+        "simulation_run_id": "b696c3da-c78f-7399-cf8b-23be46eb9973",
+        "simulation_seed": 63,
+        "source_file": "mqtt-broker-unavailable-seed-63.csv"
+      },
+      {
+        "rows": 120,
+        "scenario_id": "mqtt-broker-unavailable",
+        "simulation_run_id": "cfb2d523-8e1d-7297-b8ca-972bd5230b6a",
+        "simulation_seed": 64,
+        "source_file": "mqtt-broker-unavailable-seed-64.csv"
+      },
+      {
+        "rows": 98,
+        "scenario_id": "mqtt-broker-unavailable",
+        "simulation_run_id": "d8f03472-c24d-5c77-1797-aa6196fec1e5",
+        "simulation_seed": 65,
+        "source_file": "mqtt-broker-unavailable-seed-65.csv"
+      },
+      {
+        "rows": 108,
+        "scenario_id": "mqtt-broker-unavailable",
+        "simulation_run_id": "0cc894ff-de11-959f-0050-e2a3743b5206",
+        "simulation_seed": 66,
+        "source_file": "mqtt-broker-unavailable-seed-66.csv"
+      },
+      {
+        "rows": 115,
+        "scenario_id": "mqtt-broker-unavailable",
+        "simulation_run_id": "5d2d47a8-5bd8-7527-cae1-ee8f428974dc",
+        "simulation_seed": 67,
+        "source_file": "mqtt-broker-unavailable-seed-67.csv"
+      },
+      {
+        "rows": 103,
+        "scenario_id": "mqtt-broker-unavailable",
+        "simulation_run_id": "db557430-4afb-b64f-ed08-ba05bf07b0f8",
+        "simulation_seed": 68,
+        "source_file": "mqtt-broker-unavailable-seed-68.csv"
+      },
+      {
+        "rows": 105,
+        "scenario_id": "mqtt-broker-unavailable",
+        "simulation_run_id": "5bf07d8e-bfb0-6527-6c18-139ad06c4740",
+        "simulation_seed": 69,
+        "source_file": "mqtt-broker-unavailable-seed-69.csv"
+      },
+      {
+        "rows": 118,
+        "scenario_id": "mqtt-broker-unavailable",
+        "simulation_run_id": "c5619474-dd4d-f211-bcd4-2b3466fd95d5",
+        "simulation_seed": 70,
+        "source_file": "mqtt-broker-unavailable-seed-70.csv"
+      },
+      {
+        "rows": 101,
+        "scenario_id": "mqtt-broker-unavailable",
+        "simulation_run_id": "63f2ac75-27f9-ae3c-49ec-869783857a35",
+        "simulation_seed": 71,
+        "source_file": "mqtt-broker-unavailable-seed-71.csv"
       }
     ]
   },
   "detection_delay": {
-    "detected_runs": 20,
-    "max_seconds": 0.0,
-    "mean_seconds": 0.0,
+    "detected_runs": 50,
+    "max_seconds": 4.67598,
+    "mean_seconds": 2.0584405,
     "runs": [
       {
         "detected": true,
-        "fault_phase_first_sample_at": "2024-01-01T00:27:51.389878+00:00",
-        "first_detection_at": "2024-01-01T00:27:51.389878+00:00",
-        "sampled_detection_delay_seconds": 0.0,
+        "fault_phase_first_sample_at": "2024-01-01T12:31:54.875543+00:00",
+        "first_detection_at": "2024-01-01T12:31:58.778413+00:00",
+        "sampled_detection_delay_seconds": 3.90287,
         "scenario_id": "influxdb-write-failure",
-        "simulation_run_id": "c274e63c-e767-4f9e-bcf9-8c5c84fdc1c1",
+        "simulation_run_id": "a7212c1b-2a8f-371b-72ca-fd33ea7c1e93",
         "simulation_seed": 62
       },
       {
         "detected": true,
-        "fault_phase_first_sample_at": "2024-01-01T00:56:01.173377+00:00",
-        "first_detection_at": "2024-01-01T00:56:01.173377+00:00",
-        "sampled_detection_delay_seconds": 0.0,
+        "fault_phase_first_sample_at": "2024-01-01T13:05:46.307654+00:00",
+        "first_detection_at": "2024-01-01T13:05:50.266239+00:00",
+        "sampled_detection_delay_seconds": 3.958585,
         "scenario_id": "influxdb-write-failure",
-        "simulation_run_id": "8a70750a-eeba-4c89-920b-741c461f4c21",
+        "simulation_run_id": "63871a70-fd4d-32dc-6935-e85633f96f06",
         "simulation_seed": 63
       },
       {
         "detected": true,
-        "fault_phase_first_sample_at": "2024-01-01T01:24:11.144918+00:00",
-        "first_detection_at": "2024-01-01T01:24:11.144918+00:00",
-        "sampled_detection_delay_seconds": 0.0,
+        "fault_phase_first_sample_at": "2024-01-01T13:44:24.222841+00:00",
+        "first_detection_at": "2024-01-01T13:44:28.015541+00:00",
+        "sampled_detection_delay_seconds": 3.7927,
         "scenario_id": "influxdb-write-failure",
-        "simulation_run_id": "8427b413-84a7-429d-8885-1123ee1abd4e",
+        "simulation_run_id": "f7da3ce9-3422-3221-2d46-a8bf718d26f1",
         "simulation_seed": 64
       },
       {
         "detected": true,
-        "fault_phase_first_sample_at": "2024-01-01T01:52:20.974269+00:00",
-        "first_detection_at": "2024-01-01T01:52:20.974269+00:00",
-        "sampled_detection_delay_seconds": 0.0,
+        "fault_phase_first_sample_at": "2024-01-01T14:19:25.860503+00:00",
+        "first_detection_at": "2024-01-01T14:19:29.812228+00:00",
+        "sampled_detection_delay_seconds": 3.951725,
         "scenario_id": "influxdb-write-failure",
-        "simulation_run_id": "503b073a-3c17-43b0-9f04-3f63e90cf616",
+        "simulation_run_id": "7a693fd9-015f-be7a-c527-a38498c38421",
         "simulation_seed": 65
       },
       {
         "detected": true,
-        "fault_phase_first_sample_at": "2024-01-01T02:20:30.854744+00:00",
-        "first_detection_at": "2024-01-01T02:20:30.854744+00:00",
-        "sampled_detection_delay_seconds": 0.0,
+        "fault_phase_first_sample_at": "2024-01-01T14:53:49.879356+00:00",
+        "first_detection_at": "2024-01-01T14:53:53.743201+00:00",
+        "sampled_detection_delay_seconds": 3.863845,
         "scenario_id": "influxdb-write-failure",
-        "simulation_run_id": "3be4b762-ddda-4b2e-87db-91f39ba2f0c0",
+        "simulation_run_id": "274b52c9-724a-ed03-618c-988e6b7917a9",
         "simulation_seed": 66
       },
       {
         "detected": true,
-        "fault_phase_first_sample_at": "2024-01-01T00:06:42.630391+00:00",
-        "first_detection_at": "2024-01-01T00:06:42.630391+00:00",
+        "fault_phase_first_sample_at": "2024-01-01T15:30:47.941988+00:00",
+        "first_detection_at": "2024-01-01T15:30:51.846013+00:00",
+        "sampled_detection_delay_seconds": 3.904025,
+        "scenario_id": "influxdb-write-failure",
+        "simulation_run_id": "b11c5141-678a-9682-d511-abcf848bd4c8",
+        "simulation_seed": 67
+      },
+      {
+        "detected": true,
+        "fault_phase_first_sample_at": "2024-01-01T16:05:41.219446+00:00",
+        "first_detection_at": "2024-01-01T16:05:45.097311+00:00",
+        "sampled_detection_delay_seconds": 3.877865,
+        "scenario_id": "influxdb-write-failure",
+        "simulation_run_id": "d9653600-48ee-204a-06e0-c566f2ebaf9f",
+        "simulation_seed": 68
+      },
+      {
+        "detected": true,
+        "fault_phase_first_sample_at": "2024-01-01T16:40:34.642403+00:00",
+        "first_detection_at": "2024-01-01T16:40:34.642403+00:00",
+        "sampled_detection_delay_seconds": 0.0,
+        "scenario_id": "influxdb-write-failure",
+        "simulation_run_id": "8802b58b-08a2-f750-804c-ec288b76fb75",
+        "simulation_seed": 69
+      },
+      {
+        "detected": true,
+        "fault_phase_first_sample_at": "2024-01-01T17:17:03.789779+00:00",
+        "first_detection_at": "2024-01-01T17:17:07.639094+00:00",
+        "sampled_detection_delay_seconds": 3.849315,
+        "scenario_id": "influxdb-write-failure",
+        "simulation_run_id": "a13de5dc-3c4f-9a27-cac5-666f13cdae59",
+        "simulation_seed": 70
+      },
+      {
+        "detected": true,
+        "fault_phase_first_sample_at": "2024-01-01T17:52:36.749386+00:00",
+        "first_detection_at": "2024-01-01T17:52:36.749386+00:00",
+        "sampled_detection_delay_seconds": 0.0,
+        "scenario_id": "influxdb-write-failure",
+        "simulation_run_id": "0cffcb0f-8b1c-5832-9ad1-09f0a8589abd",
+        "simulation_seed": 71
+      },
+      {
+        "detected": true,
+        "fault_phase_first_sample_at": "2024-01-01T12:12:30.428822+00:00",
+        "first_detection_at": "2024-01-01T12:12:30.428822+00:00",
         "sampled_detection_delay_seconds": 0.0,
         "scenario_id": "ingestion-backpressure",
-        "simulation_run_id": "28115661-ac28-44fd-81d5-d0e3ac5a8d2c",
+        "simulation_run_id": "15487ab5-8be7-eb24-49f8-8cb7db920eac",
         "simulation_seed": 62
       },
       {
         "detected": true,
-        "fault_phase_first_sample_at": "2024-01-01T00:34:53.885434+00:00",
-        "first_detection_at": "2024-01-01T00:34:53.885434+00:00",
-        "sampled_detection_delay_seconds": 0.0,
+        "fault_phase_first_sample_at": "2024-01-01T12:44:55.839714+00:00",
+        "first_detection_at": "2024-01-01T12:44:59.774599+00:00",
+        "sampled_detection_delay_seconds": 3.934885,
         "scenario_id": "ingestion-backpressure",
-        "simulation_run_id": "06f95563-ae80-4dc0-8ccc-bc6327d7a3eb",
+        "simulation_run_id": "d0690f6f-44bb-1193-c578-5eccf00b6631",
         "simulation_seed": 63
       },
       {
         "detected": true,
-        "fault_phase_first_sample_at": "2024-01-01T01:03:03.626749+00:00",
-        "first_detection_at": "2024-01-01T01:03:03.626749+00:00",
+        "fault_phase_first_sample_at": "2024-01-01T13:20:31.285459+00:00",
+        "first_detection_at": "2024-01-01T13:20:31.285459+00:00",
         "sampled_detection_delay_seconds": 0.0,
         "scenario_id": "ingestion-backpressure",
-        "simulation_run_id": "d1939e71-6b66-4d37-8a71-54fbab8801fc",
+        "simulation_run_id": "7c13e9ef-f080-1999-5731-194a398bbe7c",
         "simulation_seed": 64
       },
       {
         "detected": true,
-        "fault_phase_first_sample_at": "2024-01-01T01:31:13.620438+00:00",
-        "first_detection_at": "2024-01-01T01:31:13.620438+00:00",
+        "fault_phase_first_sample_at": "2024-01-01T13:59:47.467623+00:00",
+        "first_detection_at": "2024-01-01T13:59:47.467623+00:00",
         "sampled_detection_delay_seconds": 0.0,
         "scenario_id": "ingestion-backpressure",
-        "simulation_run_id": "6f0bd822-690a-484c-aa41-33636665a887",
+        "simulation_run_id": "721e015d-13d3-824a-84df-7bd69431e905",
         "simulation_seed": 65
       },
       {
         "detected": true,
-        "fault_phase_first_sample_at": "2024-01-01T01:59:23.516403+00:00",
-        "first_detection_at": "2024-01-01T01:59:23.516403+00:00",
-        "sampled_detection_delay_seconds": 0.0,
+        "fault_phase_first_sample_at": "2024-01-01T14:32:22.351131+00:00",
+        "first_detection_at": "2024-01-01T14:32:27.027111+00:00",
+        "sampled_detection_delay_seconds": 4.67598,
         "scenario_id": "ingestion-backpressure",
-        "simulation_run_id": "3fdb933e-3b65-4e79-8422-163e62866584",
+        "simulation_run_id": "8229db95-2d13-516b-db1e-300fd5c23902",
         "simulation_seed": 66
       },
       {
         "detected": true,
-        "fault_phase_first_sample_at": "2024-01-01T00:20:48.920908+00:00",
-        "first_detection_at": "2024-01-01T00:20:48.920908+00:00",
-        "sampled_detection_delay_seconds": 0.0,
+        "fault_phase_first_sample_at": "2024-01-01T15:07:50.558604+00:00",
+        "first_detection_at": "2024-01-01T15:07:54.448379+00:00",
+        "sampled_detection_delay_seconds": 3.889775,
+        "scenario_id": "ingestion-backpressure",
+        "simulation_run_id": "dbdab94a-57d9-b655-0e82-57c5fea5bf8f",
+        "simulation_seed": 67
+      },
+      {
+        "detected": true,
+        "fault_phase_first_sample_at": "2024-01-01T15:45:45.142013+00:00",
+        "first_detection_at": "2024-01-01T15:45:49.005588+00:00",
+        "sampled_detection_delay_seconds": 3.863575,
+        "scenario_id": "ingestion-backpressure",
+        "simulation_run_id": "449a5d5d-8ddd-41b3-cc33-96d55527d64a",
+        "simulation_seed": 68
+      },
+      {
+        "detected": true,
+        "fault_phase_first_sample_at": "2024-01-01T16:18:51.197067+00:00",
+        "first_detection_at": "2024-01-01T16:18:55.124312+00:00",
+        "sampled_detection_delay_seconds": 3.927245,
+        "scenario_id": "ingestion-backpressure",
+        "simulation_run_id": "19031d98-e70e-3d24-69e4-d14b8df05fee",
+        "simulation_seed": 69
+      },
+      {
+        "detected": true,
+        "fault_phase_first_sample_at": "2024-01-01T16:54:31.465318+00:00",
+        "first_detection_at": "2024-01-01T16:54:35.311783+00:00",
+        "sampled_detection_delay_seconds": 3.846465,
+        "scenario_id": "ingestion-backpressure",
+        "simulation_run_id": "b01be53d-2a30-23bc-882e-ff7ea5969b5f",
+        "simulation_seed": 70
+      },
+      {
+        "detected": true,
+        "fault_phase_first_sample_at": "2024-01-01T17:32:35.752841+00:00",
+        "first_detection_at": "2024-01-01T17:32:39.693771+00:00",
+        "sampled_detection_delay_seconds": 3.94093,
+        "scenario_id": "ingestion-backpressure",
+        "simulation_run_id": "f5a42b2b-c4b4-0a47-fef9-7a29a10e0ef0",
+        "simulation_seed": 71
+      },
+      {
+        "detected": true,
+        "fault_phase_first_sample_at": "2024-01-01T12:25:23.701957+00:00",
+        "first_detection_at": "2024-01-01T12:25:27.567677+00:00",
+        "sampled_detection_delay_seconds": 3.86572,
         "scenario_id": "malformed-sensor-payload",
-        "simulation_run_id": "2db4d469-cc2d-4111-b775-2fa402d8f5dd",
+        "simulation_run_id": "b6e5bcc5-da08-94b3-522a-c8c38f870557",
         "simulation_seed": 62
       },
       {
         "detected": true,
-        "fault_phase_first_sample_at": "2024-01-01T00:48:58.737686+00:00",
-        "first_detection_at": "2024-01-01T00:48:58.737686+00:00",
-        "sampled_detection_delay_seconds": 0.0,
+        "fault_phase_first_sample_at": "2024-01-01T12:58:33.446188+00:00",
+        "first_detection_at": "2024-01-01T12:58:37.405853+00:00",
+        "sampled_detection_delay_seconds": 3.959665,
         "scenario_id": "malformed-sensor-payload",
-        "simulation_run_id": "51a3b4bb-f9a2-49de-a996-a2e50c65ea35",
+        "simulation_run_id": "c39fae3d-5f8c-fdaf-7a10-fd391819e6e1",
         "simulation_seed": 63
       },
       {
         "detected": true,
-        "fault_phase_first_sample_at": "2024-01-01T01:17:08.569733+00:00",
-        "first_detection_at": "2024-01-01T01:17:08.569733+00:00",
-        "sampled_detection_delay_seconds": 0.0,
+        "fault_phase_first_sample_at": "2024-01-01T13:36:15.813006+00:00",
+        "first_detection_at": "2024-01-01T13:36:19.588336+00:00",
+        "sampled_detection_delay_seconds": 3.77533,
         "scenario_id": "malformed-sensor-payload",
-        "simulation_run_id": "339cb4a1-bc23-473f-9786-568bc316f38f",
+        "simulation_run_id": "25765388-b637-01e4-e28f-18be53513494",
         "simulation_seed": 64
       },
       {
         "detected": true,
-        "fault_phase_first_sample_at": "2024-01-01T01:45:18.555360+00:00",
-        "first_detection_at": "2024-01-01T01:45:18.555360+00:00",
+        "fault_phase_first_sample_at": "2024-01-01T14:13:05.234354+00:00",
+        "first_detection_at": "2024-01-01T14:13:05.234354+00:00",
         "sampled_detection_delay_seconds": 0.0,
         "scenario_id": "malformed-sensor-payload",
-        "simulation_run_id": "db9d1e7f-c16c-4aee-bb48-1a2e391f86ba",
+        "simulation_run_id": "9852ad53-cc86-d39e-f93c-b7220ea95ca9",
         "simulation_seed": 65
       },
       {
         "detected": true,
-        "fault_phase_first_sample_at": "2024-01-01T02:13:28.404562+00:00",
-        "first_detection_at": "2024-01-01T02:13:28.404562+00:00",
-        "sampled_detection_delay_seconds": 0.0,
+        "fault_phase_first_sample_at": "2024-01-01T14:46:54.740802+00:00",
+        "first_detection_at": "2024-01-01T14:46:58.662712+00:00",
+        "sampled_detection_delay_seconds": 3.92191,
         "scenario_id": "malformed-sensor-payload",
-        "simulation_run_id": "33d89670-538e-4771-838d-9ba803105b4a",
+        "simulation_run_id": "aaa4099b-dc33-0bbb-9896-b401733fb071",
         "simulation_seed": 66
       },
       {
         "detected": true,
-        "fault_phase_first_sample_at": "2024-01-01T00:13:45.975756+00:00",
-        "first_detection_at": "2024-01-01T00:13:45.975756+00:00",
+        "fault_phase_first_sample_at": "2024-01-01T15:23:01.297844+00:00",
+        "first_detection_at": "2024-01-01T15:23:05.929109+00:00",
+        "sampled_detection_delay_seconds": 4.631265,
+        "scenario_id": "malformed-sensor-payload",
+        "simulation_run_id": "6c68ed94-8c82-460a-9388-92671f2fc57c",
+        "simulation_seed": 67
+      },
+      {
+        "detected": true,
+        "fault_phase_first_sample_at": "2024-01-01T15:59:21.804152+00:00",
+        "first_detection_at": "2024-01-01T15:59:25.703097+00:00",
+        "sampled_detection_delay_seconds": 3.898945,
+        "scenario_id": "malformed-sensor-payload",
+        "simulation_run_id": "52e55478-79de-2f51-1dca-abe85f5719a5",
+        "simulation_seed": 68
+      },
+      {
+        "detected": true,
+        "fault_phase_first_sample_at": "2024-01-01T16:33:29.762650+00:00",
+        "first_detection_at": "2024-01-01T16:33:33.752535+00:00",
+        "sampled_detection_delay_seconds": 3.989885,
+        "scenario_id": "malformed-sensor-payload",
+        "simulation_run_id": "32da2a74-5fb7-7b8a-1e14-edc843c2fd22",
+        "simulation_seed": 69
+      },
+      {
+        "detected": true,
+        "fault_phase_first_sample_at": "2024-01-01T17:09:23.709847+00:00",
+        "first_detection_at": "2024-01-01T17:09:27.569632+00:00",
+        "sampled_detection_delay_seconds": 3.859785,
+        "scenario_id": "malformed-sensor-payload",
+        "simulation_run_id": "59b74e25-c96f-c416-c202-bc84158e63d7",
+        "simulation_seed": 70
+      },
+      {
+        "detected": true,
+        "fault_phase_first_sample_at": "2024-01-01T17:46:07.710598+00:00",
+        "first_detection_at": "2024-01-01T17:46:07.710598+00:00",
+        "sampled_detection_delay_seconds": 0.0,
+        "scenario_id": "malformed-sensor-payload",
+        "simulation_run_id": "7eb494d6-f636-7d91-608d-9233ed3663ab",
+        "simulation_seed": 71
+      },
+      {
+        "detected": true,
+        "fault_phase_first_sample_at": "2024-01-01T12:18:49.778234+00:00",
+        "first_detection_at": "2024-01-01T12:18:49.778234+00:00",
         "sampled_detection_delay_seconds": 0.0,
         "scenario_id": "missing-device-heartbeat",
-        "simulation_run_id": "c8b8d7f2-8677-453b-b098-9adbde3b086e",
+        "simulation_run_id": "83f42717-a6f7-3f28-68af-b7e3d1ae4b67",
         "simulation_seed": 62
       },
       {
         "detected": true,
-        "fault_phase_first_sample_at": "2024-01-01T00:41:56.395471+00:00",
-        "first_detection_at": "2024-01-01T00:41:56.395471+00:00",
-        "sampled_detection_delay_seconds": 0.0,
+        "fault_phase_first_sample_at": "2024-01-01T12:51:42.900783+00:00",
+        "first_detection_at": "2024-01-01T12:51:46.835338+00:00",
+        "sampled_detection_delay_seconds": 3.934555,
         "scenario_id": "missing-device-heartbeat",
-        "simulation_run_id": "d48a2258-bb02-4699-8cac-829f3217c01f",
+        "simulation_run_id": "8b7e1662-4c36-0864-ec5f-9aff7ae91ca1",
         "simulation_seed": 63
       },
       {
         "detected": true,
-        "fault_phase_first_sample_at": "2024-01-01T01:10:06.043138+00:00",
-        "first_detection_at": "2024-01-01T01:10:06.043138+00:00",
+        "fault_phase_first_sample_at": "2024-01-01T13:28:13.081872+00:00",
+        "first_detection_at": "2024-01-01T13:28:13.081872+00:00",
         "sampled_detection_delay_seconds": 0.0,
         "scenario_id": "missing-device-heartbeat",
-        "simulation_run_id": "69962ecd-fe32-4cd0-a1b7-eb82d8d2793f",
+        "simulation_run_id": "d793859c-50d7-7b26-ba16-627fb6699d9d",
         "simulation_seed": 64
       },
       {
         "detected": true,
-        "fault_phase_first_sample_at": "2024-01-01T01:38:16.072450+00:00",
-        "first_detection_at": "2024-01-01T01:38:16.072450+00:00",
+        "fault_phase_first_sample_at": "2024-01-01T14:06:25.503651+00:00",
+        "first_detection_at": "2024-01-01T14:06:25.503651+00:00",
         "sampled_detection_delay_seconds": 0.0,
         "scenario_id": "missing-device-heartbeat",
-        "simulation_run_id": "cfe3e43f-b55d-4b51-9b3d-a5de027bda49",
+        "simulation_run_id": "dd588bf4-ac38-8de2-0998-d0131eb07b7f",
         "simulation_seed": 65
       },
       {
         "detected": true,
-        "fault_phase_first_sample_at": "2024-01-01T02:06:25.951736+00:00",
-        "first_detection_at": "2024-01-01T02:06:25.951736+00:00",
+        "fault_phase_first_sample_at": "2024-01-01T14:39:36.153938+00:00",
+        "first_detection_at": "2024-01-01T14:39:36.153938+00:00",
         "sampled_detection_delay_seconds": 0.0,
         "scenario_id": "missing-device-heartbeat",
-        "simulation_run_id": "a00443d2-5907-49ce-9ace-7a13f9fe41a6",
+        "simulation_run_id": "9a9ef2f1-5379-4291-a4d1-11d07106f868",
         "simulation_seed": 66
+      },
+      {
+        "detected": true,
+        "fault_phase_first_sample_at": "2024-01-01T15:15:37.966587+00:00",
+        "first_detection_at": "2024-01-01T15:15:37.966587+00:00",
+        "sampled_detection_delay_seconds": 0.0,
+        "scenario_id": "missing-device-heartbeat",
+        "simulation_run_id": "07b9db48-bb43-77f5-eef6-8639414f8432",
+        "simulation_seed": 67
+      },
+      {
+        "detected": true,
+        "fault_phase_first_sample_at": "2024-01-01T15:52:37.379433+00:00",
+        "first_detection_at": "2024-01-01T15:52:37.379433+00:00",
+        "sampled_detection_delay_seconds": 0.0,
+        "scenario_id": "missing-device-heartbeat",
+        "simulation_run_id": "e9e1f547-efe3-7e34-0794-d25a8144c008",
+        "simulation_seed": 68
+      },
+      {
+        "detected": true,
+        "fault_phase_first_sample_at": "2024-01-01T16:25:58.258143+00:00",
+        "first_detection_at": "2024-01-01T16:26:02.169143+00:00",
+        "sampled_detection_delay_seconds": 3.911,
+        "scenario_id": "missing-device-heartbeat",
+        "simulation_run_id": "93a626a4-0bde-037b-3591-b42d688a36b2",
+        "simulation_seed": 69
+      },
+      {
+        "detected": true,
+        "fault_phase_first_sample_at": "2024-01-01T17:01:56.902062+00:00",
+        "first_detection_at": "2024-01-01T17:01:56.902062+00:00",
+        "sampled_detection_delay_seconds": 0.0,
+        "scenario_id": "missing-device-heartbeat",
+        "simulation_run_id": "18f9cd4d-c58f-b5c1-bf85-b952eea61c60",
+        "simulation_seed": 70
+      },
+      {
+        "detected": true,
+        "fault_phase_first_sample_at": "2024-01-01T17:39:18.045381+00:00",
+        "first_detection_at": "2024-01-01T17:39:22.039561+00:00",
+        "sampled_detection_delay_seconds": 3.99418,
+        "scenario_id": "missing-device-heartbeat",
+        "simulation_run_id": "06da6136-4c4f-6901-ca4c-57594bcadded",
+        "simulation_seed": 71
+      },
+      {
+        "detected": true,
+        "fault_phase_first_sample_at": "2024-01-01T12:38:32.653870+00:00",
+        "first_detection_at": "2024-01-01T12:38:32.653870+00:00",
+        "sampled_detection_delay_seconds": 0.0,
+        "scenario_id": "mqtt-broker-unavailable",
+        "simulation_run_id": "990242a5-8bbf-0ff4-4643-839451f4f162",
+        "simulation_seed": 62
+      },
+      {
+        "detected": true,
+        "fault_phase_first_sample_at": "2024-01-01T13:13:09.920016+00:00",
+        "first_detection_at": "2024-01-01T13:13:09.920016+00:00",
+        "sampled_detection_delay_seconds": 0.0,
+        "scenario_id": "mqtt-broker-unavailable",
+        "simulation_run_id": "b696c3da-c78f-7399-cf8b-23be46eb9973",
+        "simulation_seed": 63
+      },
+      {
+        "detected": true,
+        "fault_phase_first_sample_at": "2024-01-01T13:51:50.367899+00:00",
+        "first_detection_at": "2024-01-01T13:51:50.367899+00:00",
+        "sampled_detection_delay_seconds": 0.0,
+        "scenario_id": "mqtt-broker-unavailable",
+        "simulation_run_id": "cfb2d523-8e1d-7297-b8ca-972bd5230b6a",
+        "simulation_seed": 64
+      },
+      {
+        "detected": true,
+        "fault_phase_first_sample_at": "2024-01-01T14:25:52.007044+00:00",
+        "first_detection_at": "2024-01-01T14:25:52.007044+00:00",
+        "sampled_detection_delay_seconds": 0.0,
+        "scenario_id": "mqtt-broker-unavailable",
+        "simulation_run_id": "d8f03472-c24d-5c77-1797-aa6196fec1e5",
+        "simulation_seed": 65
+      },
+      {
+        "detected": true,
+        "fault_phase_first_sample_at": "2024-01-01T15:00:42.105051+00:00",
+        "first_detection_at": "2024-01-01T15:00:42.105051+00:00",
+        "sampled_detection_delay_seconds": 0.0,
+        "scenario_id": "mqtt-broker-unavailable",
+        "simulation_run_id": "0cc894ff-de11-959f-0050-e2a3743b5206",
+        "simulation_seed": 66
+      },
+      {
+        "detected": true,
+        "fault_phase_first_sample_at": "2024-01-01T15:38:10.124490+00:00",
+        "first_detection_at": "2024-01-01T15:38:10.124490+00:00",
+        "sampled_detection_delay_seconds": 0.0,
+        "scenario_id": "mqtt-broker-unavailable",
+        "simulation_run_id": "5d2d47a8-5bd8-7527-cae1-ee8f428974dc",
+        "simulation_seed": 67
+      },
+      {
+        "detected": true,
+        "fault_phase_first_sample_at": "2024-01-01T16:12:02.915756+00:00",
+        "first_detection_at": "2024-01-01T16:12:02.915756+00:00",
+        "sampled_detection_delay_seconds": 0.0,
+        "scenario_id": "mqtt-broker-unavailable",
+        "simulation_run_id": "db557430-4afb-b64f-ed08-ba05bf07b0f8",
+        "simulation_seed": 68
+      },
+      {
+        "detected": true,
+        "fault_phase_first_sample_at": "2024-01-01T16:47:34.827905+00:00",
+        "first_detection_at": "2024-01-01T16:47:34.827905+00:00",
+        "sampled_detection_delay_seconds": 0.0,
+        "scenario_id": "mqtt-broker-unavailable",
+        "simulation_run_id": "5bf07d8e-bfb0-6527-6c18-139ad06c4740",
+        "simulation_seed": 69
+      },
+      {
+        "detected": true,
+        "fault_phase_first_sample_at": "2024-01-01T17:24:50.013719+00:00",
+        "first_detection_at": "2024-01-01T17:24:50.013719+00:00",
+        "sampled_detection_delay_seconds": 0.0,
+        "scenario_id": "mqtt-broker-unavailable",
+        "simulation_run_id": "c5619474-dd4d-f211-bcd4-2b3466fd95d5",
+        "simulation_seed": 70
+      },
+      {
+        "detected": true,
+        "fault_phase_first_sample_at": "2024-01-01T17:59:25.478969+00:00",
+        "first_detection_at": "2024-01-01T17:59:25.478969+00:00",
+        "sampled_detection_delay_seconds": 0.0,
+        "scenario_id": "mqtt-broker-unavailable",
+        "simulation_run_id": "63f2ac75-27f9-ae3c-49ec-869783857a35",
+        "simulation_seed": 71
       }
     ]
   },
   "primary_stable_phase_metrics": {
-    "accuracy": 1.0,
+    "accuracy": 0.9926509186351706,
     "confusion_matrix": {
       "influxdb-write-failure": {
-        "influxdb-write-failure": 170,
+        "influxdb-write-failure": 447,
         "ingestion-backpressure": 0,
         "malformed-sensor-payload": 0,
         "missing-device-heartbeat": 0,
-        "normal": 0
+        "mqtt-broker-unavailable": 0,
+        "normal": 8
       },
       "ingestion-backpressure": {
         "influxdb-write-failure": 0,
-        "ingestion-backpressure": 170,
+        "ingestion-backpressure": 455,
         "malformed-sensor-payload": 0,
         "missing-device-heartbeat": 0,
-        "normal": 0
+        "mqtt-broker-unavailable": 0,
+        "normal": 7
       },
       "malformed-sensor-payload": {
         "influxdb-write-failure": 0,
         "ingestion-backpressure": 0,
-        "malformed-sensor-payload": 170,
+        "malformed-sensor-payload": 449,
         "missing-device-heartbeat": 0,
-        "normal": 0
+        "mqtt-broker-unavailable": 0,
+        "normal": 8
       },
       "missing-device-heartbeat": {
         "influxdb-write-failure": 0,
         "ingestion-backpressure": 0,
         "malformed-sensor-payload": 0,
-        "missing-device-heartbeat": 170,
+        "missing-device-heartbeat": 468,
+        "mqtt-broker-unavailable": 0,
+        "normal": 3
+      },
+      "mqtt-broker-unavailable": {
+        "influxdb-write-failure": 0,
+        "ingestion-backpressure": 0,
+        "malformed-sensor-payload": 0,
+        "missing-device-heartbeat": 1,
+        "mqtt-broker-unavailable": 468,
         "normal": 0
       },
       "normal": {
@@ -464,318 +982,688 @@
         "ingestion-backpressure": 0,
         "malformed-sensor-payload": 0,
         "missing-device-heartbeat": 0,
-        "normal": 440
+        "mqtt-broker-unavailable": 1,
+        "normal": 1495
       }
     },
-    "correct": 1120,
+    "correct": 3782,
     "labels": [
       "normal",
       "influxdb-write-failure",
       "ingestion-backpressure",
       "malformed-sensor-payload",
-      "missing-device-heartbeat"
+      "missing-device-heartbeat",
+      "mqtt-broker-unavailable"
     ],
-    "macro_f1": 1.0,
+    "macro_f1": 0.9932217346425424,
     "per_label": {
       "influxdb-write-failure": {
-        "f1": 1.0,
+        "f1": 0.991130820399113,
         "precision": 1.0,
-        "recall": 1.0,
-        "support": 170
+        "recall": 0.9824175824175824,
+        "support": 455
       },
       "ingestion-backpressure": {
-        "f1": 1.0,
+        "f1": 0.9923664122137404,
         "precision": 1.0,
-        "recall": 1.0,
-        "support": 170
+        "recall": 0.9848484848484849,
+        "support": 462
       },
       "malformed-sensor-payload": {
-        "f1": 1.0,
+        "f1": 0.9911699779249449,
         "precision": 1.0,
-        "recall": 1.0,
-        "support": 170
+        "recall": 0.9824945295404814,
+        "support": 457
       },
       "missing-device-heartbeat": {
-        "f1": 1.0,
-        "precision": 1.0,
-        "recall": 1.0,
-        "support": 170
+        "f1": 0.9957446808510638,
+        "precision": 0.997867803837953,
+        "recall": 0.9936305732484076,
+        "support": 471
+      },
+      "mqtt-broker-unavailable": {
+        "f1": 0.997867803837953,
+        "precision": 0.997867803837953,
+        "recall": 0.997867803837953,
+        "support": 469
       },
       "normal": {
-        "f1": 1.0,
-        "precision": 1.0,
-        "recall": 1.0,
-        "support": 440
+        "f1": 0.9910507126284388,
+        "precision": 0.9829059829059829,
+        "recall": 0.9993315508021391,
+        "support": 1496
       }
     },
-    "rows": 1120
+    "rows": 3810
   },
   "recovery": {
-    "alert_rows": 15,
-    "max_sampled_clearance_delay_seconds": 5.289284,
-    "mean_sampled_clearance_delay_seconds": 3.9602181,
-    "rows": 460,
+    "alert_rows": 937,
+    "max_sampled_clearance_delay_seconds": 78.78133,
+    "mean_sampled_clearance_delay_seconds": 73.2456365,
+    "rows": 1534,
     "runs": [
       {
-        "alert_rate": 0.043478260869565216,
-        "alert_rows": 1,
+        "alert_rate": 0.6129032258064516,
+        "alert_rows": 19,
         "cleared_during_observation": true,
-        "last_alert_offset_seconds": 0.0,
-        "leading_alert_rows": 1,
-        "recovery_rows": 23,
-        "sampled_clearance_delay_seconds": 5.274146,
+        "last_alert_offset_seconds": 69.42362,
+        "leading_alert_rows": 19,
+        "recovery_rows": 31,
+        "sampled_clearance_delay_seconds": 73.20318,
         "scenario_id": "influxdb-write-failure",
-        "simulation_run_id": "c274e63c-e767-4f9e-bcf9-8c5c84fdc1c1",
+        "simulation_run_id": "a7212c1b-2a8f-371b-72ca-fd33ea7c1e93",
         "simulation_seed": 62
       },
       {
-        "alert_rate": 0.043478260869565216,
-        "alert_rows": 1,
+        "alert_rate": 0.6129032258064516,
+        "alert_rows": 19,
         "cleared_during_observation": true,
-        "last_alert_offset_seconds": 0.0,
-        "leading_alert_rows": 1,
-        "recovery_rows": 23,
-        "sampled_clearance_delay_seconds": 5.276188,
+        "last_alert_offset_seconds": 69.841145,
+        "leading_alert_rows": 19,
+        "recovery_rows": 31,
+        "sampled_clearance_delay_seconds": 73.8529,
         "scenario_id": "influxdb-write-failure",
-        "simulation_run_id": "8a70750a-eeba-4c89-920b-741c461f4c21",
+        "simulation_run_id": "63871a70-fd4d-32dc-6935-e85633f96f06",
         "simulation_seed": 63
       },
       {
-        "alert_rate": 0.043478260869565216,
-        "alert_rows": 1,
+        "alert_rate": 0.6129032258064516,
+        "alert_rows": 19,
         "cleared_during_observation": true,
-        "last_alert_offset_seconds": 0.0,
-        "leading_alert_rows": 1,
-        "recovery_rows": 23,
-        "sampled_clearance_delay_seconds": 5.284638,
+        "last_alert_offset_seconds": 69.75135,
+        "leading_alert_rows": 19,
+        "recovery_rows": 31,
+        "sampled_clearance_delay_seconds": 73.674505,
         "scenario_id": "influxdb-write-failure",
-        "simulation_run_id": "8427b413-84a7-429d-8885-1123ee1abd4e",
+        "simulation_run_id": "f7da3ce9-3422-3221-2d46-a8bf718d26f1",
         "simulation_seed": 64
       },
       {
-        "alert_rate": 0.043478260869565216,
-        "alert_rows": 1,
+        "alert_rate": 0.6129032258064516,
+        "alert_rows": 19,
         "cleared_during_observation": true,
-        "last_alert_offset_seconds": 0.0,
-        "leading_alert_rows": 1,
-        "recovery_rows": 23,
-        "sampled_clearance_delay_seconds": 5.275217,
+        "last_alert_offset_seconds": 70.713485,
+        "leading_alert_rows": 19,
+        "recovery_rows": 31,
+        "sampled_clearance_delay_seconds": 74.599925,
         "scenario_id": "influxdb-write-failure",
-        "simulation_run_id": "503b073a-3c17-43b0-9f04-3f63e90cf616",
+        "simulation_run_id": "7a693fd9-015f-be7a-c527-a38498c38421",
         "simulation_seed": 65
       },
       {
-        "alert_rate": 0.043478260869565216,
-        "alert_rows": 1,
+        "alert_rate": 0.6451612903225806,
+        "alert_rows": 20,
         "cleared_during_observation": true,
-        "last_alert_offset_seconds": 0.0,
-        "leading_alert_rows": 1,
-        "recovery_rows": 23,
-        "sampled_clearance_delay_seconds": 5.274713,
+        "last_alert_offset_seconds": 74.270845,
+        "leading_alert_rows": 20,
+        "recovery_rows": 31,
+        "sampled_clearance_delay_seconds": 78.1665,
         "scenario_id": "influxdb-write-failure",
-        "simulation_run_id": "3be4b762-ddda-4b2e-87db-91f39ba2f0c0",
+        "simulation_run_id": "274b52c9-724a-ed03-618c-988e6b7917a9",
         "simulation_seed": 66
       },
       {
-        "alert_rate": 0.043478260869565216,
-        "alert_rows": 1,
+        "alert_rate": 0.6333333333333333,
+        "alert_rows": 19,
         "cleared_during_observation": true,
-        "last_alert_offset_seconds": 0.0,
-        "leading_alert_rows": 1,
-        "recovery_rows": 23,
-        "sampled_clearance_delay_seconds": 5.289284,
+        "last_alert_offset_seconds": 71.021895,
+        "leading_alert_rows": 19,
+        "recovery_rows": 30,
+        "sampled_clearance_delay_seconds": 74.95933,
+        "scenario_id": "influxdb-write-failure",
+        "simulation_run_id": "b11c5141-678a-9682-d511-abcf848bd4c8",
+        "simulation_seed": 67
+      },
+      {
+        "alert_rate": 0.6333333333333333,
+        "alert_rows": 19,
+        "cleared_during_observation": true,
+        "last_alert_offset_seconds": 70.09063,
+        "leading_alert_rows": 19,
+        "recovery_rows": 30,
+        "sampled_clearance_delay_seconds": 74.004515,
+        "scenario_id": "influxdb-write-failure",
+        "simulation_run_id": "d9653600-48ee-204a-06e0-c566f2ebaf9f",
+        "simulation_seed": 68
+      },
+      {
+        "alert_rate": 0.6333333333333333,
+        "alert_rows": 19,
+        "cleared_during_observation": true,
+        "last_alert_offset_seconds": 71.016965,
+        "leading_alert_rows": 19,
+        "recovery_rows": 30,
+        "sampled_clearance_delay_seconds": 74.91539,
+        "scenario_id": "influxdb-write-failure",
+        "simulation_run_id": "8802b58b-08a2-f750-804c-ec288b76fb75",
+        "simulation_seed": 69
+      },
+      {
+        "alert_rate": 0.6451612903225806,
+        "alert_rows": 20,
+        "cleared_during_observation": true,
+        "last_alert_offset_seconds": 74.81737,
+        "leading_alert_rows": 20,
+        "recovery_rows": 31,
+        "sampled_clearance_delay_seconds": 78.78133,
+        "scenario_id": "influxdb-write-failure",
+        "simulation_run_id": "a13de5dc-3c4f-9a27-cac5-666f13cdae59",
+        "simulation_seed": 70
+      },
+      {
+        "alert_rate": 0.6129032258064516,
+        "alert_rows": 19,
+        "cleared_during_observation": true,
+        "last_alert_offset_seconds": 69.76584,
+        "leading_alert_rows": 19,
+        "recovery_rows": 31,
+        "sampled_clearance_delay_seconds": 73.667325,
+        "scenario_id": "influxdb-write-failure",
+        "simulation_run_id": "0cffcb0f-8b1c-5832-9ad1-09f0a8589abd",
+        "simulation_seed": 71
+      },
+      {
+        "alert_rate": 0.6129032258064516,
+        "alert_rows": 19,
+        "cleared_during_observation": true,
+        "last_alert_offset_seconds": 69.78941,
+        "leading_alert_rows": 19,
+        "recovery_rows": 31,
+        "sampled_clearance_delay_seconds": 73.717115,
         "scenario_id": "ingestion-backpressure",
-        "simulation_run_id": "28115661-ac28-44fd-81d5-d0e3ac5a8d2c",
+        "simulation_run_id": "15487ab5-8be7-eb24-49f8-8cb7db920eac",
         "simulation_seed": 62
       },
       {
-        "alert_rate": 0.043478260869565216,
-        "alert_rows": 1,
+        "alert_rate": 0.6451612903225806,
+        "alert_rows": 20,
         "cleared_during_observation": true,
-        "last_alert_offset_seconds": 0.0,
-        "leading_alert_rows": 1,
-        "recovery_rows": 23,
-        "sampled_clearance_delay_seconds": 5.27654,
+        "last_alert_offset_seconds": 72.90722,
+        "leading_alert_rows": 20,
+        "recovery_rows": 31,
+        "sampled_clearance_delay_seconds": 76.70347,
         "scenario_id": "ingestion-backpressure",
-        "simulation_run_id": "06f95563-ae80-4dc0-8ccc-bc6327d7a3eb",
+        "simulation_run_id": "d0690f6f-44bb-1193-c578-5eccf00b6631",
         "simulation_seed": 63
       },
       {
-        "alert_rate": 0.043478260869565216,
-        "alert_rows": 1,
+        "alert_rate": 0.6333333333333333,
+        "alert_rows": 19,
         "cleared_during_observation": true,
-        "last_alert_offset_seconds": 0.0,
-        "leading_alert_rows": 1,
-        "recovery_rows": 23,
-        "sampled_clearance_delay_seconds": 5.282327,
+        "last_alert_offset_seconds": 69.73578,
+        "leading_alert_rows": 19,
+        "recovery_rows": 30,
+        "sampled_clearance_delay_seconds": 73.602305,
         "scenario_id": "ingestion-backpressure",
-        "simulation_run_id": "d1939e71-6b66-4d37-8a71-54fbab8801fc",
+        "simulation_run_id": "7c13e9ef-f080-1999-5731-194a398bbe7c",
         "simulation_seed": 64
       },
       {
-        "alert_rate": 0.043478260869565216,
-        "alert_rows": 1,
+        "alert_rate": 0.6129032258064516,
+        "alert_rows": 19,
         "cleared_during_observation": true,
-        "last_alert_offset_seconds": 0.0,
-        "leading_alert_rows": 1,
-        "recovery_rows": 23,
-        "sampled_clearance_delay_seconds": 5.278311,
+        "last_alert_offset_seconds": 70.88049,
+        "leading_alert_rows": 19,
+        "recovery_rows": 31,
+        "sampled_clearance_delay_seconds": 74.86211,
         "scenario_id": "ingestion-backpressure",
-        "simulation_run_id": "6f0bd822-690a-484c-aa41-33636665a887",
+        "simulation_run_id": "721e015d-13d3-824a-84df-7bd69431e905",
         "simulation_seed": 65
       },
       {
-        "alert_rate": 0.043478260869565216,
-        "alert_rows": 1,
+        "alert_rate": 0.6129032258064516,
+        "alert_rows": 19,
         "cleared_during_observation": true,
-        "last_alert_offset_seconds": 0.0,
-        "leading_alert_rows": 1,
-        "recovery_rows": 23,
-        "sampled_clearance_delay_seconds": 5.283569,
+        "last_alert_offset_seconds": 70.19558,
+        "leading_alert_rows": 19,
+        "recovery_rows": 31,
+        "sampled_clearance_delay_seconds": 74.1506,
         "scenario_id": "ingestion-backpressure",
-        "simulation_run_id": "3fdb933e-3b65-4e79-8422-163e62866584",
+        "simulation_run_id": "8229db95-2d13-516b-db1e-300fd5c23902",
         "simulation_seed": 66
       },
       {
-        "alert_rate": 0.043478260869565216,
-        "alert_rows": 1,
+        "alert_rate": 0.6451612903225806,
+        "alert_rows": 20,
         "cleared_during_observation": true,
-        "last_alert_offset_seconds": 0.0,
-        "leading_alert_rows": 1,
-        "recovery_rows": 23,
-        "sampled_clearance_delay_seconds": 5.285005,
+        "last_alert_offset_seconds": 74.064065,
+        "leading_alert_rows": 20,
+        "recovery_rows": 31,
+        "sampled_clearance_delay_seconds": 78.01287,
+        "scenario_id": "ingestion-backpressure",
+        "simulation_run_id": "dbdab94a-57d9-b655-0e82-57c5fea5bf8f",
+        "simulation_seed": 67
+      },
+      {
+        "alert_rate": 0.6333333333333333,
+        "alert_rows": 19,
+        "cleared_during_observation": true,
+        "last_alert_offset_seconds": 70.8419,
+        "leading_alert_rows": 19,
+        "recovery_rows": 30,
+        "sampled_clearance_delay_seconds": 74.701005,
+        "scenario_id": "ingestion-backpressure",
+        "simulation_run_id": "449a5d5d-8ddd-41b3-cc33-96d55527d64a",
+        "simulation_seed": 68
+      },
+      {
+        "alert_rate": 0.6451612903225806,
+        "alert_rows": 20,
+        "cleared_during_observation": true,
+        "last_alert_offset_seconds": 73.684025,
+        "leading_alert_rows": 20,
+        "recovery_rows": 31,
+        "sampled_clearance_delay_seconds": 77.52042,
+        "scenario_id": "ingestion-backpressure",
+        "simulation_run_id": "19031d98-e70e-3d24-69e4-d14b8df05fee",
+        "simulation_seed": 69
+      },
+      {
+        "alert_rate": 0.6129032258064516,
+        "alert_rows": 19,
+        "cleared_during_observation": true,
+        "last_alert_offset_seconds": 70.891015,
+        "leading_alert_rows": 19,
+        "recovery_rows": 31,
+        "sampled_clearance_delay_seconds": 74.831135,
+        "scenario_id": "ingestion-backpressure",
+        "simulation_run_id": "b01be53d-2a30-23bc-882e-ff7ea5969b5f",
+        "simulation_seed": 70
+      },
+      {
+        "alert_rate": 0.6333333333333333,
+        "alert_rows": 19,
+        "cleared_during_observation": true,
+        "last_alert_offset_seconds": 70.67431,
+        "leading_alert_rows": 19,
+        "recovery_rows": 30,
+        "sampled_clearance_delay_seconds": 74.69794,
+        "scenario_id": "ingestion-backpressure",
+        "simulation_run_id": "f5a42b2b-c4b4-0a47-fef9-7a29a10e0ef0",
+        "simulation_seed": 71
+      },
+      {
+        "alert_rate": 0.6451612903225806,
+        "alert_rows": 20,
+        "cleared_during_observation": true,
+        "last_alert_offset_seconds": 74.113615,
+        "leading_alert_rows": 20,
+        "recovery_rows": 31,
+        "sampled_clearance_delay_seconds": 77.979375,
         "scenario_id": "malformed-sensor-payload",
-        "simulation_run_id": "2db4d469-cc2d-4111-b775-2fa402d8f5dd",
+        "simulation_run_id": "b6e5bcc5-da08-94b3-522a-c8c38f870557",
         "simulation_seed": 62
       },
       {
-        "alert_rate": 0.043478260869565216,
-        "alert_rows": 1,
+        "alert_rate": 0.6451612903225806,
+        "alert_rows": 20,
         "cleared_during_observation": true,
-        "last_alert_offset_seconds": 0.0,
-        "leading_alert_rows": 1,
-        "recovery_rows": 23,
-        "sampled_clearance_delay_seconds": 5.28338,
+        "last_alert_offset_seconds": 73.840395,
+        "leading_alert_rows": 20,
+        "recovery_rows": 31,
+        "sampled_clearance_delay_seconds": 77.720315,
         "scenario_id": "malformed-sensor-payload",
-        "simulation_run_id": "51a3b4bb-f9a2-49de-a996-a2e50c65ea35",
+        "simulation_run_id": "c39fae3d-5f8c-fdaf-7a10-fd391819e6e1",
         "simulation_seed": 63
       },
       {
-        "alert_rate": 0.043478260869565216,
-        "alert_rows": 1,
+        "alert_rate": 0.6333333333333333,
+        "alert_rows": 19,
         "cleared_during_observation": true,
-        "last_alert_offset_seconds": 0.0,
-        "leading_alert_rows": 1,
-        "recovery_rows": 23,
-        "sampled_clearance_delay_seconds": 5.282045,
+        "last_alert_offset_seconds": 70.77427,
+        "leading_alert_rows": 19,
+        "recovery_rows": 30,
+        "sampled_clearance_delay_seconds": 74.711345,
         "scenario_id": "malformed-sensor-payload",
-        "simulation_run_id": "339cb4a1-bc23-473f-9786-568bc316f38f",
+        "simulation_run_id": "25765388-b637-01e4-e28f-18be53513494",
         "simulation_seed": 64
       },
       {
-        "alert_rate": 0.043478260869565216,
-        "alert_rows": 1,
+        "alert_rate": 0.6333333333333333,
+        "alert_rows": 19,
         "cleared_during_observation": true,
-        "last_alert_offset_seconds": 0.0,
-        "leading_alert_rows": 1,
-        "recovery_rows": 23,
-        "sampled_clearance_delay_seconds": 5.27625,
+        "last_alert_offset_seconds": 70.34385,
+        "leading_alert_rows": 19,
+        "recovery_rows": 30,
+        "sampled_clearance_delay_seconds": 74.207565,
         "scenario_id": "malformed-sensor-payload",
-        "simulation_run_id": "db9d1e7f-c16c-4aee-bb48-1a2e391f86ba",
+        "simulation_run_id": "9852ad53-cc86-d39e-f93c-b7220ea95ca9",
         "simulation_seed": 65
       },
       {
-        "alert_rate": 0.043478260869565216,
-        "alert_rows": 1,
+        "alert_rate": 0.6451612903225806,
+        "alert_rows": 20,
         "cleared_during_observation": true,
-        "last_alert_offset_seconds": 0.0,
-        "leading_alert_rows": 1,
-        "recovery_rows": 23,
-        "sampled_clearance_delay_seconds": 5.282749,
+        "last_alert_offset_seconds": 73.76676,
+        "leading_alert_rows": 20,
+        "recovery_rows": 31,
+        "sampled_clearance_delay_seconds": 77.728315,
         "scenario_id": "malformed-sensor-payload",
-        "simulation_run_id": "33d89670-538e-4771-838d-9ba803105b4a",
+        "simulation_run_id": "aaa4099b-dc33-0bbb-9896-b401733fb071",
         "simulation_seed": 66
       },
       {
-        "alert_rate": 0.0,
-        "alert_rows": 0,
+        "alert_rate": 0.6333333333333333,
+        "alert_rows": 19,
         "cleared_during_observation": true,
-        "last_alert_offset_seconds": null,
-        "leading_alert_rows": 0,
-        "recovery_rows": 23,
-        "sampled_clearance_delay_seconds": 0.0,
+        "last_alert_offset_seconds": 71.77016,
+        "leading_alert_rows": 19,
+        "recovery_rows": 30,
+        "sampled_clearance_delay_seconds": 75.687655,
+        "scenario_id": "malformed-sensor-payload",
+        "simulation_run_id": "6c68ed94-8c82-460a-9388-92671f2fc57c",
+        "simulation_seed": 67
+      },
+      {
+        "alert_rate": 0.6129032258064516,
+        "alert_rows": 19,
+        "cleared_during_observation": true,
+        "last_alert_offset_seconds": 69.983375,
+        "leading_alert_rows": 19,
+        "recovery_rows": 31,
+        "sampled_clearance_delay_seconds": 73.87219,
+        "scenario_id": "malformed-sensor-payload",
+        "simulation_run_id": "52e55478-79de-2f51-1dca-abe85f5719a5",
+        "simulation_seed": 68
+      },
+      {
+        "alert_rate": 0.6451612903225806,
+        "alert_rows": 20,
+        "cleared_during_observation": true,
+        "last_alert_offset_seconds": 73.83846,
+        "leading_alert_rows": 20,
+        "recovery_rows": 31,
+        "sampled_clearance_delay_seconds": 77.70863,
+        "scenario_id": "malformed-sensor-payload",
+        "simulation_run_id": "32da2a74-5fb7-7b8a-1e14-edc843c2fd22",
+        "simulation_seed": 69
+      },
+      {
+        "alert_rate": 0.6333333333333333,
+        "alert_rows": 19,
+        "cleared_during_observation": true,
+        "last_alert_offset_seconds": 70.63481,
+        "leading_alert_rows": 19,
+        "recovery_rows": 30,
+        "sampled_clearance_delay_seconds": 74.475445,
+        "scenario_id": "malformed-sensor-payload",
+        "simulation_run_id": "59b74e25-c96f-c416-c202-bc84158e63d7",
+        "simulation_seed": 70
+      },
+      {
+        "alert_rate": 0.6333333333333333,
+        "alert_rows": 19,
+        "cleared_during_observation": true,
+        "last_alert_offset_seconds": 69.977295,
+        "leading_alert_rows": 19,
+        "recovery_rows": 30,
+        "sampled_clearance_delay_seconds": 73.827015,
+        "scenario_id": "malformed-sensor-payload",
+        "simulation_run_id": "7eb494d6-f636-7d91-608d-9233ed3663ab",
+        "simulation_seed": 71
+      },
+      {
+        "alert_rate": 0.5483870967741935,
+        "alert_rows": 17,
+        "cleared_during_observation": true,
+        "last_alert_offset_seconds": 62.268895,
+        "leading_alert_rows": 17,
+        "recovery_rows": 31,
+        "sampled_clearance_delay_seconds": 66.140645,
         "scenario_id": "missing-device-heartbeat",
-        "simulation_run_id": "c8b8d7f2-8677-453b-b098-9adbde3b086e",
+        "simulation_run_id": "83f42717-a6f7-3f28-68af-b7e3d1ae4b67",
         "simulation_seed": 62
       },
       {
-        "alert_rate": 0.0,
-        "alert_rows": 0,
+        "alert_rate": 0.5806451612903226,
+        "alert_rows": 18,
         "cleared_during_observation": true,
-        "last_alert_offset_seconds": null,
-        "leading_alert_rows": 0,
-        "recovery_rows": 23,
-        "sampled_clearance_delay_seconds": 0.0,
+        "last_alert_offset_seconds": 65.895335,
+        "leading_alert_rows": 18,
+        "recovery_rows": 31,
+        "sampled_clearance_delay_seconds": 69.69863,
         "scenario_id": "missing-device-heartbeat",
-        "simulation_run_id": "d48a2258-bb02-4699-8cac-829f3217c01f",
+        "simulation_run_id": "8b7e1662-4c36-0864-ec5f-9aff7ae91ca1",
         "simulation_seed": 63
       },
       {
-        "alert_rate": 0.0,
-        "alert_rows": 0,
+        "alert_rate": 0.5806451612903226,
+        "alert_rows": 18,
         "cleared_during_observation": true,
-        "last_alert_offset_seconds": null,
-        "leading_alert_rows": 0,
-        "recovery_rows": 23,
-        "sampled_clearance_delay_seconds": 0.0,
+        "last_alert_offset_seconds": 66.6544,
+        "leading_alert_rows": 18,
+        "recovery_rows": 31,
+        "sampled_clearance_delay_seconds": 70.61101,
         "scenario_id": "missing-device-heartbeat",
-        "simulation_run_id": "69962ecd-fe32-4cd0-a1b7-eb82d8d2793f",
+        "simulation_run_id": "d793859c-50d7-7b26-ba16-627fb6699d9d",
         "simulation_seed": 64
       },
       {
-        "alert_rate": 0.0,
-        "alert_rows": 0,
+        "alert_rate": 0.6,
+        "alert_rows": 18,
         "cleared_during_observation": true,
-        "last_alert_offset_seconds": null,
-        "leading_alert_rows": 0,
-        "recovery_rows": 23,
-        "sampled_clearance_delay_seconds": 0.0,
+        "last_alert_offset_seconds": 67.38949,
+        "leading_alert_rows": 18,
+        "recovery_rows": 30,
+        "sampled_clearance_delay_seconds": 71.352455,
         "scenario_id": "missing-device-heartbeat",
-        "simulation_run_id": "cfe3e43f-b55d-4b51-9b3d-a5de027bda49",
+        "simulation_run_id": "dd588bf4-ac38-8de2-0998-d0131eb07b7f",
         "simulation_seed": 65
       },
       {
-        "alert_rate": 0.0,
-        "alert_rows": 0,
+        "alert_rate": 0.5806451612903226,
+        "alert_rows": 18,
         "cleared_during_observation": true,
-        "last_alert_offset_seconds": null,
-        "leading_alert_rows": 0,
-        "recovery_rows": 23,
-        "sampled_clearance_delay_seconds": 0.0,
+        "last_alert_offset_seconds": 65.83666,
+        "leading_alert_rows": 18,
+        "recovery_rows": 31,
+        "sampled_clearance_delay_seconds": 69.76567,
         "scenario_id": "missing-device-heartbeat",
-        "simulation_run_id": "a00443d2-5907-49ce-9ace-7a13f9fe41a6",
+        "simulation_run_id": "9a9ef2f1-5379-4291-a4d1-11d07106f868",
         "simulation_seed": 66
+      },
+      {
+        "alert_rate": 0.6,
+        "alert_rows": 18,
+        "cleared_during_observation": true,
+        "last_alert_offset_seconds": 68.582605,
+        "leading_alert_rows": 18,
+        "recovery_rows": 30,
+        "sampled_clearance_delay_seconds": 72.392015,
+        "scenario_id": "missing-device-heartbeat",
+        "simulation_run_id": "07b9db48-bb43-77f5-eef6-8639414f8432",
+        "simulation_seed": 67
+      },
+      {
+        "alert_rate": 0.5806451612903226,
+        "alert_rows": 18,
+        "cleared_during_observation": true,
+        "last_alert_offset_seconds": 66.77468,
+        "leading_alert_rows": 18,
+        "recovery_rows": 31,
+        "sampled_clearance_delay_seconds": 70.788825,
+        "scenario_id": "missing-device-heartbeat",
+        "simulation_run_id": "e9e1f547-efe3-7e34-0794-d25a8144c008",
+        "simulation_seed": 68
+      },
+      {
+        "alert_rate": 0.5806451612903226,
+        "alert_rows": 18,
+        "cleared_during_observation": true,
+        "last_alert_offset_seconds": 67.008645,
+        "leading_alert_rows": 18,
+        "recovery_rows": 31,
+        "sampled_clearance_delay_seconds": 70.917335,
+        "scenario_id": "missing-device-heartbeat",
+        "simulation_run_id": "93a626a4-0bde-037b-3591-b42d688a36b2",
+        "simulation_seed": 69
+      },
+      {
+        "alert_rate": 0.5806451612903226,
+        "alert_rows": 18,
+        "cleared_during_observation": true,
+        "last_alert_offset_seconds": 65.976805,
+        "leading_alert_rows": 18,
+        "recovery_rows": 31,
+        "sampled_clearance_delay_seconds": 70.586075,
+        "scenario_id": "missing-device-heartbeat",
+        "simulation_run_id": "18f9cd4d-c58f-b5c1-bf85-b952eea61c60",
+        "simulation_seed": 70
+      },
+      {
+        "alert_rate": 0.5806451612903226,
+        "alert_rows": 18,
+        "cleared_during_observation": true,
+        "last_alert_offset_seconds": 65.959785,
+        "leading_alert_rows": 18,
+        "recovery_rows": 31,
+        "sampled_clearance_delay_seconds": 69.928725,
+        "scenario_id": "missing-device-heartbeat",
+        "simulation_run_id": "06da6136-4c4f-6901-ca4c-57594bcadded",
+        "simulation_seed": 71
+      },
+      {
+        "alert_rate": 0.5806451612903226,
+        "alert_rows": 18,
+        "cleared_during_observation": true,
+        "last_alert_offset_seconds": 66.17273,
+        "leading_alert_rows": 18,
+        "recovery_rows": 31,
+        "sampled_clearance_delay_seconds": 70.10535,
+        "scenario_id": "mqtt-broker-unavailable",
+        "simulation_run_id": "990242a5-8bbf-0ff4-4643-839451f4f162",
+        "simulation_seed": 62
+      },
+      {
+        "alert_rate": 0.5806451612903226,
+        "alert_rows": 18,
+        "cleared_during_observation": true,
+        "last_alert_offset_seconds": 66.11432,
+        "leading_alert_rows": 18,
+        "recovery_rows": 31,
+        "sampled_clearance_delay_seconds": 69.939335,
+        "scenario_id": "mqtt-broker-unavailable",
+        "simulation_run_id": "b696c3da-c78f-7399-cf8b-23be46eb9973",
+        "simulation_seed": 63
+      },
+      {
+        "alert_rate": 0.6129032258064516,
+        "alert_rows": 19,
+        "cleared_during_observation": true,
+        "last_alert_offset_seconds": 69.794975,
+        "leading_alert_rows": 19,
+        "recovery_rows": 31,
+        "sampled_clearance_delay_seconds": 73.64538,
+        "scenario_id": "mqtt-broker-unavailable",
+        "simulation_run_id": "cfb2d523-8e1d-7297-b8ca-972bd5230b6a",
+        "simulation_seed": 64
+      },
+      {
+        "alert_rate": 0.5483870967741935,
+        "alert_rows": 17,
+        "cleared_during_observation": true,
+        "last_alert_offset_seconds": 63.127615,
+        "leading_alert_rows": 17,
+        "recovery_rows": 31,
+        "sampled_clearance_delay_seconds": 67.03947,
+        "scenario_id": "mqtt-broker-unavailable",
+        "simulation_run_id": "d8f03472-c24d-5c77-1797-aa6196fec1e5",
+        "simulation_seed": 65
+      },
+      {
+        "alert_rate": 0.6129032258064516,
+        "alert_rows": 19,
+        "cleared_during_observation": true,
+        "last_alert_offset_seconds": 69.99623,
+        "leading_alert_rows": 19,
+        "recovery_rows": 31,
+        "sampled_clearance_delay_seconds": 73.977715,
+        "scenario_id": "mqtt-broker-unavailable",
+        "simulation_run_id": "0cc894ff-de11-959f-0050-e2a3743b5206",
+        "simulation_seed": 66
+      },
+      {
+        "alert_rate": 0.5666666666666667,
+        "alert_rows": 17,
+        "cleared_during_observation": true,
+        "last_alert_offset_seconds": 63.08567,
+        "leading_alert_rows": 17,
+        "recovery_rows": 30,
+        "sampled_clearance_delay_seconds": 66.987,
+        "scenario_id": "mqtt-broker-unavailable",
+        "simulation_run_id": "5d2d47a8-5bd8-7527-cae1-ee8f428974dc",
+        "simulation_seed": 67
+      },
+      {
+        "alert_rate": 0.5333333333333333,
+        "alert_rows": 16,
+        "cleared_during_observation": true,
+        "last_alert_offset_seconds": 58.481445,
+        "leading_alert_rows": 16,
+        "recovery_rows": 30,
+        "sampled_clearance_delay_seconds": 62.25575,
+        "scenario_id": "mqtt-broker-unavailable",
+        "simulation_run_id": "db557430-4afb-b64f-ed08-ba05bf07b0f8",
+        "simulation_seed": 68
+      },
+      {
+        "alert_rate": 0.6,
+        "alert_rows": 18,
+        "cleared_during_observation": true,
+        "last_alert_offset_seconds": 67.764825,
+        "leading_alert_rows": 18,
+        "recovery_rows": 30,
+        "sampled_clearance_delay_seconds": 71.614405,
+        "scenario_id": "mqtt-broker-unavailable",
+        "simulation_run_id": "5bf07d8e-bfb0-6527-6c18-139ad06c4740",
+        "simulation_seed": 69
+      },
+      {
+        "alert_rate": 0.5806451612903226,
+        "alert_rows": 18,
+        "cleared_during_observation": true,
+        "last_alert_offset_seconds": 66.58477,
+        "leading_alert_rows": 18,
+        "recovery_rows": 31,
+        "sampled_clearance_delay_seconds": 70.402235,
+        "scenario_id": "mqtt-broker-unavailable",
+        "simulation_run_id": "c5619474-dd4d-f211-bcd4-2b3466fd95d5",
+        "simulation_seed": 70
+      },
+      {
+        "alert_rate": 0.6129032258064516,
+        "alert_rows": 19,
+        "cleared_during_observation": true,
+        "last_alert_offset_seconds": 69.746885,
+        "leading_alert_rows": 19,
+        "recovery_rows": 31,
+        "sampled_clearance_delay_seconds": 73.59208,
+        "scenario_id": "mqtt-broker-unavailable",
+        "simulation_run_id": "63f2ac75-27f9-ae3c-49ec-869783857a35",
+        "simulation_seed": 71
       }
     ],
-    "runs_with_alerts": 15
+    "runs_with_alerts": 50
   },
   "schema_version": "1.0",
   "stable_metrics_by_scenario": {
     "influxdb-write-failure": {
-      "accuracy": 1.0,
+      "accuracy": 0.9893758300132802,
       "confusion_matrix": {
         "influxdb-write-failure": {
-          "influxdb-write-failure": 170,
+          "influxdb-write-failure": 447,
           "ingestion-backpressure": 0,
           "malformed-sensor-payload": 0,
           "missing-device-heartbeat": 0,
-          "normal": 0
+          "mqtt-broker-unavailable": 0,
+          "normal": 8
         },
         "ingestion-backpressure": {
           "influxdb-write-failure": 0,
           "ingestion-backpressure": 0,
           "malformed-sensor-payload": 0,
           "missing-device-heartbeat": 0,
+          "mqtt-broker-unavailable": 0,
           "normal": 0
         },
         "malformed-sensor-payload": {
@@ -783,6 +1671,7 @@
           "ingestion-backpressure": 0,
           "malformed-sensor-payload": 0,
           "missing-device-heartbeat": 0,
+          "mqtt-broker-unavailable": 0,
           "normal": 0
         },
         "missing-device-heartbeat": {
@@ -790,6 +1679,15 @@
           "ingestion-backpressure": 0,
           "malformed-sensor-payload": 0,
           "missing-device-heartbeat": 0,
+          "mqtt-broker-unavailable": 0,
+          "normal": 0
+        },
+        "mqtt-broker-unavailable": {
+          "influxdb-write-failure": 0,
+          "ingestion-backpressure": 0,
+          "malformed-sensor-payload": 0,
+          "missing-device-heartbeat": 0,
+          "mqtt-broker-unavailable": 0,
           "normal": 0
         },
         "normal": {
@@ -797,24 +1695,26 @@
           "ingestion-backpressure": 0,
           "malformed-sensor-payload": 0,
           "missing-device-heartbeat": 0,
-          "normal": 110
+          "mqtt-broker-unavailable": 0,
+          "normal": 298
         }
       },
-      "correct": 280,
+      "correct": 745,
       "labels": [
         "normal",
         "influxdb-write-failure",
         "ingestion-backpressure",
         "malformed-sensor-payload",
-        "missing-device-heartbeat"
+        "missing-device-heartbeat",
+        "mqtt-broker-unavailable"
       ],
-      "macro_f1": 1.0,
+      "macro_f1": 0.9889428936432652,
       "per_label": {
         "influxdb-write-failure": {
-          "f1": 1.0,
+          "f1": 0.991130820399113,
           "precision": 1.0,
-          "recall": 1.0,
-          "support": 170
+          "recall": 0.9824175824175824,
+          "support": 455
         },
         "ingestion-backpressure": {
           "f1": 0.0,
@@ -834,37 +1734,46 @@
           "recall": 0.0,
           "support": 0
         },
+        "mqtt-broker-unavailable": {
+          "f1": 0.0,
+          "precision": 0.0,
+          "recall": 0.0,
+          "support": 0
+        },
         "normal": {
-          "f1": 1.0,
-          "precision": 1.0,
+          "f1": 0.9867549668874172,
+          "precision": 0.9738562091503268,
           "recall": 1.0,
-          "support": 110
+          "support": 298
         }
       },
-      "rows": 280
+      "rows": 753
     },
     "ingestion-backpressure": {
-      "accuracy": 1.0,
+      "accuracy": 0.9907773386034255,
       "confusion_matrix": {
         "influxdb-write-failure": {
           "influxdb-write-failure": 0,
           "ingestion-backpressure": 0,
           "malformed-sensor-payload": 0,
           "missing-device-heartbeat": 0,
+          "mqtt-broker-unavailable": 0,
           "normal": 0
         },
         "ingestion-backpressure": {
           "influxdb-write-failure": 0,
-          "ingestion-backpressure": 170,
+          "ingestion-backpressure": 455,
           "malformed-sensor-payload": 0,
           "missing-device-heartbeat": 0,
-          "normal": 0
+          "mqtt-broker-unavailable": 0,
+          "normal": 7
         },
         "malformed-sensor-payload": {
           "influxdb-write-failure": 0,
           "ingestion-backpressure": 0,
           "malformed-sensor-payload": 0,
           "missing-device-heartbeat": 0,
+          "mqtt-broker-unavailable": 0,
           "normal": 0
         },
         "missing-device-heartbeat": {
@@ -872,6 +1781,15 @@
           "ingestion-backpressure": 0,
           "malformed-sensor-payload": 0,
           "missing-device-heartbeat": 0,
+          "mqtt-broker-unavailable": 0,
+          "normal": 0
+        },
+        "mqtt-broker-unavailable": {
+          "influxdb-write-failure": 0,
+          "ingestion-backpressure": 0,
+          "malformed-sensor-payload": 0,
+          "missing-device-heartbeat": 0,
+          "mqtt-broker-unavailable": 0,
           "normal": 0
         },
         "normal": {
@@ -879,18 +1797,20 @@
           "ingestion-backpressure": 0,
           "malformed-sensor-payload": 0,
           "missing-device-heartbeat": 0,
-          "normal": 110
+          "mqtt-broker-unavailable": 0,
+          "normal": 297
         }
       },
-      "correct": 280,
+      "correct": 752,
       "labels": [
         "normal",
         "influxdb-write-failure",
         "ingestion-backpressure",
         "malformed-sensor-payload",
-        "missing-device-heartbeat"
+        "missing-device-heartbeat",
+        "mqtt-broker-unavailable"
       ],
-      "macro_f1": 1.0,
+      "macro_f1": 0.9903595788190167,
       "per_label": {
         "influxdb-write-failure": {
           "f1": 0.0,
@@ -899,10 +1819,10 @@
           "support": 0
         },
         "ingestion-backpressure": {
-          "f1": 1.0,
+          "f1": 0.9923664122137404,
           "precision": 1.0,
-          "recall": 1.0,
-          "support": 170
+          "recall": 0.9848484848484849,
+          "support": 462
         },
         "malformed-sensor-payload": {
           "f1": 0.0,
@@ -916,23 +1836,30 @@
           "recall": 0.0,
           "support": 0
         },
+        "mqtt-broker-unavailable": {
+          "f1": 0.0,
+          "precision": 0.0,
+          "recall": 0.0,
+          "support": 0
+        },
         "normal": {
-          "f1": 1.0,
-          "precision": 1.0,
+          "f1": 0.9883527454242929,
+          "precision": 0.9769736842105263,
           "recall": 1.0,
-          "support": 110
+          "support": 297
         }
       },
-      "rows": 280
+      "rows": 759
     },
     "malformed-sensor-payload": {
-      "accuracy": 1.0,
+      "accuracy": 0.9894319682959049,
       "confusion_matrix": {
         "influxdb-write-failure": {
           "influxdb-write-failure": 0,
           "ingestion-backpressure": 0,
           "malformed-sensor-payload": 0,
           "missing-device-heartbeat": 0,
+          "mqtt-broker-unavailable": 0,
           "normal": 0
         },
         "ingestion-backpressure": {
@@ -940,20 +1867,31 @@
           "ingestion-backpressure": 0,
           "malformed-sensor-payload": 0,
           "missing-device-heartbeat": 0,
+          "mqtt-broker-unavailable": 0,
           "normal": 0
         },
         "malformed-sensor-payload": {
           "influxdb-write-failure": 0,
           "ingestion-backpressure": 0,
-          "malformed-sensor-payload": 170,
+          "malformed-sensor-payload": 449,
           "missing-device-heartbeat": 0,
-          "normal": 0
+          "mqtt-broker-unavailable": 0,
+          "normal": 8
         },
         "missing-device-heartbeat": {
           "influxdb-write-failure": 0,
           "ingestion-backpressure": 0,
           "malformed-sensor-payload": 0,
           "missing-device-heartbeat": 0,
+          "mqtt-broker-unavailable": 0,
+          "normal": 0
+        },
+        "mqtt-broker-unavailable": {
+          "influxdb-write-failure": 0,
+          "ingestion-backpressure": 0,
+          "malformed-sensor-payload": 0,
+          "missing-device-heartbeat": 0,
+          "mqtt-broker-unavailable": 0,
           "normal": 0
         },
         "normal": {
@@ -961,18 +1899,20 @@
           "ingestion-backpressure": 0,
           "malformed-sensor-payload": 0,
           "missing-device-heartbeat": 0,
-          "normal": 110
+          "mqtt-broker-unavailable": 0,
+          "normal": 300
         }
       },
-      "correct": 280,
+      "correct": 749,
       "labels": [
         "normal",
         "influxdb-write-failure",
         "ingestion-backpressure",
         "malformed-sensor-payload",
-        "missing-device-heartbeat"
+        "missing-device-heartbeat",
+        "mqtt-broker-unavailable"
       ],
-      "macro_f1": 1.0,
+      "macro_f1": 0.9890060415940514,
       "per_label": {
         "influxdb-write-failure": {
           "f1": 0.0,
@@ -987,10 +1927,10 @@
           "support": 0
         },
         "malformed-sensor-payload": {
-          "f1": 1.0,
+          "f1": 0.9911699779249449,
           "precision": 1.0,
-          "recall": 1.0,
-          "support": 170
+          "recall": 0.9824945295404814,
+          "support": 457
         },
         "missing-device-heartbeat": {
           "f1": 0.0,
@@ -998,23 +1938,30 @@
           "recall": 0.0,
           "support": 0
         },
+        "mqtt-broker-unavailable": {
+          "f1": 0.0,
+          "precision": 0.0,
+          "recall": 0.0,
+          "support": 0
+        },
         "normal": {
-          "f1": 1.0,
-          "precision": 1.0,
+          "f1": 0.9868421052631579,
+          "precision": 0.974025974025974,
           "recall": 1.0,
-          "support": 110
+          "support": 300
         }
       },
-      "rows": 280
+      "rows": 757
     },
     "missing-device-heartbeat": {
-      "accuracy": 1.0,
+      "accuracy": 0.9961089494163424,
       "confusion_matrix": {
         "influxdb-write-failure": {
           "influxdb-write-failure": 0,
           "ingestion-backpressure": 0,
           "malformed-sensor-payload": 0,
           "missing-device-heartbeat": 0,
+          "mqtt-broker-unavailable": 0,
           "normal": 0
         },
         "ingestion-backpressure": {
@@ -1022,6 +1969,7 @@
           "ingestion-backpressure": 0,
           "malformed-sensor-payload": 0,
           "missing-device-heartbeat": 0,
+          "mqtt-broker-unavailable": 0,
           "normal": 0
         },
         "malformed-sensor-payload": {
@@ -1029,13 +1977,23 @@
           "ingestion-backpressure": 0,
           "malformed-sensor-payload": 0,
           "missing-device-heartbeat": 0,
+          "mqtt-broker-unavailable": 0,
           "normal": 0
         },
         "missing-device-heartbeat": {
           "influxdb-write-failure": 0,
           "ingestion-backpressure": 0,
           "malformed-sensor-payload": 0,
-          "missing-device-heartbeat": 170,
+          "missing-device-heartbeat": 468,
+          "mqtt-broker-unavailable": 0,
+          "normal": 3
+        },
+        "mqtt-broker-unavailable": {
+          "influxdb-write-failure": 0,
+          "ingestion-backpressure": 0,
+          "malformed-sensor-payload": 0,
+          "missing-device-heartbeat": 0,
+          "mqtt-broker-unavailable": 0,
           "normal": 0
         },
         "normal": {
@@ -1043,18 +2001,20 @@
           "ingestion-backpressure": 0,
           "malformed-sensor-payload": 0,
           "missing-device-heartbeat": 0,
-          "normal": 110
+          "mqtt-broker-unavailable": 0,
+          "normal": 300
         }
       },
-      "correct": 280,
+      "correct": 768,
       "labels": [
         "normal",
         "influxdb-write-failure",
         "ingestion-backpressure",
         "malformed-sensor-payload",
-        "missing-device-heartbeat"
+        "missing-device-heartbeat",
+        "mqtt-broker-unavailable"
       ],
-      "macro_f1": 1.0,
+      "macro_f1": 0.9959149937214884,
       "per_label": {
         "influxdb-write-failure": {
           "f1": 0.0,
@@ -1075,51 +2035,171 @@
           "support": 0
         },
         "missing-device-heartbeat": {
-          "f1": 1.0,
+          "f1": 0.9968051118210862,
           "precision": 1.0,
-          "recall": 1.0,
-          "support": 170
+          "recall": 0.9936305732484076,
+          "support": 471
+        },
+        "mqtt-broker-unavailable": {
+          "f1": 0.0,
+          "precision": 0.0,
+          "recall": 0.0,
+          "support": 0
         },
         "normal": {
-          "f1": 1.0,
-          "precision": 1.0,
+          "f1": 0.9950248756218906,
+          "precision": 0.9900990099009901,
           "recall": 1.0,
-          "support": 110
+          "support": 300
         }
       },
-      "rows": 280
+      "rows": 771
+    },
+    "mqtt-broker-unavailable": {
+      "accuracy": 0.9974025974025974,
+      "confusion_matrix": {
+        "influxdb-write-failure": {
+          "influxdb-write-failure": 0,
+          "ingestion-backpressure": 0,
+          "malformed-sensor-payload": 0,
+          "missing-device-heartbeat": 0,
+          "mqtt-broker-unavailable": 0,
+          "normal": 0
+        },
+        "ingestion-backpressure": {
+          "influxdb-write-failure": 0,
+          "ingestion-backpressure": 0,
+          "malformed-sensor-payload": 0,
+          "missing-device-heartbeat": 0,
+          "mqtt-broker-unavailable": 0,
+          "normal": 0
+        },
+        "malformed-sensor-payload": {
+          "influxdb-write-failure": 0,
+          "ingestion-backpressure": 0,
+          "malformed-sensor-payload": 0,
+          "missing-device-heartbeat": 0,
+          "mqtt-broker-unavailable": 0,
+          "normal": 0
+        },
+        "missing-device-heartbeat": {
+          "influxdb-write-failure": 0,
+          "ingestion-backpressure": 0,
+          "malformed-sensor-payload": 0,
+          "missing-device-heartbeat": 0,
+          "mqtt-broker-unavailable": 0,
+          "normal": 0
+        },
+        "mqtt-broker-unavailable": {
+          "influxdb-write-failure": 0,
+          "ingestion-backpressure": 0,
+          "malformed-sensor-payload": 0,
+          "missing-device-heartbeat": 1,
+          "mqtt-broker-unavailable": 468,
+          "normal": 0
+        },
+        "normal": {
+          "influxdb-write-failure": 0,
+          "ingestion-backpressure": 0,
+          "malformed-sensor-payload": 0,
+          "missing-device-heartbeat": 0,
+          "mqtt-broker-unavailable": 1,
+          "normal": 300
+        }
+      },
+      "correct": 768,
+      "labels": [
+        "normal",
+        "influxdb-write-failure",
+        "ingestion-backpressure",
+        "malformed-sensor-payload",
+        "missing-device-heartbeat",
+        "mqtt-broker-unavailable"
+      ],
+      "macro_f1": 0.9981019551635688,
+      "per_label": {
+        "influxdb-write-failure": {
+          "f1": 0.0,
+          "precision": 0.0,
+          "recall": 0.0,
+          "support": 0
+        },
+        "ingestion-backpressure": {
+          "f1": 0.0,
+          "precision": 0.0,
+          "recall": 0.0,
+          "support": 0
+        },
+        "malformed-sensor-payload": {
+          "f1": 0.0,
+          "precision": 0.0,
+          "recall": 0.0,
+          "support": 0
+        },
+        "missing-device-heartbeat": {
+          "f1": 0.0,
+          "precision": 0.0,
+          "recall": 0.0,
+          "support": 0
+        },
+        "mqtt-broker-unavailable": {
+          "f1": 0.997867803837953,
+          "precision": 0.997867803837953,
+          "recall": 0.997867803837953,
+          "support": 469
+        },
+        "normal": {
+          "f1": 0.9983361064891847,
+          "precision": 1.0,
+          "recall": 0.9966777408637874,
+          "support": 301
+        }
+      },
+      "rows": 770
     }
   },
   "stable_metrics_by_seed": {
     "62": {
-      "accuracy": 1.0,
+      "accuracy": 0.9940298507462687,
       "confusion_matrix": {
         "influxdb-write-failure": {
-          "influxdb-write-failure": 34,
+          "influxdb-write-failure": 39,
           "ingestion-backpressure": 0,
           "malformed-sensor-payload": 0,
           "missing-device-heartbeat": 0,
-          "normal": 0
+          "mqtt-broker-unavailable": 0,
+          "normal": 1
         },
         "ingestion-backpressure": {
           "influxdb-write-failure": 0,
-          "ingestion-backpressure": 34,
+          "ingestion-backpressure": 35,
           "malformed-sensor-payload": 0,
           "missing-device-heartbeat": 0,
+          "mqtt-broker-unavailable": 0,
           "normal": 0
         },
         "malformed-sensor-payload": {
           "influxdb-write-failure": 0,
           "ingestion-backpressure": 0,
-          "malformed-sensor-payload": 34,
+          "malformed-sensor-payload": 37,
           "missing-device-heartbeat": 0,
-          "normal": 0
+          "mqtt-broker-unavailable": 0,
+          "normal": 1
         },
         "missing-device-heartbeat": {
           "influxdb-write-failure": 0,
           "ingestion-backpressure": 0,
           "malformed-sensor-payload": 0,
-          "missing-device-heartbeat": 34,
+          "missing-device-heartbeat": 39,
+          "mqtt-broker-unavailable": 0,
+          "normal": 0
+        },
+        "mqtt-broker-unavailable": {
+          "influxdb-write-failure": 0,
+          "ingestion-backpressure": 0,
+          "malformed-sensor-payload": 0,
+          "missing-device-heartbeat": 0,
+          "mqtt-broker-unavailable": 36,
           "normal": 0
         },
         "normal": {
@@ -1127,81 +2207,101 @@
           "ingestion-backpressure": 0,
           "malformed-sensor-payload": 0,
           "missing-device-heartbeat": 0,
-          "normal": 88
+          "mqtt-broker-unavailable": 0,
+          "normal": 147
         }
       },
-      "correct": 224,
+      "correct": 333,
       "labels": [
         "normal",
         "influxdb-write-failure",
         "ingestion-backpressure",
         "malformed-sensor-payload",
-        "missing-device-heartbeat"
+        "missing-device-heartbeat",
+        "mqtt-broker-unavailable"
       ],
-      "macro_f1": 1.0,
+      "macro_f1": 0.9945419470103015,
       "per_label": {
         "influxdb-write-failure": {
-          "f1": 1.0,
+          "f1": 0.9873417721518987,
           "precision": 1.0,
-          "recall": 1.0,
-          "support": 34
+          "recall": 0.975,
+          "support": 40
         },
         "ingestion-backpressure": {
           "f1": 1.0,
           "precision": 1.0,
           "recall": 1.0,
-          "support": 34
+          "support": 35
         },
         "malformed-sensor-payload": {
-          "f1": 1.0,
+          "f1": 0.9866666666666666,
           "precision": 1.0,
-          "recall": 1.0,
-          "support": 34
+          "recall": 0.9736842105263158,
+          "support": 38
         },
         "missing-device-heartbeat": {
           "f1": 1.0,
           "precision": 1.0,
           "recall": 1.0,
-          "support": 34
+          "support": 39
         },
-        "normal": {
+        "mqtt-broker-unavailable": {
           "f1": 1.0,
           "precision": 1.0,
           "recall": 1.0,
-          "support": 88
+          "support": 36
+        },
+        "normal": {
+          "f1": 0.9932432432432432,
+          "precision": 0.9865771812080537,
+          "recall": 1.0,
+          "support": 147
         }
       },
-      "rows": 224
+      "rows": 335
     },
     "63": {
-      "accuracy": 1.0,
+      "accuracy": 0.9870466321243523,
       "confusion_matrix": {
         "influxdb-write-failure": {
-          "influxdb-write-failure": 34,
+          "influxdb-write-failure": 50,
           "ingestion-backpressure": 0,
           "malformed-sensor-payload": 0,
           "missing-device-heartbeat": 0,
-          "normal": 0
+          "mqtt-broker-unavailable": 0,
+          "normal": 1
         },
         "ingestion-backpressure": {
           "influxdb-write-failure": 0,
-          "ingestion-backpressure": 34,
+          "ingestion-backpressure": 41,
           "malformed-sensor-payload": 0,
           "missing-device-heartbeat": 0,
-          "normal": 0
+          "mqtt-broker-unavailable": 0,
+          "normal": 1
         },
         "malformed-sensor-payload": {
           "influxdb-write-failure": 0,
           "ingestion-backpressure": 0,
-          "malformed-sensor-payload": 34,
+          "malformed-sensor-payload": 48,
           "missing-device-heartbeat": 0,
-          "normal": 0
+          "mqtt-broker-unavailable": 0,
+          "normal": 1
         },
         "missing-device-heartbeat": {
           "influxdb-write-failure": 0,
           "ingestion-backpressure": 0,
           "malformed-sensor-payload": 0,
-          "missing-device-heartbeat": 34,
+          "missing-device-heartbeat": 42,
+          "mqtt-broker-unavailable": 0,
+          "normal": 1
+        },
+        "mqtt-broker-unavailable": {
+          "influxdb-write-failure": 0,
+          "ingestion-backpressure": 0,
+          "malformed-sensor-payload": 0,
+          "missing-device-heartbeat": 0,
+          "mqtt-broker-unavailable": 50,
           "normal": 0
         },
         "normal": {
@@ -1209,81 +2309,101 @@
           "ingestion-backpressure": 0,
           "malformed-sensor-payload": 0,
           "missing-device-heartbeat": 0,
-          "normal": 88
+          "mqtt-broker-unavailable": 1,
+          "normal": 150
         }
       },
-      "correct": 224,
+      "correct": 381,
       "labels": [
         "normal",
         "influxdb-write-failure",
         "ingestion-backpressure",
         "malformed-sensor-payload",
-        "missing-device-heartbeat"
+        "missing-device-heartbeat",
+        "mqtt-broker-unavailable"
       ],
-      "macro_f1": 1.0,
+      "macro_f1": 0.9882804000291795,
       "per_label": {
         "influxdb-write-failure": {
-          "f1": 1.0,
+          "f1": 0.99009900990099,
           "precision": 1.0,
-          "recall": 1.0,
-          "support": 34
+          "recall": 0.9803921568627451,
+          "support": 51
         },
         "ingestion-backpressure": {
-          "f1": 1.0,
+          "f1": 0.9879518072289156,
           "precision": 1.0,
-          "recall": 1.0,
-          "support": 34
+          "recall": 0.9761904761904762,
+          "support": 42
         },
         "malformed-sensor-payload": {
-          "f1": 1.0,
+          "f1": 0.9896907216494846,
           "precision": 1.0,
-          "recall": 1.0,
-          "support": 34
+          "recall": 0.9795918367346939,
+          "support": 49
         },
         "missing-device-heartbeat": {
-          "f1": 1.0,
+          "f1": 0.988235294117647,
           "precision": 1.0,
+          "recall": 0.9767441860465116,
+          "support": 43
+        },
+        "mqtt-broker-unavailable": {
+          "f1": 0.99009900990099,
+          "precision": 0.9803921568627451,
           "recall": 1.0,
-          "support": 34
+          "support": 50
         },
         "normal": {
-          "f1": 1.0,
-          "precision": 1.0,
-          "recall": 1.0,
-          "support": 88
+          "f1": 0.9836065573770492,
+          "precision": 0.974025974025974,
+          "recall": 0.9933774834437086,
+          "support": 151
         }
       },
-      "rows": 224
+      "rows": 386
     },
     "64": {
-      "accuracy": 1.0,
+      "accuracy": 0.9954337899543378,
       "confusion_matrix": {
         "influxdb-write-failure": {
-          "influxdb-write-failure": 34,
+          "influxdb-write-failure": 51,
           "ingestion-backpressure": 0,
           "malformed-sensor-payload": 0,
           "missing-device-heartbeat": 0,
-          "normal": 0
+          "mqtt-broker-unavailable": 0,
+          "normal": 1
         },
         "ingestion-backpressure": {
           "influxdb-write-failure": 0,
-          "ingestion-backpressure": 34,
+          "ingestion-backpressure": 56,
           "malformed-sensor-payload": 0,
           "missing-device-heartbeat": 0,
+          "mqtt-broker-unavailable": 0,
           "normal": 0
         },
         "malformed-sensor-payload": {
           "influxdb-write-failure": 0,
           "ingestion-backpressure": 0,
-          "malformed-sensor-payload": 34,
+          "malformed-sensor-payload": 60,
           "missing-device-heartbeat": 0,
-          "normal": 0
+          "mqtt-broker-unavailable": 0,
+          "normal": 1
         },
         "missing-device-heartbeat": {
           "influxdb-write-failure": 0,
           "ingestion-backpressure": 0,
           "malformed-sensor-payload": 0,
-          "missing-device-heartbeat": 34,
+          "missing-device-heartbeat": 60,
+          "mqtt-broker-unavailable": 0,
+          "normal": 0
+        },
+        "mqtt-broker-unavailable": {
+          "influxdb-write-failure": 0,
+          "ingestion-backpressure": 0,
+          "malformed-sensor-payload": 0,
+          "missing-device-heartbeat": 0,
+          "mqtt-broker-unavailable": 59,
           "normal": 0
         },
         "normal": {
@@ -1291,81 +2411,101 @@
           "ingestion-backpressure": 0,
           "malformed-sensor-payload": 0,
           "missing-device-heartbeat": 0,
-          "normal": 88
+          "mqtt-broker-unavailable": 0,
+          "normal": 150
         }
       },
-      "correct": 224,
+      "correct": 436,
       "labels": [
         "normal",
         "influxdb-write-failure",
         "ingestion-backpressure",
         "malformed-sensor-payload",
-        "missing-device-heartbeat"
+        "missing-device-heartbeat",
+        "mqtt-broker-unavailable"
       ],
-      "macro_f1": 1.0,
+      "macro_f1": 0.9959007137949523,
       "per_label": {
         "influxdb-write-failure": {
-          "f1": 1.0,
+          "f1": 0.9902912621359222,
           "precision": 1.0,
-          "recall": 1.0,
-          "support": 34
+          "recall": 0.9807692307692307,
+          "support": 52
         },
         "ingestion-backpressure": {
           "f1": 1.0,
           "precision": 1.0,
           "recall": 1.0,
-          "support": 34
+          "support": 56
         },
         "malformed-sensor-payload": {
-          "f1": 1.0,
+          "f1": 0.9917355371900827,
           "precision": 1.0,
-          "recall": 1.0,
-          "support": 34
+          "recall": 0.9836065573770492,
+          "support": 61
         },
         "missing-device-heartbeat": {
           "f1": 1.0,
           "precision": 1.0,
           "recall": 1.0,
-          "support": 34
+          "support": 60
         },
-        "normal": {
+        "mqtt-broker-unavailable": {
           "f1": 1.0,
           "precision": 1.0,
           "recall": 1.0,
-          "support": 88
+          "support": 59
+        },
+        "normal": {
+          "f1": 0.9933774834437086,
+          "precision": 0.9868421052631579,
+          "recall": 1.0,
+          "support": 150
         }
       },
-      "rows": 224
+      "rows": 438
     },
     "65": {
-      "accuracy": 1.0,
+      "accuracy": 0.9970501474926253,
       "confusion_matrix": {
         "influxdb-write-failure": {
-          "influxdb-write-failure": 34,
+          "influxdb-write-failure": 35,
           "ingestion-backpressure": 0,
           "malformed-sensor-payload": 0,
           "missing-device-heartbeat": 0,
-          "normal": 0
+          "mqtt-broker-unavailable": 0,
+          "normal": 1
         },
         "ingestion-backpressure": {
           "influxdb-write-failure": 0,
-          "ingestion-backpressure": 34,
+          "ingestion-backpressure": 40,
           "malformed-sensor-payload": 0,
           "missing-device-heartbeat": 0,
+          "mqtt-broker-unavailable": 0,
           "normal": 0
         },
         "malformed-sensor-payload": {
           "influxdb-write-failure": 0,
           "ingestion-backpressure": 0,
-          "malformed-sensor-payload": 34,
+          "malformed-sensor-payload": 36,
           "missing-device-heartbeat": 0,
+          "mqtt-broker-unavailable": 0,
           "normal": 0
         },
         "missing-device-heartbeat": {
           "influxdb-write-failure": 0,
           "ingestion-backpressure": 0,
           "malformed-sensor-payload": 0,
-          "missing-device-heartbeat": 34,
+          "missing-device-heartbeat": 40,
+          "mqtt-broker-unavailable": 0,
+          "normal": 0
+        },
+        "mqtt-broker-unavailable": {
+          "influxdb-write-failure": 0,
+          "ingestion-backpressure": 0,
+          "malformed-sensor-payload": 0,
+          "missing-device-heartbeat": 0,
+          "mqtt-broker-unavailable": 37,
           "normal": 0
         },
         "normal": {
@@ -1373,81 +2513,305 @@
           "ingestion-backpressure": 0,
           "malformed-sensor-payload": 0,
           "missing-device-heartbeat": 0,
-          "normal": 88
+          "mqtt-broker-unavailable": 0,
+          "normal": 150
         }
       },
-      "correct": 224,
+      "correct": 338,
       "labels": [
         "normal",
         "influxdb-write-failure",
         "ingestion-backpressure",
         "malformed-sensor-payload",
-        "missing-device-heartbeat"
+        "missing-device-heartbeat",
+        "mqtt-broker-unavailable"
       ],
-      "macro_f1": 1.0,
+      "macro_f1": 0.9970988723035891,
       "per_label": {
         "influxdb-write-failure": {
-          "f1": 1.0,
+          "f1": 0.9859154929577464,
           "precision": 1.0,
-          "recall": 1.0,
-          "support": 34
+          "recall": 0.9722222222222222,
+          "support": 36
         },
         "ingestion-backpressure": {
           "f1": 1.0,
           "precision": 1.0,
           "recall": 1.0,
-          "support": 34
+          "support": 40
         },
         "malformed-sensor-payload": {
           "f1": 1.0,
           "precision": 1.0,
           "recall": 1.0,
-          "support": 34
+          "support": 36
         },
         "missing-device-heartbeat": {
           "f1": 1.0,
           "precision": 1.0,
           "recall": 1.0,
-          "support": 34
+          "support": 40
         },
-        "normal": {
+        "mqtt-broker-unavailable": {
           "f1": 1.0,
           "precision": 1.0,
           "recall": 1.0,
-          "support": 88
+          "support": 37
+        },
+        "normal": {
+          "f1": 0.9966777408637874,
+          "precision": 0.9933774834437086,
+          "recall": 1.0,
+          "support": 150
         }
       },
-      "rows": 224
+      "rows": 339
     },
     "66": {
-      "accuracy": 1.0,
+      "accuracy": 0.9921465968586387,
       "confusion_matrix": {
         "influxdb-write-failure": {
-          "influxdb-write-failure": 34,
+          "influxdb-write-failure": 42,
           "ingestion-backpressure": 0,
           "malformed-sensor-payload": 0,
           "missing-device-heartbeat": 0,
-          "normal": 0
+          "mqtt-broker-unavailable": 0,
+          "normal": 1
         },
         "ingestion-backpressure": {
           "influxdb-write-failure": 0,
-          "ingestion-backpressure": 34,
+          "ingestion-backpressure": 47,
           "malformed-sensor-payload": 0,
           "missing-device-heartbeat": 0,
+          "mqtt-broker-unavailable": 0,
+          "normal": 1
+        },
+        "malformed-sensor-payload": {
+          "influxdb-write-failure": 0,
+          "ingestion-backpressure": 0,
+          "malformed-sensor-payload": 43,
+          "missing-device-heartbeat": 0,
+          "mqtt-broker-unavailable": 0,
+          "normal": 1
+        },
+        "missing-device-heartbeat": {
+          "influxdb-write-failure": 0,
+          "ingestion-backpressure": 0,
+          "malformed-sensor-payload": 0,
+          "missing-device-heartbeat": 50,
+          "mqtt-broker-unavailable": 0,
           "normal": 0
+        },
+        "mqtt-broker-unavailable": {
+          "influxdb-write-failure": 0,
+          "ingestion-backpressure": 0,
+          "malformed-sensor-payload": 0,
+          "missing-device-heartbeat": 0,
+          "mqtt-broker-unavailable": 47,
+          "normal": 0
+        },
+        "normal": {
+          "influxdb-write-failure": 0,
+          "ingestion-backpressure": 0,
+          "malformed-sensor-payload": 0,
+          "missing-device-heartbeat": 0,
+          "mqtt-broker-unavailable": 0,
+          "normal": 150
+        }
+      },
+      "correct": 379,
+      "labels": [
+        "normal",
+        "influxdb-write-failure",
+        "ingestion-backpressure",
+        "malformed-sensor-payload",
+        "missing-device-heartbeat",
+        "mqtt-broker-unavailable"
+      ],
+      "macro_f1": 0.9927189558926001,
+      "per_label": {
+        "influxdb-write-failure": {
+          "f1": 0.988235294117647,
+          "precision": 1.0,
+          "recall": 0.9767441860465116,
+          "support": 43
+        },
+        "ingestion-backpressure": {
+          "f1": 0.9894736842105264,
+          "precision": 1.0,
+          "recall": 0.9791666666666666,
+          "support": 48
+        },
+        "malformed-sensor-payload": {
+          "f1": 0.9885057471264368,
+          "precision": 1.0,
+          "recall": 0.9772727272727273,
+          "support": 44
+        },
+        "missing-device-heartbeat": {
+          "f1": 1.0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "support": 50
+        },
+        "mqtt-broker-unavailable": {
+          "f1": 1.0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "support": 47
+        },
+        "normal": {
+          "f1": 0.99009900990099,
+          "precision": 0.9803921568627451,
+          "recall": 1.0,
+          "support": 150
+        }
+      },
+      "rows": 382
+    },
+    "67": {
+      "accuracy": 0.9904761904761905,
+      "confusion_matrix": {
+        "influxdb-write-failure": {
+          "influxdb-write-failure": 50,
+          "ingestion-backpressure": 0,
+          "malformed-sensor-payload": 0,
+          "missing-device-heartbeat": 0,
+          "mqtt-broker-unavailable": 0,
+          "normal": 1
+        },
+        "ingestion-backpressure": {
+          "influxdb-write-failure": 0,
+          "ingestion-backpressure": 56,
+          "malformed-sensor-payload": 0,
+          "missing-device-heartbeat": 0,
+          "mqtt-broker-unavailable": 0,
+          "normal": 1
+        },
+        "malformed-sensor-payload": {
+          "influxdb-write-failure": 0,
+          "ingestion-backpressure": 0,
+          "malformed-sensor-payload": 56,
+          "missing-device-heartbeat": 0,
+          "mqtt-broker-unavailable": 0,
+          "normal": 1
+        },
+        "missing-device-heartbeat": {
+          "influxdb-write-failure": 0,
+          "ingestion-backpressure": 0,
+          "malformed-sensor-payload": 0,
+          "missing-device-heartbeat": 50,
+          "mqtt-broker-unavailable": 0,
+          "normal": 0
+        },
+        "mqtt-broker-unavailable": {
+          "influxdb-write-failure": 0,
+          "ingestion-backpressure": 0,
+          "malformed-sensor-payload": 0,
+          "missing-device-heartbeat": 1,
+          "mqtt-broker-unavailable": 54,
+          "normal": 0
+        },
+        "normal": {
+          "influxdb-write-failure": 0,
+          "ingestion-backpressure": 0,
+          "malformed-sensor-payload": 0,
+          "missing-device-heartbeat": 0,
+          "mqtt-broker-unavailable": 0,
+          "normal": 150
+        }
+      },
+      "correct": 416,
+      "labels": [
+        "normal",
+        "influxdb-write-failure",
+        "ingestion-backpressure",
+        "malformed-sensor-payload",
+        "missing-device-heartbeat",
+        "mqtt-broker-unavailable"
+      ],
+      "macro_f1": 0.9905706004553528,
+      "per_label": {
+        "influxdb-write-failure": {
+          "f1": 0.99009900990099,
+          "precision": 1.0,
+          "recall": 0.9803921568627451,
+          "support": 51
+        },
+        "ingestion-backpressure": {
+          "f1": 0.9911504424778761,
+          "precision": 1.0,
+          "recall": 0.9824561403508771,
+          "support": 57
+        },
+        "malformed-sensor-payload": {
+          "f1": 0.9911504424778761,
+          "precision": 1.0,
+          "recall": 0.9824561403508771,
+          "support": 57
+        },
+        "missing-device-heartbeat": {
+          "f1": 0.99009900990099,
+          "precision": 0.9803921568627451,
+          "recall": 1.0,
+          "support": 50
+        },
+        "mqtt-broker-unavailable": {
+          "f1": 0.9908256880733944,
+          "precision": 1.0,
+          "recall": 0.9818181818181818,
+          "support": 55
+        },
+        "normal": {
+          "f1": 0.99009900990099,
+          "precision": 0.9803921568627451,
+          "recall": 1.0,
+          "support": 150
+        }
+      },
+      "rows": 420
+    },
+    "68": {
+      "accuracy": 0.9913793103448276,
+      "confusion_matrix": {
+        "influxdb-write-failure": {
+          "influxdb-write-failure": 35,
+          "ingestion-backpressure": 0,
+          "malformed-sensor-payload": 0,
+          "missing-device-heartbeat": 0,
+          "mqtt-broker-unavailable": 0,
+          "normal": 1
+        },
+        "ingestion-backpressure": {
+          "influxdb-write-failure": 0,
+          "ingestion-backpressure": 43,
+          "malformed-sensor-payload": 0,
+          "missing-device-heartbeat": 0,
+          "mqtt-broker-unavailable": 0,
+          "normal": 1
         },
         "malformed-sensor-payload": {
           "influxdb-write-failure": 0,
           "ingestion-backpressure": 0,
           "malformed-sensor-payload": 34,
           "missing-device-heartbeat": 0,
-          "normal": 0
+          "mqtt-broker-unavailable": 0,
+          "normal": 1
         },
         "missing-device-heartbeat": {
           "influxdb-write-failure": 0,
           "ingestion-backpressure": 0,
           "malformed-sensor-payload": 0,
-          "missing-device-heartbeat": 34,
+          "missing-device-heartbeat": 42,
+          "mqtt-broker-unavailable": 0,
+          "normal": 0
+        },
+        "mqtt-broker-unavailable": {
+          "influxdb-write-failure": 0,
+          "ingestion-backpressure": 0,
+          "malformed-sensor-payload": 0,
+          "missing-device-heartbeat": 0,
+          "mqtt-broker-unavailable": 43,
           "normal": 0
         },
         "normal": {
@@ -1455,51 +2819,365 @@
           "ingestion-backpressure": 0,
           "malformed-sensor-payload": 0,
           "missing-device-heartbeat": 0,
-          "normal": 88
+          "mqtt-broker-unavailable": 0,
+          "normal": 148
         }
       },
-      "correct": 224,
+      "correct": 345,
       "labels": [
         "normal",
         "influxdb-write-failure",
         "ingestion-backpressure",
         "malformed-sensor-payload",
-        "missing-device-heartbeat"
+        "missing-device-heartbeat",
+        "mqtt-broker-unavailable"
       ],
-      "macro_f1": 1.0,
+      "macro_f1": 0.9916491736074903,
       "per_label": {
         "influxdb-write-failure": {
-          "f1": 1.0,
+          "f1": 0.9859154929577464,
           "precision": 1.0,
-          "recall": 1.0,
-          "support": 34
+          "recall": 0.9722222222222222,
+          "support": 36
         },
         "ingestion-backpressure": {
-          "f1": 1.0,
+          "f1": 0.9885057471264368,
           "precision": 1.0,
-          "recall": 1.0,
-          "support": 34
+          "recall": 0.9772727272727273,
+          "support": 44
         },
         "malformed-sensor-payload": {
-          "f1": 1.0,
+          "f1": 0.9855072463768115,
           "precision": 1.0,
-          "recall": 1.0,
-          "support": 34
+          "recall": 0.9714285714285714,
+          "support": 35
         },
         "missing-device-heartbeat": {
           "f1": 1.0,
           "precision": 1.0,
           "recall": 1.0,
-          "support": 34
+          "support": 42
         },
-        "normal": {
+        "mqtt-broker-unavailable": {
           "f1": 1.0,
           "precision": 1.0,
           "recall": 1.0,
-          "support": 88
+          "support": 43
+        },
+        "normal": {
+          "f1": 0.9899665551839464,
+          "precision": 0.9801324503311258,
+          "recall": 1.0,
+          "support": 148
         }
       },
-      "rows": 224
+      "rows": 348
+    },
+    "69": {
+      "accuracy": 0.9921875,
+      "confusion_matrix": {
+        "influxdb-write-failure": {
+          "influxdb-write-failure": 46,
+          "ingestion-backpressure": 0,
+          "malformed-sensor-payload": 0,
+          "missing-device-heartbeat": 0,
+          "mqtt-broker-unavailable": 0,
+          "normal": 0
+        },
+        "ingestion-backpressure": {
+          "influxdb-write-failure": 0,
+          "ingestion-backpressure": 46,
+          "malformed-sensor-payload": 0,
+          "missing-device-heartbeat": 0,
+          "mqtt-broker-unavailable": 0,
+          "normal": 1
+        },
+        "malformed-sensor-payload": {
+          "influxdb-write-failure": 0,
+          "ingestion-backpressure": 0,
+          "malformed-sensor-payload": 42,
+          "missing-device-heartbeat": 0,
+          "mqtt-broker-unavailable": 0,
+          "normal": 1
+        },
+        "missing-device-heartbeat": {
+          "influxdb-write-failure": 0,
+          "ingestion-backpressure": 0,
+          "malformed-sensor-payload": 0,
+          "missing-device-heartbeat": 52,
+          "mqtt-broker-unavailable": 0,
+          "normal": 1
+        },
+        "mqtt-broker-unavailable": {
+          "influxdb-write-failure": 0,
+          "ingestion-backpressure": 0,
+          "malformed-sensor-payload": 0,
+          "missing-device-heartbeat": 0,
+          "mqtt-broker-unavailable": 45,
+          "normal": 0
+        },
+        "normal": {
+          "influxdb-write-failure": 0,
+          "ingestion-backpressure": 0,
+          "malformed-sensor-payload": 0,
+          "missing-device-heartbeat": 0,
+          "mqtt-broker-unavailable": 0,
+          "normal": 150
+        }
+      },
+      "correct": 381,
+      "labels": [
+        "normal",
+        "influxdb-write-failure",
+        "ingestion-backpressure",
+        "malformed-sensor-payload",
+        "missing-device-heartbeat",
+        "mqtt-broker-unavailable"
+      ],
+      "macro_f1": 0.9930096343871307,
+      "per_label": {
+        "influxdb-write-failure": {
+          "f1": 1.0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "support": 46
+        },
+        "ingestion-backpressure": {
+          "f1": 0.989247311827957,
+          "precision": 1.0,
+          "recall": 0.9787234042553191,
+          "support": 47
+        },
+        "malformed-sensor-payload": {
+          "f1": 0.988235294117647,
+          "precision": 1.0,
+          "recall": 0.9767441860465116,
+          "support": 43
+        },
+        "missing-device-heartbeat": {
+          "f1": 0.9904761904761905,
+          "precision": 1.0,
+          "recall": 0.9811320754716981,
+          "support": 53
+        },
+        "mqtt-broker-unavailable": {
+          "f1": 1.0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "support": 45
+        },
+        "normal": {
+          "f1": 0.99009900990099,
+          "precision": 0.9803921568627451,
+          "recall": 1.0,
+          "support": 150
+        }
+      },
+      "rows": 384
+    },
+    "70": {
+      "accuracy": 0.9929245283018868,
+      "confusion_matrix": {
+        "influxdb-write-failure": {
+          "influxdb-write-failure": 56,
+          "ingestion-backpressure": 0,
+          "malformed-sensor-payload": 0,
+          "missing-device-heartbeat": 0,
+          "mqtt-broker-unavailable": 0,
+          "normal": 1
+        },
+        "ingestion-backpressure": {
+          "influxdb-write-failure": 0,
+          "ingestion-backpressure": 51,
+          "malformed-sensor-payload": 0,
+          "missing-device-heartbeat": 0,
+          "mqtt-broker-unavailable": 0,
+          "normal": 1
+        },
+        "malformed-sensor-payload": {
+          "influxdb-write-failure": 0,
+          "ingestion-backpressure": 0,
+          "malformed-sensor-payload": 55,
+          "missing-device-heartbeat": 0,
+          "mqtt-broker-unavailable": 0,
+          "normal": 1
+        },
+        "missing-device-heartbeat": {
+          "influxdb-write-failure": 0,
+          "ingestion-backpressure": 0,
+          "malformed-sensor-payload": 0,
+          "missing-device-heartbeat": 52,
+          "mqtt-broker-unavailable": 0,
+          "normal": 0
+        },
+        "mqtt-broker-unavailable": {
+          "influxdb-write-failure": 0,
+          "ingestion-backpressure": 0,
+          "malformed-sensor-payload": 0,
+          "missing-device-heartbeat": 0,
+          "mqtt-broker-unavailable": 57,
+          "normal": 0
+        },
+        "normal": {
+          "influxdb-write-failure": 0,
+          "ingestion-backpressure": 0,
+          "malformed-sensor-payload": 0,
+          "missing-device-heartbeat": 0,
+          "mqtt-broker-unavailable": 0,
+          "normal": 150
+        }
+      },
+      "correct": 421,
+      "labels": [
+        "normal",
+        "influxdb-write-failure",
+        "ingestion-backpressure",
+        "malformed-sensor-payload",
+        "missing-device-heartbeat",
+        "mqtt-broker-unavailable"
+      ],
+      "macro_f1": 0.9937552842509633,
+      "per_label": {
+        "influxdb-write-failure": {
+          "f1": 0.9911504424778761,
+          "precision": 1.0,
+          "recall": 0.9824561403508771,
+          "support": 57
+        },
+        "ingestion-backpressure": {
+          "f1": 0.9902912621359222,
+          "precision": 1.0,
+          "recall": 0.9807692307692307,
+          "support": 52
+        },
+        "malformed-sensor-payload": {
+          "f1": 0.9909909909909909,
+          "precision": 1.0,
+          "recall": 0.9821428571428571,
+          "support": 56
+        },
+        "missing-device-heartbeat": {
+          "f1": 1.0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "support": 52
+        },
+        "mqtt-broker-unavailable": {
+          "f1": 1.0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "support": 57
+        },
+        "normal": {
+          "f1": 0.99009900990099,
+          "precision": 0.9803921568627451,
+          "recall": 1.0,
+          "support": 150
+        }
+      },
+      "rows": 424
+    },
+    "71": {
+      "accuracy": 0.9943502824858758,
+      "confusion_matrix": {
+        "influxdb-write-failure": {
+          "influxdb-write-failure": 43,
+          "ingestion-backpressure": 0,
+          "malformed-sensor-payload": 0,
+          "missing-device-heartbeat": 0,
+          "mqtt-broker-unavailable": 0,
+          "normal": 0
+        },
+        "ingestion-backpressure": {
+          "influxdb-write-failure": 0,
+          "ingestion-backpressure": 40,
+          "malformed-sensor-payload": 0,
+          "missing-device-heartbeat": 0,
+          "mqtt-broker-unavailable": 0,
+          "normal": 1
+        },
+        "malformed-sensor-payload": {
+          "influxdb-write-failure": 0,
+          "ingestion-backpressure": 0,
+          "malformed-sensor-payload": 38,
+          "missing-device-heartbeat": 0,
+          "mqtt-broker-unavailable": 0,
+          "normal": 0
+        },
+        "missing-device-heartbeat": {
+          "influxdb-write-failure": 0,
+          "ingestion-backpressure": 0,
+          "malformed-sensor-payload": 0,
+          "missing-device-heartbeat": 41,
+          "mqtt-broker-unavailable": 0,
+          "normal": 1
+        },
+        "mqtt-broker-unavailable": {
+          "influxdb-write-failure": 0,
+          "ingestion-backpressure": 0,
+          "malformed-sensor-payload": 0,
+          "missing-device-heartbeat": 0,
+          "mqtt-broker-unavailable": 40,
+          "normal": 0
+        },
+        "normal": {
+          "influxdb-write-failure": 0,
+          "ingestion-backpressure": 0,
+          "malformed-sensor-payload": 0,
+          "missing-device-heartbeat": 0,
+          "mqtt-broker-unavailable": 0,
+          "normal": 150
+        }
+      },
+      "correct": 352,
+      "labels": [
+        "normal",
+        "influxdb-write-failure",
+        "ingestion-backpressure",
+        "malformed-sensor-payload",
+        "missing-device-heartbeat",
+        "mqtt-broker-unavailable"
+      ],
+      "macro_f1": 0.9948306019433798,
+      "per_label": {
+        "influxdb-write-failure": {
+          "f1": 1.0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "support": 43
+        },
+        "ingestion-backpressure": {
+          "f1": 0.9876543209876543,
+          "precision": 1.0,
+          "recall": 0.975609756097561,
+          "support": 41
+        },
+        "malformed-sensor-payload": {
+          "f1": 1.0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "support": 38
+        },
+        "missing-device-heartbeat": {
+          "f1": 0.9879518072289156,
+          "precision": 1.0,
+          "recall": 0.9761904761904762,
+          "support": 42
+        },
+        "mqtt-broker-unavailable": {
+          "f1": 1.0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "support": 40
+        },
+        "normal": {
+          "f1": 0.9933774834437086,
+          "precision": 0.9868421052631579,
+          "recall": 1.0,
+          "support": 150
+        }
+      },
+      "rows": 354
     }
   }
 }
