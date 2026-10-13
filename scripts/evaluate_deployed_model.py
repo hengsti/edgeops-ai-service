@@ -37,12 +37,12 @@ from edgeops_ai.ml import ML_MODEL_VERSION
 from edgeops_ai.schemas import ObservationV1
 from edgeops_ai.settings import Settings
 from scripts.common import (
-    DATASET_SCHEMA_VERSION,
     FEATURE_COLUMNS,
     LABELS,
     METADATA_COLUMNS,
     SCENARIOS,
     ScriptError,
+    build_dataset_metadata,
     dataset_path,
     infer_expected_label,
     non_negative_float,
@@ -136,7 +136,6 @@ def build_dataset_row(
     response: dict[str, Any],
     expected_label: str,
 ) -> dict[str, Any]:
-    metadata = observation.metadata
     features = response.get("features")
 
     if not isinstance(features, dict):
@@ -162,15 +161,7 @@ def build_dataset_row(
     if not 0.0 <= float(confidence) <= 1.0:
         raise ScriptError(f"API confidence must be between 0 and 1, got {confidence!r}.")
 
-    row: dict[str, Any] = {
-        "dataset_schema_version": DATASET_SCHEMA_VERSION,
-        "captured_at": metadata.captured_at.isoformat(),
-        "source_host": metadata.source_host,
-        "scenario_id": metadata.scenario_id,
-        "simulation_run_id": metadata.simulation_run_id,
-        "simulation_seed": metadata.simulation_seed,
-        "simulation_phase": metadata.simulation_phase,
-    }
+    row = build_dataset_metadata(observation)
 
     row.update({name: csv_value(features[name]) for name in FEATURE_COLUMNS})
 
