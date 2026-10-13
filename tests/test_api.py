@@ -1,12 +1,18 @@
+import asyncio
+import subprocess
+import sys
 from copy import deepcopy
 from pathlib import Path
 
+import httpx
 import pytest
 from fastapi.testclient import TestClient
 
+from edgeops_ai.collector_client import CollectorClient
 from edgeops_ai.main import create_app
 from edgeops_ai.ml import ML_MODEL_VERSION, MlPredictor, ModelArtifactError, load_ml_predictor
 from edgeops_ai.prediction import PredictionBackendName
+from edgeops_ai.schemas import ObservationV1
 from edgeops_ai.settings import Settings
 
 
@@ -244,7 +250,7 @@ def test_unknown_fields_are_rejected() -> None:
 
 def test_ml_health_reports_artifact_version(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(
-        "edgeops_ai.main.load_ml_predictor",
+        "edgeops_ai.ml.load_ml_predictor",
         lambda *_: MlPredictor(model=object()),
     )
     settings = Settings(
@@ -266,7 +272,7 @@ def test_ml_warming_up_uses_ml_model_version(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.setattr(
-        "edgeops_ai.main.load_ml_predictor",
+        "edgeops_ai.ml.load_ml_predictor",
         lambda *_: MlPredictor(model=object()),
     )
     settings = Settings(
@@ -319,3 +325,113 @@ def test_ml_startup_requires_artifact_sha256() -> None:
         TestClient(create_app(settings)),
     ):
         pass
+
+
+def test_rules_application_does_not_import_the_ml_stack() -> None:
+    result = subprocess.run(
+        [
+            sys.executable,
+            "-c",
+            "import asyncio, sys\n"
+            "from edgeops_ai.main import create_app\n"
+            "from edgeops_ai.settings import Settings\n"
+            "app = create_app(Settings(_env_file=None, prediction_backend='rules', "
+            "collector_polling_enabled=False))\n"
+            "async def startup():\n"
+            "    async with app.router.lifespan_context(app):\n"
+            "        assert 'joblib' not in sys.modules\n"
+            "        assert 'numpy' not in sys.modules\n"
+            "asyncio.run(startup())\n",
+        ],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert result.returncode == 0, result.stderr
+
+
+def test_collector_client_closes_when_polling_task_fails(monkeypatch: pytest.MonkeyPatch) -> None:
+    closed = False
+    original_close = CollectorClient.close
+
+    async def fail_fetch(self: CollectorClient):
+        raise RuntimeError("unexpected prediction failure")
+
+    async def record_close(self: CollectorClient) -> None:
+        nonlocal closed
+        await original_close(self)
+        closed = True
+
+    monkeypatch.setattr(CollectorClient, "fetch_observation", fail_fetch)
+    monkeypatch.setattr(CollectorClient, "close", record_close)
+    app = create_app(make_settings(collector_polling_enabled=True))
+
+    async def run() -> None:
+        with pytest.raises(RuntimeError, match="unexpected prediction failure"):
+            async with app.router.lifespan_context(app):
+                await asyncio.sleep(0)
+
+    asyncio.run(run())
+    assert closed is True
+
+
+def test_polling_recovers_and_shares_the_http_analysis_window(
+    monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+) -> None:
+    async def run() -> None:
+        failed = asyncio.Event()
+        recover = asyncio.Event()
+        recovered = asyncio.Event()
+        fetch_count = 0
+        first = ObservationV1.model_validate(observation())
+        second = deepcopy(first)
+        second.metadata.captured_at = first.metadata.captured_at.replace(second=5)
+        third = deepcopy(first)
+        third.metadata.captured_at = first.metadata.captured_at.replace(second=10)
+
+        async def fetch(self: CollectorClient) -> ObservationV1:
+            nonlocal fetch_count
+            fetch_count += 1
+            if fetch_count == 1:
+                return first
+            if fetch_count == 2:
+                raise httpx.ConnectError("collector offline")
+            if fetch_count == 3:
+                failed.set()
+                await recover.wait()
+                return third
+            recovered.set()
+            await asyncio.Event().wait()
+            raise AssertionError("Polling should have been cancelled.")
+
+        monkeypatch.setattr(CollectorClient, "fetch_observation", fetch)
+        app = create_app(
+            make_settings(collector_polling_enabled=True, collector_poll_interval_seconds=0.001)
+        )
+        async with (
+            app.router.lifespan_context(app),
+            httpx.AsyncClient(
+                transport=httpx.ASGITransport(app), base_url="http://ai.test"
+            ) as client,
+        ):
+            await asyncio.wait_for(failed.wait(), timeout=5)
+            latest = await client.get("/v1/detections/latest")
+            assert latest.json()["captured_at"] == first.metadata.captured_at.isoformat().replace(
+                "+00:00", "Z"
+            )
+            assert latest.json()["status"] == "warming-up"
+            assert app.state.analyzer.collector_last_error == "collector offline"
+
+            submitted = await client.post("/v1/observations", json=second.model_dump(mode="json"))
+            assert submitted.json()["status"] == "predicted"
+            assert submitted.json()["features"]["elapsed_seconds"] == 5
+
+            recover.set()
+            await asyncio.wait_for(recovered.wait(), timeout=5)
+            latest = await client.get("/v1/detections/latest")
+            assert latest.json()["status"] == "predicted"
+            assert latest.json()["features"]["elapsed_seconds"] == 5
+            assert app.state.analyzer.collector_last_error is None
+
+    asyncio.run(run())
+    assert "Collector polling failed: collector offline" in caplog.text
