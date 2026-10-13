@@ -98,3 +98,19 @@ def test_idle_traffic_is_not_a_broker_outage(make_features, broker_available: bo
     )
 
     assert predictor.predict(features).label == "normal"
+
+
+@pytest.mark.parametrize(
+    ("overrides", "expected"),
+    [
+        ({"broker_available": False, "heartbeat_missing": True}, "mqtt-broker-unavailable"),
+        ({"heartbeat_missing": True, "persistence_ratio": 0.0}, "missing-device-heartbeat"),
+        (
+            {"persistence_ratio": 0.0, "transform_failure_ratio": 0.1},
+            "influxdb-write-failure",
+        ),
+        ({"transform_failure_ratio": 0.1, "queue_full_rate": 1.0}, "malformed-sensor-payload"),
+    ],
+)
+def test_simultaneous_faults_keep_rule_priority(make_features, overrides, expected) -> None:
+    assert predictor.predict(make_features(**overrides)).label == expected
