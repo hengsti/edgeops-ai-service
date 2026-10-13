@@ -25,9 +25,10 @@ a small scikit-learn classifier. More on why below.
  +------------------------------------------------+
  |               edgeops-ai-service               |
  |                                                |
- |   FeatureExtractor                             |
- |   (rates + ratios from two consecutive         |
- |    observations)                               |
+ |   Analyzer                                     |
+ |      |                                         |
+ |      v                                         |
+ |   FeatureExtractor (rates + ratios)            |
  |          |                                     |
  |          v                                     |
  |   Predictor:  rules  -or-  ml                  |
@@ -41,6 +42,23 @@ Observations reach the service either through the built-in collector polling loo
 or by pushing them to `POST /v1/observations`. The feature extractor needs two
 consecutive snapshots to compute rates, so the first response after startup is
 always `"status": "warming-up"`.
+
+The runtime has explicit ownership boundaries:
+
+| Module | Responsibility |
+| --- | --- |
+| `main.py` | Select the predictor, assemble resources, and close the polling task and HTTP client |
+| `api.py` | HTTP routes and response delivery |
+| `analysis.py` | One observation window and latest analysis, shared by polling and HTTP submission |
+| `polling.py` | Fetch observations, retain the latest result during errors, and resume on recovery |
+| `collector_client.py` | Authenticated collector requests and conversion into observations |
+| `features.py` | Rates, ratios, missing-data semantics, and stream/counter reset handling |
+| `rules.py`, `ml.py` | Prediction, with the shared ML feature contract and artifact validation in `ml.py` |
+
+Rules mode loads no ML modules. ML mode loads the same approved artifact and still
+requires its SHA-256 before deserialization. The training scripts reuse the runtime
+feature extractor/vectorizer and share dataset provenance in `scripts/common.py`.
+See the [refactoring record](docs/refactoring-2026-10-12.md) for scope and validation.
 
 ## Quickstart
 
