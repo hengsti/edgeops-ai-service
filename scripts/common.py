@@ -9,7 +9,7 @@ from typing import Any, get_args
 
 import httpx
 
-from edgeops_ai.schemas import FeatureVector, PredictionLabel
+from edgeops_ai.schemas import FeatureVector, ObservationV1, PredictionLabel
 
 SCENARIOS = (
     "ingestion-backpressure",
@@ -74,6 +74,19 @@ DATASET_COLUMNS = METADATA_COLUMNS + FEATURE_COLUMNS + RESULT_COLUMNS
 
 class ScriptError(RuntimeError):
     """Raised when a script stage cannot be completed."""
+
+
+def build_dataset_metadata(observation: ObservationV1) -> dict[str, Any]:
+    metadata = observation.metadata
+    return {
+        "dataset_schema_version": DATASET_SCHEMA_VERSION,
+        "captured_at": metadata.captured_at.isoformat(),
+        "source_host": metadata.source_host,
+        "scenario_id": metadata.scenario_id,
+        "simulation_run_id": metadata.simulation_run_id,
+        "simulation_seed": metadata.simulation_seed,
+        "simulation_phase": metadata.simulation_phase,
+    }
 
 
 def normalize_label_value(value: str) -> str:
