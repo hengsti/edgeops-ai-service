@@ -37,6 +37,7 @@ from scripts.common import (
     DATASET_COLUMNS,
     DATASET_SCHEMA_VERSION,
     LABELS,
+    build_dataset_metadata,
     infer_expected_label,
     non_negative_float,
     normalize_label_value,
@@ -77,17 +78,7 @@ def build_dataset_row(
     expected_label: str,
     predicted_label: str,
 ) -> dict[str, Any]:
-    metadata = observation.metadata
-
-    row: dict[str, Any] = {
-        "dataset_schema_version": DATASET_SCHEMA_VERSION,
-        "captured_at": metadata.captured_at.isoformat(),
-        "source_host": metadata.source_host,
-        "scenario_id": metadata.scenario_id,
-        "simulation_run_id": metadata.simulation_run_id,
-        "simulation_seed": metadata.simulation_seed,
-        "simulation_phase": metadata.simulation_phase,
-    }
+    row = build_dataset_metadata(observation)
 
     row.update(features.model_dump(mode="json"))
 
