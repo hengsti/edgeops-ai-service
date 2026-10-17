@@ -29,8 +29,15 @@ def health(analyzer: Analysis) -> dict[str, str]:
 
 
 @router.post("/v1/observations", response_model=AnalysisResult, status_code=status.HTTP_200_OK)
-def create_observation(observation: ObservationV1, analyzer: Analysis) -> AnalysisResult:
-    return analyzer.analyze(observation)
+async def create_observation(
+    observation: ObservationV1, request: Request, analyzer: Analysis
+) -> AnalysisResult:
+    if request.app.state.collector_polling_enabled:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Disable collector polling before submitting observations.",
+        )
+    return await analyzer.analyze(observation)
 
 
 @router.get("/v1/detections/latest", response_model=AnalysisResult)
