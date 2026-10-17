@@ -1,6 +1,7 @@
 import asyncio
 import subprocess
 import sys
+import threading
 from copy import deepcopy
 from pathlib import Path
 
@@ -9,10 +10,11 @@ import pytest
 from fastapi.testclient import TestClient
 
 from edgeops_ai.collector_client import CollectorClient
+from edgeops_ai.features import FeatureExtractor
 from edgeops_ai.main import create_app
 from edgeops_ai.ml import ML_MODEL_VERSION, MlPredictor, ModelArtifactError, load_ml_predictor
 from edgeops_ai.prediction import PredictionBackendName
-from edgeops_ai.schemas import ObservationV1
+from edgeops_ai.schemas import FeatureVector, ObservationV1
 from edgeops_ai.settings import Settings
 
 
@@ -375,7 +377,33 @@ def test_collector_client_closes_when_polling_task_fails(monkeypatch: pytest.Mon
     assert closed is True
 
 
-def test_polling_recovers_and_shares_the_http_analysis_window(
+def test_push_analysis_runs_on_the_event_loop(monkeypatch: pytest.MonkeyPatch) -> None:
+    analysis_threads: list[int] = []
+    original_update = FeatureExtractor.update
+
+    def record_update(self: FeatureExtractor, observation: ObservationV1) -> FeatureVector | None:
+        analysis_threads.append(threading.get_ident())
+        return original_update(self, observation)
+
+    monkeypatch.setattr(FeatureExtractor, "update", record_update)
+
+    async def run() -> None:
+        app = create_app(make_settings())
+        async with (
+            app.router.lifespan_context(app),
+            httpx.AsyncClient(
+                transport=httpx.ASGITransport(app), base_url="http://ai.test"
+            ) as client,
+        ):
+            response = await client.post("/v1/observations", json=observation())
+            assert response.status_code == 200
+            assert response.json()["status"] == "warming-up"
+            assert analysis_threads == [threading.get_ident()]
+
+    asyncio.run(run())
+
+
+def test_concurrent_push_and_poll_preserve_the_polling_window(
     monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
 ) -> None:
     async def run() -> None:
@@ -386,8 +414,11 @@ def test_polling_recovers_and_shares_the_http_analysis_window(
         first = ObservationV1.model_validate(observation())
         second = deepcopy(first)
         second.metadata.captured_at = first.metadata.captured_at.replace(second=5)
+        second.metrics.messages_enqueued_total = 2000
         third = deepcopy(first)
         third.metadata.captured_at = first.metadata.captured_at.replace(second=10)
+        third.metrics.messages_enqueued_total = 1100
+        third.metrics.messages_processed_total = 1050
 
         async def fetch(self: CollectorClient) -> ObservationV1:
             nonlocal fetch_count
@@ -422,15 +453,20 @@ def test_polling_recovers_and_shares_the_http_analysis_window(
             assert latest.json()["status"] == "warming-up"
             assert app.state.analyzer.collector_last_error == "collector offline"
 
-            submitted = await client.post("/v1/observations", json=second.model_dump(mode="json"))
-            assert submitted.json()["status"] == "predicted"
-            assert submitted.json()["features"]["elapsed_seconds"] == 5
-
+            submission = asyncio.create_task(
+                client.post("/v1/observations", json=second.model_dump(mode="json"))
+            )
             recover.set()
+            submitted = await submission
+            assert submitted.status_code == 409
+
             await asyncio.wait_for(recovered.wait(), timeout=5)
             latest = await client.get("/v1/detections/latest")
             assert latest.json()["status"] == "predicted"
-            assert latest.json()["features"]["elapsed_seconds"] == 5
+            assert latest.json()["features"]["elapsed_seconds"] == 10
+            assert latest.json()["features"]["messages_enqueued_rate"] == 10
+            assert latest.json()["features"]["messages_processed_rate"] == 5
+            assert latest.json()["features"]["queue_growth_rate"] == 5
             assert app.state.analyzer.collector_last_error is None
 
     asyncio.run(run())
