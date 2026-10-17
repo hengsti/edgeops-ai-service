@@ -165,16 +165,46 @@ Inside the stack network, consumers such as control-ui use
 
 | Method | Path | Description |
 | --- | --- | --- |
-| `GET` | `/health` | liveness plus active backend and model version |
+| `GET` | `/health` | liveness, polling status, active backend and model version |
+| `GET` | `/ready` | readiness (503 before the first successful poll or during polling failures) |
+| `GET` | `/metrics` | Prometheus text metrics for polling failures and prediction freshness |
 | `POST` | `/v1/observations` | analyze one observation (409 while collector polling is enabled) |
-| `GET` | `/v1/detections/latest` | most recent analysis (404 before the first one) |
+| `GET` | `/v1/detections/latest` | most recent analysis with freshness (404 before the first one) |
 
-A detection looks like this:
+`/health` stays HTTP 200 for liveness, but reports `status: degraded` after the
+first failed collector poll. It includes `last_poll_success_at` (UTC, or `null`
+before any successful poll), `last_error`, and `consecutive_failures`. The next
+successful poll restores `ok`, clears the error, and resets the failure count.
+With polling disabled, these fields remain `null`, `null`, and `0`.
+
+`/ready` returns HTTP 200 with `status: ready` after a successful poll, and HTTP 503
+with `status: not-ready` before the first success or after a failed poll. It becomes
+ready again on recovery. Push-only mode is ready immediately.
+
+`/metrics` serves Prometheus text format 0.0.4 without labels:
+
+- `edgeops_poll_failures_total` (counter): all failed collector polls since startup;
+  recovery does not reset it.
+- `edgeops_last_prediction_timestamp` (gauge): Unix timestamp of the observation
+  used by the last completed prediction, or `0` before the first prediction.
+  Failed polls and warm-up observations retain the last prediction timestamp.
+
+The latest detection adds `observed_at` (the observation's `captured_at`),
+`age_seconds` (calculated when requested, clamped to zero for future timestamps),
+and `stale`. A detection is stale after a failed poll or when its age exceeds
+twice `COLLECTOR_POLL_INTERVAL_SECONDS` (20 seconds by default, also in push mode).
+The last result remains available during outages. These freshness fields are
+specific to `GET /v1/detections/latest`.
+
+The latest detection response looks like this:
 
 ```json
 {
   "status": "predicted",
   "captured_at": "2024-01-01T02:03:03+01:00",
+  "observed_at": "2024-01-01T02:03:03+01:00",
+  "age_seconds": 0.4,
+  "stale": false,
   "prediction": "ingestion-backpressure",
   "confidence": 0.98,
   "model_version": "lightweight-ml-0.5.0",
