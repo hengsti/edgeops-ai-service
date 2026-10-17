@@ -1,4 +1,5 @@
 import asyncio
+from datetime import datetime
 
 from edgeops_ai.features import FeatureExtractor
 from edgeops_ai.prediction import Predictor
@@ -14,6 +15,10 @@ class Analyzer:
         self._lock = asyncio.Lock()
         self.latest_detection: AnalysisResult | None = None
         self.collector_last_error: str | None = None
+        self.collector_last_success_at: datetime | None = None
+        self.collector_consecutive_failures = 0
+        self.collector_poll_failures_total = 0
+        self.last_prediction_timestamp = 0.0
 
     async def analyze(self, observation: ObservationV1) -> AnalysisResult:
         async with self._lock:
@@ -35,4 +40,6 @@ class Analyzer:
                 simulation_run_id=observation.metadata.simulation_run_id,
                 simulation_phase=observation.metadata.simulation_phase,
             )
+            if prediction is not None:
+                self.last_prediction_timestamp = observation.metadata.captured_at.timestamp()
             return self.latest_detection
