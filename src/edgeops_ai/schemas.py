@@ -194,3 +194,9 @@ class AnalysisResult(StrictModel):
     scenario_id: str | None = None
     simulation_run_id: str | None = None
     simulation_phase: str | None = None
+
+
+class LatestDetection(AnalysisResult):
+    observed_at: AwareDatetime
+    age_seconds: NonNegativeFloat
+    stale: bool
