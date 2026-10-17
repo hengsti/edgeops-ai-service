@@ -15,7 +15,7 @@ async def poll_collector(
 ) -> None:
     while True:
         try:
-            analyzer.analyze(await client.fetch_observation())
+            await analyzer.analyze(await client.fetch_observation())
             analyzer.collector_last_error = None
         except asyncio.CancelledError:
             raise
