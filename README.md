@@ -39,9 +39,11 @@ a small scikit-learn classifier. More on why below.
 ```
 
 Observations reach the service either through the built-in collector polling loop
-or by pushing them to `POST /v1/observations`. The feature extractor needs two
-consecutive snapshots to compute rates, so the first response after startup is
-always `"status": "warming-up"`.
+or by pushing them to `POST /v1/observations` with `COLLECTOR_POLLING_ENABLED=false`.
+While polling is enabled, pushes return HTTP 409 so the two sources cannot mix
+observation windows. Analyzer updates are serialized with an async lock on the
+event loop. The feature extractor needs two consecutive snapshots to compute
+rates, so the first response after startup is always `"status": "warming-up"`.
 
 The runtime has explicit ownership boundaries:
 
@@ -164,7 +166,7 @@ Inside the stack network, consumers such as control-ui use
 | Method | Path | Description |
 | --- | --- | --- |
 | `GET` | `/health` | liveness plus active backend and model version |
-| `POST` | `/v1/observations` | analyze one observation, returns the result |
+| `POST` | `/v1/observations` | analyze one observation (409 while collector polling is enabled) |
 | `GET` | `/v1/detections/latest` | most recent analysis (404 before the first one) |
 
 A detection looks like this:
