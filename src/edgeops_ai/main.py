@@ -36,6 +36,7 @@ def create_app(
             )
 
         app.state.analyzer = Analyzer(predictor)
+        app.state.collector_polling_enabled = runtime_settings.collector_polling_enabled
         async with AsyncExitStack() as resources:
             if runtime_settings.collector_polling_enabled:
                 collector_client = CollectorClient(
