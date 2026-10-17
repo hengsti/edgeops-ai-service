@@ -107,11 +107,86 @@ def enriched_observation() -> dict:
     return payload
 
 
+def metric_values(response: httpx.Response) -> dict[str, float]:
+    assert response.status_code == 200
+    assert response.headers["content-type"].startswith("text/plain; version=0.0.4")
+    values: dict[str, float] = {}
+    for line in response.text.splitlines():
+        if line and not line.startswith("#"):
+            name, value = line.split()
+            values[name] = float(value)
+    return values
+
+
+def test_readiness_in_push_mode() -> None:
+    with TestClient(create_app(make_settings())) as client:
+        response = client.get("/ready")
+
+    assert response.status_code == 200
+    assert response.json()["status"] == "ready"
+
+
+def test_readiness_waits_for_the_first_successful_poll(monkeypatch: pytest.MonkeyPatch) -> None:
+    async def fetch(self: CollectorClient) -> ObservationV1:
+        await asyncio.Event().wait()
+        raise AssertionError("Polling should have been cancelled.")
+
+    monkeypatch.setattr(CollectorClient, "fetch_observation", fetch)
+    app = create_app(make_settings(collector_polling_enabled=True))
+
+    async def run() -> None:
+        async with (
+            app.router.lifespan_context(app),
+            httpx.AsyncClient(
+                transport=httpx.ASGITransport(app), base_url="http://ai.test"
+            ) as client,
+        ):
+            response = await client.get("/ready")
+            assert response.status_code == 503
+            assert response.json()["status"] == "not-ready"
+            assert (await client.get("/health")).status_code == 200
+
+    asyncio.run(run())
+
+
+def test_metrics_retain_the_last_prediction_through_warmup() -> None:
+    with TestClient(create_app(make_settings())) as client:
+        response = client.get("/metrics")
+        assert "# TYPE edgeops_poll_failures_total counter" in response.text.splitlines()
+        assert "# TYPE edgeops_last_prediction_timestamp gauge" in response.text.splitlines()
+        assert metric_values(response) == {
+            "edgeops_poll_failures_total": 0,
+            "edgeops_last_prediction_timestamp": 0,
+        }
+
+        payload = observation()
+        assert client.post("/v1/observations", json=payload).json()["status"] == "warming-up"
+        assert metric_values(client.get("/metrics"))["edgeops_last_prediction_timestamp"] == 0
+
+        payload["metadata"]["captured_at"] = "2024-01-01T00:00:10Z"
+        assert client.post("/v1/observations", json=payload).json()["status"] == "predicted"
+        assert metric_values(client.get("/metrics")) == {
+            "edgeops_poll_failures_total": 0,
+            "edgeops_last_prediction_timestamp": 1704067210,
+        }
+
+        payload["metadata"]["captured_at"] = "2024-01-01T00:00:20Z"
+        payload["metrics"]["messages_enqueued_total"] = 1
+        assert client.post("/v1/observations", json=payload).json()["status"] == "warming-up"
+        assert (
+            metric_values(client.get("/metrics"))["edgeops_last_prediction_timestamp"] == 1704067210
+        )
+
+
 def test_health() -> None:
     with TestClient(create_app(make_settings())) as client:
         response = client.get("/health")
 
         assert response.status_code == 200
+        assert response.json()["status"] == "ok"
+        assert response.json()["last_poll_success_at"] is None
+        assert response.json()["last_error"] is None
+        assert response.json()["consecutive_failures"] == 0
 
 
 def test_documented_quickstart_starts_with_rules_backend(
@@ -238,6 +313,69 @@ def test_latest_detection() -> None:
 
         assert response.status_code == 200
         assert response.json()["status"] == "warming-up"
+
+
+@pytest.mark.parametrize(
+    ("clock_offset", "expected_age", "expected_stale"),
+    [(-1, 0, False), (0, 0, False), (20, 20, False), (20.001, 20.001, True)],
+)
+def test_latest_detection_freshness(
+    monkeypatch: pytest.MonkeyPatch,
+    clock_offset: float,
+    expected_age: float,
+    expected_stale: bool,
+) -> None:
+    monkeypatch.setattr("edgeops_ai.api.time", lambda: 1704067200 + clock_offset)
+    with TestClient(create_app(make_settings(collector_poll_interval_seconds=10))) as client:
+        submitted = client.post("/v1/observations", json=observation())
+        assert "age_seconds" not in submitted.json()
+        response = client.get("/v1/detections/latest")
+
+    assert response.status_code == 200
+    assert response.json()["observed_at"] == "2024-01-01T00:00:00Z"
+    assert response.json()["age_seconds"] == pytest.approx(expected_age)
+    assert response.json()["stale"] is expected_stale
+
+
+def test_health_degrades_when_no_poll_has_succeeded(monkeypatch: pytest.MonkeyPatch) -> None:
+    async def run() -> None:
+        failed = asyncio.Event()
+        fetch_count = 0
+
+        async def fetch(self: CollectorClient) -> ObservationV1:
+            nonlocal fetch_count
+            fetch_count += 1
+            if fetch_count <= 2:
+                raise httpx.ConnectError("collector offline")
+            failed.set()
+            await asyncio.Event().wait()
+            raise AssertionError("Polling should have been cancelled.")
+
+        monkeypatch.setattr(CollectorClient, "fetch_observation", fetch)
+        app = create_app(
+            make_settings(collector_polling_enabled=True, collector_poll_interval_seconds=0.001)
+        )
+        async with (
+            app.router.lifespan_context(app),
+            httpx.AsyncClient(
+                transport=httpx.ASGITransport(app), base_url="http://ai.test"
+            ) as client,
+        ):
+            await asyncio.wait_for(failed.wait(), timeout=5)
+            response = await client.get("/health")
+            assert response.status_code == 200
+            assert response.json()["status"] == "degraded"
+            assert response.json()["last_poll_success_at"] is None
+            assert response.json()["last_error"] == "collector offline"
+            assert response.json()["consecutive_failures"] == 2
+            assert (await client.get("/ready")).status_code == 503
+            assert metric_values(await client.get("/metrics")) == {
+                "edgeops_poll_failures_total": 2,
+                "edgeops_last_prediction_timestamp": 0,
+            }
+            assert (await client.get("/v1/detections/latest")).status_code == 404
+
+    asyncio.run(run())
 
 
 def test_unknown_fields_are_rejected() -> None:
@@ -407,6 +545,8 @@ def test_concurrent_push_and_poll_preserve_the_polling_window(
     monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
 ) -> None:
     async def run() -> None:
+        now = 1704067200.0
+        monkeypatch.setattr("edgeops_ai.api.time", lambda: now)
         failed = asyncio.Event()
         recover = asyncio.Event()
         recovered = asyncio.Event()
@@ -451,11 +591,27 @@ def test_concurrent_push_and_poll_preserve_the_polling_window(
                 "+00:00", "Z"
             )
             assert latest.json()["status"] == "warming-up"
+            assert latest.json()["observed_at"] == "2024-01-01T00:00:00Z"
+            assert latest.json()["age_seconds"] == 0
+            assert latest.json()["stale"] is True
             assert app.state.analyzer.collector_last_error == "collector offline"
+            health = await client.get("/health")
+            assert health.status_code == 200
+            assert health.json()["status"] == "degraded"
+            assert health.json()["last_error"] == "collector offline"
+            assert health.json()["consecutive_failures"] == 1
+            assert health.json()["last_poll_success_at"] is not None
+            last_success_at = health.json()["last_poll_success_at"]
+            assert (await client.get("/ready")).status_code == 503
+            assert metric_values(await client.get("/metrics")) == {
+                "edgeops_poll_failures_total": 1,
+                "edgeops_last_prediction_timestamp": 0,
+            }
 
             submission = asyncio.create_task(
                 client.post("/v1/observations", json=second.model_dump(mode="json"))
             )
+            now += 10
             recover.set()
             submitted = await submission
             assert submitted.status_code == 409
@@ -467,7 +623,22 @@ def test_concurrent_push_and_poll_preserve_the_polling_window(
             assert latest.json()["features"]["messages_enqueued_rate"] == 10
             assert latest.json()["features"]["messages_processed_rate"] == 5
             assert latest.json()["features"]["queue_growth_rate"] == 5
+            assert latest.json()["observed_at"] == "2024-01-01T00:00:10Z"
+            assert latest.json()["age_seconds"] == 0
+            assert latest.json()["stale"] is False
             assert app.state.analyzer.collector_last_error is None
+            health = await client.get("/health")
+            assert health.json()["status"] == "ok"
+            assert health.json()["last_error"] is None
+            assert health.json()["consecutive_failures"] == 0
+            assert health.json()["last_poll_success_at"] >= last_success_at
+            ready = await client.get("/ready")
+            assert ready.status_code == 200
+            assert ready.json()["status"] == "ready"
+            assert metric_values(await client.get("/metrics")) == {
+                "edgeops_poll_failures_total": 1,
+                "edgeops_last_prediction_timestamp": 1704067210,
+            }
 
     asyncio.run(run())
     assert "Collector polling failed: collector offline" in caplog.text
