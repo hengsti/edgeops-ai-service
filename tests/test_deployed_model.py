@@ -2,10 +2,10 @@ import asyncio
 
 import httpx
 import pytest
-from scripts.common import ScriptError
-from scripts.evaluate_deployed_model import post_observation, require_ml_backend
 
 from edgeops_ai.schemas import ObservationV1
+from edgeops_ai.training.common import ScriptError
+from edgeops_ai.training.deployed import post_observation, require_ml_backend
 
 
 @pytest.mark.parametrize("actual_version", ["my-retrained-model-42", "other-model"])

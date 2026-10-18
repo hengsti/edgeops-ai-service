@@ -6,43 +6,43 @@ from typing import Any
 
 import joblib
 import pytest
-from scripts.collect_rules_dataset import build_dataset_row, write_dataset
-from scripts.common import (
-    DATASET_COLUMNS,
-    DATASET_SCHEMA_VERSION,
-    FEATURE_COLUMNS,
-    ScriptError,
-)
-from scripts.evaluate_dataset import read_dataset
-from scripts.evaluate_deployed_model import (
-    DATASET_COLUMNS as DEPLOYED_DATASET_COLUMNS,
-)
-from scripts.evaluate_deployed_model import (
-    build_dataset_row as build_deployed_dataset_row,
-)
-from scripts.evaluate_deployed_model import (
-    parse_args as parse_holdout_args,
-)
-from scripts.run_pipeline import (
-    dataset_is_complete,
-)
-from scripts.run_pipeline import (
-    parse_args as parse_pipeline_args,
-)
-from scripts.simulation_manifest import empty_manifest, upsert_manifest_run, write_manifest_atomic
-from scripts.train_model import (
-    DatasetError,
-    load_training_dataset,
-    train_model,
-)
-from scripts.train_model import (
-    parse_args as parse_training_args,
-)
 
 from edgeops_ai.ml import (
     MODEL_FEATURE_COLUMNS,
     load_ml_predictor,
     vectorize_model_features,
+)
+from edgeops_ai.training.common import (
+    DATASET_COLUMNS,
+    DATASET_SCHEMA_VERSION,
+    FEATURE_COLUMNS,
+    ScriptError,
+)
+from edgeops_ai.training.dataset import build_dataset_row, write_dataset
+from edgeops_ai.training.deployed import (
+    DATASET_COLUMNS as DEPLOYED_DATASET_COLUMNS,
+)
+from edgeops_ai.training.deployed import (
+    build_dataset_row as build_deployed_dataset_row,
+)
+from edgeops_ai.training.deployed import (
+    parse_args as parse_holdout_args,
+)
+from edgeops_ai.training.evaluate import read_dataset
+from edgeops_ai.training.manifest import empty_manifest, upsert_manifest_run, write_manifest_atomic
+from edgeops_ai.training.pipeline import (
+    dataset_is_complete,
+)
+from edgeops_ai.training.pipeline import (
+    parse_args as parse_pipeline_args,
+)
+from edgeops_ai.training.train import (
+    DatasetError,
+    load_training_dataset,
+    train_model,
+)
+from edgeops_ai.training.train import (
+    parse_args as parse_training_args,
 )
 
 TEST_MODEL_VERSION = "test-model-v1"
@@ -732,10 +732,10 @@ def test_fewer_than_two_seeds_are_rejected(tmp_path: Path) -> None:
 
 
 def test_training_defaults_to_candidate_artifact() -> None:
-    assert parse_training_args([]).artifact == Path("artifacts/model-candidate.joblib")
-    assert parse_pipeline_args([]).model_artifact == Path(
-        "artifacts/model-contract-v2-experimental.joblib"
-    )
+    training = parse_training_args([]).artifact
+    assert training == parse_pipeline_args([]).model_artifact
+    assert training.name == f"model-1.0-{datetime.now(UTC):%Y%m%d}.joblib"
+    assert training != Path("artifacts/model.onnx")
 
 
 def test_holdout_defaults_to_independent_simulation_collector() -> None:

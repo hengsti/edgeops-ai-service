@@ -1,13 +1,12 @@
 import numpy as np
-from scripts.common import DATASET_SCHEMA_VERSION, LABELS, SCENARIOS
-from scripts.evaluate_feature_ablation import _candidate_evaluation
-from scripts.simulation_manifest import SIMULATION_VARIANTS, empty_manifest
-from scripts.train_model import TrainingDataset
-from scripts.validate_candidate_holdout import build_holdout_validation
-from scripts.validate_phase6_acceptance import build_acceptance_report
 from sklearn.tree import DecisionTreeClassifier
 
 from edgeops_ai.ml import MODEL_FEATURE_COLUMNS
+from edgeops_ai.training.ablation import _candidate_evaluation
+from edgeops_ai.training.common import DATASET_SCHEMA_VERSION, LABELS, SCENARIOS
+from edgeops_ai.training.manifest import SIMULATION_VARIANTS, empty_manifest
+from edgeops_ai.training.train import TrainingDataset
+from edgeops_ai.training.validate import build_acceptance_report, build_holdout_validation
 
 TEST_MODEL_VERSION = "test-model-v1"
 

@@ -2,15 +2,10 @@ import json
 from pathlib import Path
 
 import pytest
-from scripts.common import ScriptError
-from scripts.run_pipeline import (
-    DEFAULT_SIMULATION_BASE_URL,
-    assigned_variants,
-    parse_args,
-    simulation_runs_url,
-    validate_started_run,
-)
-from scripts.simulation_manifest import (
+
+from edgeops_ai.settings import Settings
+from edgeops_ai.training.common import ScriptError
+from edgeops_ai.training.manifest import (
     SimulationManifestError,
     empty_manifest,
     load_manifest,
@@ -18,8 +13,13 @@ from scripts.simulation_manifest import (
     upsert_manifest_run,
     write_manifest_atomic,
 )
-
-from edgeops_ai.settings import Settings
+from edgeops_ai.training.pipeline import (
+    DEFAULT_SIMULATION_BASE_URL,
+    assigned_variants,
+    parse_args,
+    simulation_runs_url,
+    validate_started_run,
+)
 
 
 def run_entry(csv_path: str = "ingestion-backpressure-seed-42.csv") -> dict[str, object]:

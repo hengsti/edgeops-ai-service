@@ -8,7 +8,6 @@ import numpy as np
 import onnx
 import onnxruntime as ort
 import pytest
-from scripts.export_onnx import export_onnx
 
 from edgeops_ai.ml import (
     MODEL_FEATURE_COLUMNS,
@@ -16,6 +15,7 @@ from edgeops_ai.ml import (
     load_ml_artifact,
     load_ml_predictor,
 )
+from edgeops_ai.training.export import export_onnx
 
 
 @pytest.fixture
