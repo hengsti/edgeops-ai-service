@@ -1,0 +1,4430 @@
+{
+  "all_phase_metrics": {
+    "accuracy": 0.9909638554216867,
+    "confusion_matrix": {
+      "influxdb-write-failure": {
+        "influxdb-write-failure": 700,
+        "ingestion-backpressure": 0,
+        "malformed-sensor-payload": 0,
+        "missing-device-heartbeat": 0,
+        "normal": 20
+      },
+      "ingestion-backpressure": {
+        "influxdb-write-failure": 0,
+        "ingestion-backpressure": 720,
+        "malformed-sensor-payload": 0,
+        "missing-device-heartbeat": 0,
+        "normal": 0
+      },
+      "malformed-sensor-payload": {
+        "influxdb-write-failure": 0,
+        "ingestion-backpressure": 0,
+        "malformed-sensor-payload": 720,
+        "missing-device-heartbeat": 0,
+        "normal": 0
+      },
+      "missing-device-heartbeat": {
+        "influxdb-write-failure": 0,
+        "ingestion-backpressure": 0,
+        "malformed-sensor-payload": 0,
+        "missing-device-heartbeat": 720,
+        "normal": 0
+      },
+      "normal": {
+        "influxdb-write-failure": 0,
+        "ingestion-backpressure": 20,
+        "malformed-sensor-payload": 20,
+        "missing-device-heartbeat": 0,
+        "normal": 3720
+      }
+    },
+    "correct": 6580,
+    "labels": [
+      "normal",
+      "influxdb-write-failure",
+      "ingestion-backpressure",
+      "malformed-sensor-payload",
+      "missing-device-heartbeat"
+    ],
+    "macro_f1": 0.9901036465367546,
+    "per_label": {
+      "influxdb-write-failure": {
+        "f1": 0.9859154929577464,
+        "precision": 1.0,
+        "recall": 0.9722222222222222,
+        "support": 720
+      },
+      "ingestion-backpressure": {
+        "f1": 0.9863013698630138,
+        "precision": 0.972972972972973,
+        "recall": 1.0,
+        "support": 720
+      },
+      "malformed-sensor-payload": {
+        "f1": 0.9863013698630138,
+        "precision": 0.972972972972973,
+        "recall": 1.0,
+        "support": 720
+      },
+      "missing-device-heartbeat": {
+        "f1": 1.0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "support": 720
+      },
+      "normal": {
+        "f1": 0.9919999999999999,
+        "precision": 0.9946524064171123,
+        "recall": 0.9893617021276596,
+        "support": 3760
+      }
+    },
+    "rows": 6640
+  },
+  "dataset": {
+    "files": 80,
+    "rows": 6640,
+    "runs": 80,
+    "scenarios": [
+      "influxdb-write-failure",
+      "ingestion-backpressure",
+      "malformed-sensor-payload",
+      "missing-device-heartbeat"
+    ],
+    "seeds": [
+      42,
+      43,
+      44,
+      45,
+      46,
+      47,
+      48,
+      49,
+      50,
+      51,
+      52,
+      53,
+      54,
+      55,
+      56,
+      57,
+      58,
+      59,
+      60,
+      61
+    ],
+    "validated_runs": [
+      {
+        "rows": 83,
+        "scenario_id": "influxdb-write-failure",
+        "simulation_run_id": "4af550f8-9242-43d7-85d8-b9566fb89b94",
+        "simulation_seed": 42,
+        "source_file": "influxdb-write-failure-seed-42.csv"
+      },
+      {
+        "rows": 83,
+        "scenario_id": "influxdb-write-failure",
+        "simulation_run_id": "5c35b5a1-60a5-40ff-8411-508174e16760",
+        "simulation_seed": 43,
+        "source_file": "influxdb-write-failure-seed-43.csv"
+      },
+      {
+        "rows": 83,
+        "scenario_id": "influxdb-write-failure",
+        "simulation_run_id": "90e3d883-59fa-4a6d-98e4-85565e1ff4ca",
+        "simulation_seed": 44,
+        "source_file": "influxdb-write-failure-seed-44.csv"
+      },
+      {
+        "rows": 83,
+        "scenario_id": "influxdb-write-failure",
+        "simulation_run_id": "dd141d0f-3cd6-4524-adcb-d8930f71e4b6",
+        "simulation_seed": 45,
+        "source_file": "influxdb-write-failure-seed-45.csv"
+      },
+      {
+        "rows": 83,
+        "scenario_id": "influxdb-write-failure",
+        "simulation_run_id": "c83de900-13e2-4ef9-a4cf-97c4276ea04e",
+        "simulation_seed": 46,
+        "source_file": "influxdb-write-failure-seed-46.csv"
+      },
+      {
+        "rows": 83,
+        "scenario_id": "influxdb-write-failure",
+        "simulation_run_id": "da000b37-5f71-43dc-8ac4-678028391614",
+        "simulation_seed": 47,
+        "source_file": "influxdb-write-failure-seed-47.csv"
+      },
+      {
+        "rows": 83,
+        "scenario_id": "influxdb-write-failure",
+        "simulation_run_id": "ab1d79e6-f35c-46e4-8793-6012cb32010a",
+        "simulation_seed": 48,
+        "source_file": "influxdb-write-failure-seed-48.csv"
+      },
+      {
+        "rows": 83,
+        "scenario_id": "influxdb-write-failure",
+        "simulation_run_id": "ce267743-415a-4811-bac2-73f406499b7d",
+        "simulation_seed": 49,
+        "source_file": "influxdb-write-failure-seed-49.csv"
+      },
+      {
+        "rows": 83,
+        "scenario_id": "influxdb-write-failure",
+        "simulation_run_id": "e84b58b8-fbce-4eda-b0cd-855b31224007",
+        "simulation_seed": 50,
+        "source_file": "influxdb-write-failure-seed-50.csv"
+      },
+      {
+        "rows": 83,
+        "scenario_id": "influxdb-write-failure",
+        "simulation_run_id": "8d12fc63-1d6c-4bab-800e-ec447811f3b2",
+        "simulation_seed": 51,
+        "source_file": "influxdb-write-failure-seed-51.csv"
+      },
+      {
+        "rows": 83,
+        "scenario_id": "influxdb-write-failure",
+        "simulation_run_id": "0e5dcce2-67b0-43ee-89ce-b2a790906245",
+        "simulation_seed": 52,
+        "source_file": "influxdb-write-failure-seed-52.csv"
+      },
+      {
+        "rows": 83,
+        "scenario_id": "influxdb-write-failure",
+        "simulation_run_id": "61ec66c6-5b69-4b83-a1b7-2a2e837f40d3",
+        "simulation_seed": 53,
+        "source_file": "influxdb-write-failure-seed-53.csv"
+      },
+      {
+        "rows": 83,
+        "scenario_id": "influxdb-write-failure",
+        "simulation_run_id": "e4ed2fc5-51a7-47e5-b1f4-e820cfa9787e",
+        "simulation_seed": 54,
+        "source_file": "influxdb-write-failure-seed-54.csv"
+      },
+      {
+        "rows": 83,
+        "scenario_id": "influxdb-write-failure",
+        "simulation_run_id": "493e47b0-04aa-4c07-ae0d-e396046da1c0",
+        "simulation_seed": 55,
+        "source_file": "influxdb-write-failure-seed-55.csv"
+      },
+      {
+        "rows": 83,
+        "scenario_id": "influxdb-write-failure",
+        "simulation_run_id": "4b85e92e-3823-4456-8e90-24ae4342ae8d",
+        "simulation_seed": 56,
+        "source_file": "influxdb-write-failure-seed-56.csv"
+      },
+      {
+        "rows": 83,
+        "scenario_id": "influxdb-write-failure",
+        "simulation_run_id": "fda94bc8-6e3d-47ee-9412-0306b2cf739d",
+        "simulation_seed": 57,
+        "source_file": "influxdb-write-failure-seed-57.csv"
+      },
+      {
+        "rows": 83,
+        "scenario_id": "influxdb-write-failure",
+        "simulation_run_id": "7105f779-a797-4e58-8de5-59d4fe93cf5d",
+        "simulation_seed": 58,
+        "source_file": "influxdb-write-failure-seed-58.csv"
+      },
+      {
+        "rows": 83,
+        "scenario_id": "influxdb-write-failure",
+        "simulation_run_id": "cea92ce1-2b91-4239-8e7a-84be471fe97b",
+        "simulation_seed": 59,
+        "source_file": "influxdb-write-failure-seed-59.csv"
+      },
+      {
+        "rows": 83,
+        "scenario_id": "influxdb-write-failure",
+        "simulation_run_id": "a81f3d31-1c51-43a2-a493-2394090586ef",
+        "simulation_seed": 60,
+        "source_file": "influxdb-write-failure-seed-60.csv"
+      },
+      {
+        "rows": 83,
+        "scenario_id": "influxdb-write-failure",
+        "simulation_run_id": "05943042-84dd-47f7-84da-a585ae348dc7",
+        "simulation_seed": 61,
+        "source_file": "influxdb-write-failure-seed-61.csv"
+      },
+      {
+        "rows": 83,
+        "scenario_id": "ingestion-backpressure",
+        "simulation_run_id": "68245ab0-6d9c-4334-becb-4a3481234282",
+        "simulation_seed": 42,
+        "source_file": "ingestion-backpressure-seed-42.csv"
+      },
+      {
+        "rows": 83,
+        "scenario_id": "ingestion-backpressure",
+        "simulation_run_id": "3eefd881-b840-40e4-8b5c-d402c2c31e97",
+        "simulation_seed": 43,
+        "source_file": "ingestion-backpressure-seed-43.csv"
+      },
+      {
+        "rows": 83,
+        "scenario_id": "ingestion-backpressure",
+        "simulation_run_id": "1b59e37e-edb5-4258-b2df-79833cf7eaf0",
+        "simulation_seed": 44,
+        "source_file": "ingestion-backpressure-seed-44.csv"
+      },
+      {
+        "rows": 83,
+        "scenario_id": "ingestion-backpressure",
+        "simulation_run_id": "66c42cea-b141-4d55-a03c-fc5bdbd9b973",
+        "simulation_seed": 45,
+        "source_file": "ingestion-backpressure-seed-45.csv"
+      },
+      {
+        "rows": 83,
+        "scenario_id": "ingestion-backpressure",
+        "simulation_run_id": "f1087841-15d0-4277-8d06-e6c8e4760dd4",
+        "simulation_seed": 46,
+        "source_file": "ingestion-backpressure-seed-46.csv"
+      },
+      {
+        "rows": 83,
+        "scenario_id": "ingestion-backpressure",
+        "simulation_run_id": "fdee4eb0-2a94-419c-b29d-a5c0928ff7bd",
+        "simulation_seed": 47,
+        "source_file": "ingestion-backpressure-seed-47.csv"
+      },
+      {
+        "rows": 83,
+        "scenario_id": "ingestion-backpressure",
+        "simulation_run_id": "d227dbe8-82ea-463e-baf3-f87caf4b79bd",
+        "simulation_seed": 48,
+        "source_file": "ingestion-backpressure-seed-48.csv"
+      },
+      {
+        "rows": 83,
+        "scenario_id": "ingestion-backpressure",
+        "simulation_run_id": "a7960c66-5695-4c20-b717-faab8c4199d3",
+        "simulation_seed": 49,
+        "source_file": "ingestion-backpressure-seed-49.csv"
+      },
+      {
+        "rows": 83,
+        "scenario_id": "ingestion-backpressure",
+        "simulation_run_id": "83c8251f-6595-4928-8295-18f5f0a2bd68",
+        "simulation_seed": 50,
+        "source_file": "ingestion-backpressure-seed-50.csv"
+      },
+      {
+        "rows": 83,
+        "scenario_id": "ingestion-backpressure",
+        "simulation_run_id": "a6fd7d66-e832-47ef-9d3d-6ff440d609f6",
+        "simulation_seed": 51,
+        "source_file": "ingestion-backpressure-seed-51.csv"
+      },
+      {
+        "rows": 83,
+        "scenario_id": "ingestion-backpressure",
+        "simulation_run_id": "10ddf1db-dda0-4957-a1c1-1a8ddd0d0bae",
+        "simulation_seed": 52,
+        "source_file": "ingestion-backpressure-seed-52.csv"
+      },
+      {
+        "rows": 83,
+        "scenario_id": "ingestion-backpressure",
+        "simulation_run_id": "b283db79-07aa-4073-9302-5f061e95223d",
+        "simulation_seed": 53,
+        "source_file": "ingestion-backpressure-seed-53.csv"
+      },
+      {
+        "rows": 83,
+        "scenario_id": "ingestion-backpressure",
+        "simulation_run_id": "d45099d2-e720-44da-b9e6-bae51a1befb7",
+        "simulation_seed": 54,
+        "source_file": "ingestion-backpressure-seed-54.csv"
+      },
+      {
+        "rows": 83,
+        "scenario_id": "ingestion-backpressure",
+        "simulation_run_id": "c7715dc9-b227-4f12-982e-e68986565472",
+        "simulation_seed": 55,
+        "source_file": "ingestion-backpressure-seed-55.csv"
+      },
+      {
+        "rows": 83,
+        "scenario_id": "ingestion-backpressure",
+        "simulation_run_id": "05cac417-ad2f-49ff-a9cb-de4ccc4b8534",
+        "simulation_seed": 56,
+        "source_file": "ingestion-backpressure-seed-56.csv"
+      },
+      {
+        "rows": 83,
+        "scenario_id": "ingestion-backpressure",
+        "simulation_run_id": "dccdd07a-d0bc-4e6c-8f9d-bd746ac73464",
+        "simulation_seed": 57,
+        "source_file": "ingestion-backpressure-seed-57.csv"
+      },
+      {
+        "rows": 83,
+        "scenario_id": "ingestion-backpressure",
+        "simulation_run_id": "bdab6b52-7891-4b7b-9113-2d72f7eba0ab",
+        "simulation_seed": 58,
+        "source_file": "ingestion-backpressure-seed-58.csv"
+      },
+      {
+        "rows": 83,
+        "scenario_id": "ingestion-backpressure",
+        "simulation_run_id": "4655606c-81ac-4735-bc20-360d20d27bdf",
+        "simulation_seed": 59,
+        "source_file": "ingestion-backpressure-seed-59.csv"
+      },
+      {
+        "rows": 83,
+        "scenario_id": "ingestion-backpressure",
+        "simulation_run_id": "95d08117-1a9b-48b7-92ce-28b98e66d11e",
+        "simulation_seed": 60,
+        "source_file": "ingestion-backpressure-seed-60.csv"
+      },
+      {
+        "rows": 83,
+        "scenario_id": "ingestion-backpressure",
+        "simulation_run_id": "39c8b1d5-0be2-420e-b61e-e57433f3d4d2",
+        "simulation_seed": 61,
+        "source_file": "ingestion-backpressure-seed-61.csv"
+      },
+      {
+        "rows": 83,
+        "scenario_id": "malformed-sensor-payload",
+        "simulation_run_id": "123b15fe-1d4d-4aff-9ec1-20d198b76ef7",
+        "simulation_seed": 42,
+        "source_file": "malformed-sensor-payload-seed-42.csv"
+      },
+      {
+        "rows": 83,
+        "scenario_id": "malformed-sensor-payload",
+        "simulation_run_id": "fc5059c9-1540-4982-b381-4324e0d6a537",
+        "simulation_seed": 43,
+        "source_file": "malformed-sensor-payload-seed-43.csv"
+      },
+      {
+        "rows": 83,
+        "scenario_id": "malformed-sensor-payload",
+        "simulation_run_id": "6972f8f2-9172-42b8-831d-c8bf68f987a8",
+        "simulation_seed": 44,
+        "source_file": "malformed-sensor-payload-seed-44.csv"
+      },
+      {
+        "rows": 83,
+        "scenario_id": "malformed-sensor-payload",
+        "simulation_run_id": "43000720-8b3c-4624-bee6-be7e3ea9c1c5",
+        "simulation_seed": 45,
+        "source_file": "malformed-sensor-payload-seed-45.csv"
+      },
+      {
+        "rows": 83,
+        "scenario_id": "malformed-sensor-payload",
+        "simulation_run_id": "39d77ce5-490e-4c28-8f6c-de27fbc97a00",
+        "simulation_seed": 46,
+        "source_file": "malformed-sensor-payload-seed-46.csv"
+      },
+      {
+        "rows": 83,
+        "scenario_id": "malformed-sensor-payload",
+        "simulation_run_id": "bf41697c-6c6b-4a6f-bb0d-e3e8d3ce7e8b",
+        "simulation_seed": 47,
+        "source_file": "malformed-sensor-payload-seed-47.csv"
+      },
+      {
+        "rows": 83,
+        "scenario_id": "malformed-sensor-payload",
+        "simulation_run_id": "53ce36e1-b181-4491-b5ba-e9cda98cde87",
+        "simulation_seed": 48,
+        "source_file": "malformed-sensor-payload-seed-48.csv"
+      },
+      {
+        "rows": 83,
+        "scenario_id": "malformed-sensor-payload",
+        "simulation_run_id": "db228ab4-6291-4425-8e30-801b1c635c57",
+        "simulation_seed": 49,
+        "source_file": "malformed-sensor-payload-seed-49.csv"
+      },
+      {
+        "rows": 83,
+        "scenario_id": "malformed-sensor-payload",
+        "simulation_run_id": "458aabeb-fd1c-4dad-a808-fc2296893aff",
+        "simulation_seed": 50,
+        "source_file": "malformed-sensor-payload-seed-50.csv"
+      },
+      {
+        "rows": 83,
+        "scenario_id": "malformed-sensor-payload",
+        "simulation_run_id": "aff0d8a2-26cb-4b7c-9e47-2eaa5c17dad6",
+        "simulation_seed": 51,
+        "source_file": "malformed-sensor-payload-seed-51.csv"
+      },
+      {
+        "rows": 83,
+        "scenario_id": "malformed-sensor-payload",
+        "simulation_run_id": "e259afc0-903e-470b-95d6-da5679e6dc23",
+        "simulation_seed": 52,
+        "source_file": "malformed-sensor-payload-seed-52.csv"
+      },
+      {
+        "rows": 83,
+        "scenario_id": "malformed-sensor-payload",
+        "simulation_run_id": "3a281154-986b-4be9-a92d-d8ff6996253a",
+        "simulation_seed": 53,
+        "source_file": "malformed-sensor-payload-seed-53.csv"
+      },
+      {
+        "rows": 83,
+        "scenario_id": "malformed-sensor-payload",
+        "simulation_run_id": "7ddcd2fe-1847-4ade-a6d6-be944e51df85",
+        "simulation_seed": 54,
+        "source_file": "malformed-sensor-payload-seed-54.csv"
+      },
+      {
+        "rows": 83,
+        "scenario_id": "malformed-sensor-payload",
+        "simulation_run_id": "09817636-0244-42e1-840b-aee4c7ac1d30",
+        "simulation_seed": 55,
+        "source_file": "malformed-sensor-payload-seed-55.csv"
+      },
+      {
+        "rows": 83,
+        "scenario_id": "malformed-sensor-payload",
+        "simulation_run_id": "21a49000-9444-4707-b503-77d5cde8408e",
+        "simulation_seed": 56,
+        "source_file": "malformed-sensor-payload-seed-56.csv"
+      },
+      {
+        "rows": 83,
+        "scenario_id": "malformed-sensor-payload",
+        "simulation_run_id": "e45fc55c-d6b7-478d-b80e-a6aa09097784",
+        "simulation_seed": 57,
+        "source_file": "malformed-sensor-payload-seed-57.csv"
+      },
+      {
+        "rows": 83,
+        "scenario_id": "malformed-sensor-payload",
+        "simulation_run_id": "3c9f2520-22db-45ea-813d-19a6a9ae1a04",
+        "simulation_seed": 58,
+        "source_file": "malformed-sensor-payload-seed-58.csv"
+      },
+      {
+        "rows": 83,
+        "scenario_id": "malformed-sensor-payload",
+        "simulation_run_id": "6aef93be-2c31-44c7-8998-55dc23b1850b",
+        "simulation_seed": 59,
+        "source_file": "malformed-sensor-payload-seed-59.csv"
+      },
+      {
+        "rows": 83,
+        "scenario_id": "malformed-sensor-payload",
+        "simulation_run_id": "8793070b-2bfd-426d-b278-49be31d5ac46",
+        "simulation_seed": 60,
+        "source_file": "malformed-sensor-payload-seed-60.csv"
+      },
+      {
+        "rows": 83,
+        "scenario_id": "malformed-sensor-payload",
+        "simulation_run_id": "81b13015-aba5-4459-9f25-dd18cacfcc1d",
+        "simulation_seed": 61,
+        "source_file": "malformed-sensor-payload-seed-61.csv"
+      },
+      {
+        "rows": 83,
+        "scenario_id": "missing-device-heartbeat",
+        "simulation_run_id": "15d77900-bb1c-432d-afba-bccf430de52c",
+        "simulation_seed": 42,
+        "source_file": "missing-device-heartbeat-seed-42.csv"
+      },
+      {
+        "rows": 83,
+        "scenario_id": "missing-device-heartbeat",
+        "simulation_run_id": "5f09085f-48d5-4ed3-a772-c21d159ea710",
+        "simulation_seed": 43,
+        "source_file": "missing-device-heartbeat-seed-43.csv"
+      },
+      {
+        "rows": 83,
+        "scenario_id": "missing-device-heartbeat",
+        "simulation_run_id": "79c9ca72-72b0-4709-aa7f-0b2b09358e8b",
+        "simulation_seed": 44,
+        "source_file": "missing-device-heartbeat-seed-44.csv"
+      },
+      {
+        "rows": 83,
+        "scenario_id": "missing-device-heartbeat",
+        "simulation_run_id": "a2fa914b-a15f-4e22-a836-052c01759025",
+        "simulation_seed": 45,
+        "source_file": "missing-device-heartbeat-seed-45.csv"
+      },
+      {
+        "rows": 83,
+        "scenario_id": "missing-device-heartbeat",
+        "simulation_run_id": "208fd980-60ba-4851-8d00-5f1f22bc6555",
+        "simulation_seed": 46,
+        "source_file": "missing-device-heartbeat-seed-46.csv"
+      },
+      {
+        "rows": 83,
+        "scenario_id": "missing-device-heartbeat",
+        "simulation_run_id": "7f8416cc-6c4e-41f6-9d90-d82df1a68025",
+        "simulation_seed": 47,
+        "source_file": "missing-device-heartbeat-seed-47.csv"
+      },
+      {
+        "rows": 83,
+        "scenario_id": "missing-device-heartbeat",
+        "simulation_run_id": "d2052d18-f561-4d3a-9645-5eb0de32f9b8",
+        "simulation_seed": 48,
+        "source_file": "missing-device-heartbeat-seed-48.csv"
+      },
+      {
+        "rows": 83,
+        "scenario_id": "missing-device-heartbeat",
+        "simulation_run_id": "6f372e04-aa67-4453-a758-5ef2d363bbb5",
+        "simulation_seed": 49,
+        "source_file": "missing-device-heartbeat-seed-49.csv"
+      },
+      {
+        "rows": 83,
+        "scenario_id": "missing-device-heartbeat",
+        "simulation_run_id": "3b9ed3f1-14a5-49cc-8ba8-e301cb496d59",
+        "simulation_seed": 50,
+        "source_file": "missing-device-heartbeat-seed-50.csv"
+      },
+      {
+        "rows": 83,
+        "scenario_id": "missing-device-heartbeat",
+        "simulation_run_id": "62e27673-526a-426d-9607-c0db153efb9f",
+        "simulation_seed": 51,
+        "source_file": "missing-device-heartbeat-seed-51.csv"
+      },
+      {
+        "rows": 83,
+        "scenario_id": "missing-device-heartbeat",
+        "simulation_run_id": "af662239-e274-43cb-8ac2-6c9c5d0eb89a",
+        "simulation_seed": 52,
+        "source_file": "missing-device-heartbeat-seed-52.csv"
+      },
+      {
+        "rows": 83,
+        "scenario_id": "missing-device-heartbeat",
+        "simulation_run_id": "2450ee2e-f0a8-4ea6-b6bc-5673b959af82",
+        "simulation_seed": 53,
+        "source_file": "missing-device-heartbeat-seed-53.csv"
+      },
+      {
+        "rows": 83,
+        "scenario_id": "missing-device-heartbeat",
+        "simulation_run_id": "79aaf7b3-09b2-43bd-af35-4391d7d317f4",
+        "simulation_seed": 54,
+        "source_file": "missing-device-heartbeat-seed-54.csv"
+      },
+      {
+        "rows": 83,
+        "scenario_id": "missing-device-heartbeat",
+        "simulation_run_id": "af9ec9ca-20e9-496a-88a4-c253bbff28e2",
+        "simulation_seed": 55,
+        "source_file": "missing-device-heartbeat-seed-55.csv"
+      },
+      {
+        "rows": 83,
+        "scenario_id": "missing-device-heartbeat",
+        "simulation_run_id": "80c1186b-6235-44d6-844f-ce52a7308f93",
+        "simulation_seed": 56,
+        "source_file": "missing-device-heartbeat-seed-56.csv"
+      },
+      {
+        "rows": 83,
+        "scenario_id": "missing-device-heartbeat",
+        "simulation_run_id": "c98b24d5-83e5-47da-af8e-218ae8651f7c",
+        "simulation_seed": 57,
+        "source_file": "missing-device-heartbeat-seed-57.csv"
+      },
+      {
+        "rows": 83,
+        "scenario_id": "missing-device-heartbeat",
+        "simulation_run_id": "7c7ff181-8ade-4a67-802e-f27d8f4c5e48",
+        "simulation_seed": 58,
+        "source_file": "missing-device-heartbeat-seed-58.csv"
+      },
+      {
+        "rows": 83,
+        "scenario_id": "missing-device-heartbeat",
+        "simulation_run_id": "fca7a5bb-d788-427a-a58a-931bb8077c6b",
+        "simulation_seed": 59,
+        "source_file": "missing-device-heartbeat-seed-59.csv"
+      },
+      {
+        "rows": 83,
+        "scenario_id": "missing-device-heartbeat",
+        "simulation_run_id": "98411ac4-288c-4cf6-ac08-d9647ac2576c",
+        "simulation_seed": 60,
+        "source_file": "missing-device-heartbeat-seed-60.csv"
+      },
+      {
+        "rows": 83,
+        "scenario_id": "missing-device-heartbeat",
+        "simulation_run_id": "71cb3706-23a8-44ed-8747-544bdda23bc9",
+        "simulation_seed": 61,
+        "source_file": "missing-device-heartbeat-seed-61.csv"
+      }
+    ]
+  },
+  "detection_delay": {
+    "detected_runs": 80,
+    "max_seconds": 5.035023,
+    "mean_seconds": 1.2562473125,
+    "runs": [
+      {
+        "detected": true,
+        "fault_phase_first_sample_at": "2024-01-01T13:02:38.733688+00:00",
+        "first_detection_at": "2024-01-01T13:02:43.750359+00:00",
+        "sampled_detection_delay_seconds": 5.016671,
+        "scenario_id": "influxdb-write-failure",
+        "simulation_run_id": "4af550f8-9242-43d7-85d8-b9566fb89b94",
+        "simulation_seed": 42
+      },
+      {
+        "detected": true,
+        "fault_phase_first_sample_at": "2024-01-01T13:09:41.792198+00:00",
+        "first_detection_at": "2024-01-01T13:09:46.827221+00:00",
+        "sampled_detection_delay_seconds": 5.035023,
+        "scenario_id": "influxdb-write-failure",
+        "simulation_run_id": "5c35b5a1-60a5-40ff-8411-508174e16760",
+        "simulation_seed": 43
+      },
+      {
+        "detected": true,
+        "fault_phase_first_sample_at": "2024-01-01T00:02:41.675842+00:00",
+        "first_detection_at": "2024-01-01T00:02:46.692910+00:00",
+        "sampled_detection_delay_seconds": 5.017068,
+        "scenario_id": "influxdb-write-failure",
+        "simulation_run_id": "90e3d883-59fa-4a6d-98e4-85565e1ff4ca",
+        "simulation_seed": 44
+      },
+      {
+        "detected": true,
+        "fault_phase_first_sample_at": "2024-01-01T00:09:44.674203+00:00",
+        "first_detection_at": "2024-01-01T00:09:49.702458+00:00",
+        "sampled_detection_delay_seconds": 5.028255,
+        "scenario_id": "influxdb-write-failure",
+        "simulation_run_id": "dd141d0f-3cd6-4524-adcb-d8930f71e4b6",
+        "simulation_seed": 45
+      },
+      {
+        "detected": true,
+        "fault_phase_first_sample_at": "2024-01-01T00:16:47.430516+00:00",
+        "first_detection_at": "2024-01-01T00:16:52.458403+00:00",
+        "sampled_detection_delay_seconds": 5.027887,
+        "scenario_id": "influxdb-write-failure",
+        "simulation_run_id": "c83de900-13e2-4ef9-a4cf-97c4276ea04e",
+        "simulation_seed": 46
+      },
+      {
+        "detected": true,
+        "fault_phase_first_sample_at": "2024-01-01T00:23:49.915863+00:00",
+        "first_detection_at": "2024-01-01T00:23:54.947176+00:00",
+        "sampled_detection_delay_seconds": 5.031313,
+        "scenario_id": "influxdb-write-failure",
+        "simulation_run_id": "da000b37-5f71-43dc-8ac4-678028391614",
+        "simulation_seed": 47
+      },
+      {
+        "detected": true,
+        "fault_phase_first_sample_at": "2024-01-01T00:37:54.697209+00:00",
+        "first_detection_at": "2024-01-01T00:37:59.724046+00:00",
+        "sampled_detection_delay_seconds": 5.026837,
+        "scenario_id": "influxdb-write-failure",
+        "simulation_run_id": "ab1d79e6-f35c-46e4-8793-6012cb32010a",
+        "simulation_seed": 48
+      },
+      {
+        "detected": true,
+        "fault_phase_first_sample_at": "2024-01-01T00:51:59.693860+00:00",
+        "first_detection_at": "2024-01-01T00:52:04.717890+00:00",
+        "sampled_detection_delay_seconds": 5.02403,
+        "scenario_id": "influxdb-write-failure",
+        "simulation_run_id": "ce267743-415a-4811-bac2-73f406499b7d",
+        "simulation_seed": 49
+      },
+      {
+        "detected": true,
+        "fault_phase_first_sample_at": "2024-01-01T01:06:05.910741+00:00",
+        "first_detection_at": "2024-01-01T01:06:10.930416+00:00",
+        "sampled_detection_delay_seconds": 5.019675,
+        "scenario_id": "influxdb-write-failure",
+        "simulation_run_id": "e84b58b8-fbce-4eda-b0cd-855b31224007",
+        "simulation_seed": 50
+      },
+      {
+        "detected": true,
+        "fault_phase_first_sample_at": "2024-01-01T01:20:10.816065+00:00",
+        "first_detection_at": "2024-01-01T01:20:15.849148+00:00",
+        "sampled_detection_delay_seconds": 5.033083,
+        "scenario_id": "influxdb-write-failure",
+        "simulation_run_id": "8d12fc63-1d6c-4bab-800e-ec447811f3b2",
+        "simulation_seed": 51
+      },
+      {
+        "detected": true,
+        "fault_phase_first_sample_at": "2024-01-01T01:34:15.980415+00:00",
+        "first_detection_at": "2024-01-01T01:34:21.009862+00:00",
+        "sampled_detection_delay_seconds": 5.029447,
+        "scenario_id": "influxdb-write-failure",
+        "simulation_run_id": "0e5dcce2-67b0-43ee-89ce-b2a790906245",
+        "simulation_seed": 52
+      },
+      {
+        "detected": true,
+        "fault_phase_first_sample_at": "2024-01-01T01:48:20.924903+00:00",
+        "first_detection_at": "2024-01-01T01:48:25.940172+00:00",
+        "sampled_detection_delay_seconds": 5.015269,
+        "scenario_id": "influxdb-write-failure",
+        "simulation_run_id": "61ec66c6-5b69-4b83-a1b7-2a2e837f40d3",
+        "simulation_seed": 53
+      },
+      {
+        "detected": true,
+        "fault_phase_first_sample_at": "2024-01-01T02:02:26.318216+00:00",
+        "first_detection_at": "2024-01-01T02:02:31.346601+00:00",
+        "sampled_detection_delay_seconds": 5.028385,
+        "scenario_id": "influxdb-write-failure",
+        "simulation_run_id": "e4ed2fc5-51a7-47e5-b1f4-e820cfa9787e",
+        "simulation_seed": 54
+      },
+      {
+        "detected": true,
+        "fault_phase_first_sample_at": "2024-01-01T02:16:31.478901+00:00",
+        "first_detection_at": "2024-01-01T02:16:36.505892+00:00",
+        "sampled_detection_delay_seconds": 5.026991,
+        "scenario_id": "influxdb-write-failure",
+        "simulation_run_id": "493e47b0-04aa-4c07-ae0d-e396046da1c0",
+        "simulation_seed": 55
+      },
+      {
+        "detected": true,
+        "fault_phase_first_sample_at": "2024-01-01T02:30:36.407587+00:00",
+        "first_detection_at": "2024-01-01T02:30:41.427585+00:00",
+        "sampled_detection_delay_seconds": 5.019998,
+        "scenario_id": "influxdb-write-failure",
+        "simulation_run_id": "4b85e92e-3823-4456-8e90-24ae4342ae8d",
+        "simulation_seed": 56
+      },
+      {
+        "detected": true,
+        "fault_phase_first_sample_at": "2024-01-01T02:44:41.465694+00:00",
+        "first_detection_at": "2024-01-01T02:44:46.492755+00:00",
+        "sampled_detection_delay_seconds": 5.027061,
+        "scenario_id": "influxdb-write-failure",
+        "simulation_run_id": "fda94bc8-6e3d-47ee-9412-0306b2cf739d",
+        "simulation_seed": 57
+      },
+      {
+        "detected": true,
+        "fault_phase_first_sample_at": "2024-01-01T02:58:46.596597+00:00",
+        "first_detection_at": "2024-01-01T02:58:51.623970+00:00",
+        "sampled_detection_delay_seconds": 5.027373,
+        "scenario_id": "influxdb-write-failure",
+        "simulation_run_id": "7105f779-a797-4e58-8de5-59d4fe93cf5d",
+        "simulation_seed": 58
+      },
+      {
+        "detected": true,
+        "fault_phase_first_sample_at": "2024-01-01T03:12:51.434075+00:00",
+        "first_detection_at": "2024-01-01T03:12:56.453250+00:00",
+        "sampled_detection_delay_seconds": 5.019175,
+        "scenario_id": "influxdb-write-failure",
+        "simulation_run_id": "cea92ce1-2b91-4239-8e7a-84be471fe97b",
+        "simulation_seed": 59
+      },
+      {
+        "detected": true,
+        "fault_phase_first_sample_at": "2024-01-01T03:26:56.191326+00:00",
+        "first_detection_at": "2024-01-01T03:27:01.215982+00:00",
+        "sampled_detection_delay_seconds": 5.024656,
+        "scenario_id": "influxdb-write-failure",
+        "simulation_run_id": "a81f3d31-1c51-43a2-a493-2394090586ef",
+        "simulation_seed": 60
+      },
+      {
+        "detected": true,
+        "fault_phase_first_sample_at": "2024-01-01T03:41:01.427912+00:00",
+        "first_detection_at": "2024-01-01T03:41:06.449500+00:00",
+        "sampled_detection_delay_seconds": 5.021588,
+        "scenario_id": "influxdb-write-failure",
+        "simulation_run_id": "05943042-84dd-47f7-84da-a585ae348dc7",
+        "simulation_seed": 61
+      },
+      {
+        "detected": true,
+        "fault_phase_first_sample_at": "2024-01-01T07:30:39.223305+00:00",
+        "first_detection_at": "2024-01-01T07:30:39.223305+00:00",
+        "sampled_detection_delay_seconds": 0.0,
+        "scenario_id": "ingestion-backpressure",
+        "simulation_run_id": "68245ab0-6d9c-4334-becb-4a3481234282",
+        "simulation_seed": 42
+      },
+      {
+        "detected": true,
+        "fault_phase_first_sample_at": "2024-01-01T07:37:42.194675+00:00",
+        "first_detection_at": "2024-01-01T07:37:42.194675+00:00",
+        "sampled_detection_delay_seconds": 0.0,
+        "scenario_id": "ingestion-backpressure",
+        "simulation_run_id": "3eefd881-b840-40e4-8b5c-d402c2c31e97",
+        "simulation_seed": 43
+      },
+      {
+        "detected": true,
+        "fault_phase_first_sample_at": "2024-01-01T07:44:44.639449+00:00",
+        "first_detection_at": "2024-01-01T07:44:44.639449+00:00",
+        "sampled_detection_delay_seconds": 0.0,
+        "scenario_id": "ingestion-backpressure",
+        "simulation_run_id": "1b59e37e-edb5-4258-b2df-79833cf7eaf0",
+        "simulation_seed": 44
+      },
+      {
+        "detected": true,
+        "fault_phase_first_sample_at": "2024-01-01T07:51:47.021138+00:00",
+        "first_detection_at": "2024-01-01T07:51:47.021138+00:00",
+        "sampled_detection_delay_seconds": 0.0,
+        "scenario_id": "ingestion-backpressure",
+        "simulation_run_id": "66c42cea-b141-4d55-a03c-fc5bdbd9b973",
+        "simulation_seed": 45
+      },
+      {
+        "detected": true,
+        "fault_phase_first_sample_at": "2024-01-01T07:58:50.054612+00:00",
+        "first_detection_at": "2024-01-01T07:58:50.054612+00:00",
+        "sampled_detection_delay_seconds": 0.0,
+        "scenario_id": "ingestion-backpressure",
+        "simulation_run_id": "f1087841-15d0-4277-8d06-e6c8e4760dd4",
+        "simulation_seed": 46
+      },
+      {
+        "detected": true,
+        "fault_phase_first_sample_at": "2024-01-01T08:05:53.109680+00:00",
+        "first_detection_at": "2024-01-01T08:05:53.109680+00:00",
+        "sampled_detection_delay_seconds": 0.0,
+        "scenario_id": "ingestion-backpressure",
+        "simulation_run_id": "fdee4eb0-2a94-419c-b29d-a5c0928ff7bd",
+        "simulation_seed": 47
+      },
+      {
+        "detected": true,
+        "fault_phase_first_sample_at": "2024-01-01T08:12:56.529489+00:00",
+        "first_detection_at": "2024-01-01T08:12:56.529489+00:00",
+        "sampled_detection_delay_seconds": 0.0,
+        "scenario_id": "ingestion-backpressure",
+        "simulation_run_id": "d227dbe8-82ea-463e-baf3-f87caf4b79bd",
+        "simulation_seed": 48
+      },
+      {
+        "detected": true,
+        "fault_phase_first_sample_at": "2024-01-01T08:19:58.863655+00:00",
+        "first_detection_at": "2024-01-01T08:19:58.863655+00:00",
+        "sampled_detection_delay_seconds": 0.0,
+        "scenario_id": "ingestion-backpressure",
+        "simulation_run_id": "a7960c66-5695-4c20-b717-faab8c4199d3",
+        "simulation_seed": 49
+      },
+      {
+        "detected": true,
+        "fault_phase_first_sample_at": "2024-01-01T08:27:00.874165+00:00",
+        "first_detection_at": "2024-01-01T08:27:00.874165+00:00",
+        "sampled_detection_delay_seconds": 0.0,
+        "scenario_id": "ingestion-backpressure",
+        "simulation_run_id": "83c8251f-6595-4928-8295-18f5f0a2bd68",
+        "simulation_seed": 50
+      },
+      {
+        "detected": true,
+        "fault_phase_first_sample_at": "2024-01-01T08:34:03.745642+00:00",
+        "first_detection_at": "2024-01-01T08:34:03.745642+00:00",
+        "sampled_detection_delay_seconds": 0.0,
+        "scenario_id": "ingestion-backpressure",
+        "simulation_run_id": "a6fd7d66-e832-47ef-9d3d-6ff440d609f6",
+        "simulation_seed": 51
+      },
+      {
+        "detected": true,
+        "fault_phase_first_sample_at": "2024-01-01T08:41:06.083158+00:00",
+        "first_detection_at": "2024-01-01T08:41:06.083158+00:00",
+        "sampled_detection_delay_seconds": 0.0,
+        "scenario_id": "ingestion-backpressure",
+        "simulation_run_id": "10ddf1db-dda0-4957-a1c1-1a8ddd0d0bae",
+        "simulation_seed": 52
+      },
+      {
+        "detected": true,
+        "fault_phase_first_sample_at": "2024-01-01T08:48:08.529282+00:00",
+        "first_detection_at": "2024-01-01T08:48:08.529282+00:00",
+        "sampled_detection_delay_seconds": 0.0,
+        "scenario_id": "ingestion-backpressure",
+        "simulation_run_id": "b283db79-07aa-4073-9302-5f061e95223d",
+        "simulation_seed": 53
+      },
+      {
+        "detected": true,
+        "fault_phase_first_sample_at": "2024-01-01T08:55:10.990758+00:00",
+        "first_detection_at": "2024-01-01T08:55:10.990758+00:00",
+        "sampled_detection_delay_seconds": 0.0,
+        "scenario_id": "ingestion-backpressure",
+        "simulation_run_id": "d45099d2-e720-44da-b9e6-bae51a1befb7",
+        "simulation_seed": 54
+      },
+      {
+        "detected": true,
+        "fault_phase_first_sample_at": "2024-01-01T09:02:13.452990+00:00",
+        "first_detection_at": "2024-01-01T09:02:13.452990+00:00",
+        "sampled_detection_delay_seconds": 0.0,
+        "scenario_id": "ingestion-backpressure",
+        "simulation_run_id": "c7715dc9-b227-4f12-982e-e68986565472",
+        "simulation_seed": 55
+      },
+      {
+        "detected": true,
+        "fault_phase_first_sample_at": "2024-01-01T09:09:16.287243+00:00",
+        "first_detection_at": "2024-01-01T09:09:16.287243+00:00",
+        "sampled_detection_delay_seconds": 0.0,
+        "scenario_id": "ingestion-backpressure",
+        "simulation_run_id": "05cac417-ad2f-49ff-a9cb-de4ccc4b8534",
+        "simulation_seed": 56
+      },
+      {
+        "detected": true,
+        "fault_phase_first_sample_at": "2024-01-01T09:16:19.044952+00:00",
+        "first_detection_at": "2024-01-01T09:16:19.044952+00:00",
+        "sampled_detection_delay_seconds": 0.0,
+        "scenario_id": "ingestion-backpressure",
+        "simulation_run_id": "dccdd07a-d0bc-4e6c-8f9d-bd746ac73464",
+        "simulation_seed": 57
+      },
+      {
+        "detected": true,
+        "fault_phase_first_sample_at": "2024-01-01T09:23:21.306055+00:00",
+        "first_detection_at": "2024-01-01T09:23:21.306055+00:00",
+        "sampled_detection_delay_seconds": 0.0,
+        "scenario_id": "ingestion-backpressure",
+        "simulation_run_id": "bdab6b52-7891-4b7b-9113-2d72f7eba0ab",
+        "simulation_seed": 58
+      },
+      {
+        "detected": true,
+        "fault_phase_first_sample_at": "2024-01-01T09:30:23.547472+00:00",
+        "first_detection_at": "2024-01-01T09:30:23.547472+00:00",
+        "sampled_detection_delay_seconds": 0.0,
+        "scenario_id": "ingestion-backpressure",
+        "simulation_run_id": "4655606c-81ac-4735-bc20-360d20d27bdf",
+        "simulation_seed": 59
+      },
+      {
+        "detected": true,
+        "fault_phase_first_sample_at": "2024-01-01T09:37:26.508183+00:00",
+        "first_detection_at": "2024-01-01T09:37:26.508183+00:00",
+        "sampled_detection_delay_seconds": 0.0,
+        "scenario_id": "ingestion-backpressure",
+        "simulation_run_id": "95d08117-1a9b-48b7-92ce-28b98e66d11e",
+        "simulation_seed": 60
+      },
+      {
+        "detected": true,
+        "fault_phase_first_sample_at": "2024-01-01T09:44:29.422822+00:00",
+        "first_detection_at": "2024-01-01T09:44:29.422822+00:00",
+        "sampled_detection_delay_seconds": 0.0,
+        "scenario_id": "ingestion-backpressure",
+        "simulation_run_id": "39c8b1d5-0be2-420e-b61e-e57433f3d4d2",
+        "simulation_seed": 61
+      },
+      {
+        "detected": true,
+        "fault_phase_first_sample_at": "2024-01-01T12:12:36.233397+00:00",
+        "first_detection_at": "2024-01-01T12:12:36.233397+00:00",
+        "sampled_detection_delay_seconds": 0.0,
+        "scenario_id": "malformed-sensor-payload",
+        "simulation_run_id": "123b15fe-1d4d-4aff-9ec1-20d198b76ef7",
+        "simulation_seed": 42
+      },
+      {
+        "detected": true,
+        "fault_phase_first_sample_at": "2024-01-01T12:19:40.112141+00:00",
+        "first_detection_at": "2024-01-01T12:19:40.112141+00:00",
+        "sampled_detection_delay_seconds": 0.0,
+        "scenario_id": "malformed-sensor-payload",
+        "simulation_run_id": "fc5059c9-1540-4982-b381-4324e0d6a537",
+        "simulation_seed": 43
+      },
+      {
+        "detected": true,
+        "fault_phase_first_sample_at": "2024-01-01T12:26:44.253733+00:00",
+        "first_detection_at": "2024-01-01T12:26:44.253733+00:00",
+        "sampled_detection_delay_seconds": 0.0,
+        "scenario_id": "malformed-sensor-payload",
+        "simulation_run_id": "6972f8f2-9172-42b8-831d-c8bf68f987a8",
+        "simulation_seed": 44
+      },
+      {
+        "detected": true,
+        "fault_phase_first_sample_at": "2024-01-01T12:33:46.770901+00:00",
+        "first_detection_at": "2024-01-01T12:33:46.770901+00:00",
+        "sampled_detection_delay_seconds": 0.0,
+        "scenario_id": "malformed-sensor-payload",
+        "simulation_run_id": "43000720-8b3c-4624-bee6-be7e3ea9c1c5",
+        "simulation_seed": 45
+      },
+      {
+        "detected": true,
+        "fault_phase_first_sample_at": "2024-01-01T12:40:49.308695+00:00",
+        "first_detection_at": "2024-01-01T12:40:49.308695+00:00",
+        "sampled_detection_delay_seconds": 0.0,
+        "scenario_id": "malformed-sensor-payload",
+        "simulation_run_id": "39d77ce5-490e-4c28-8f6c-de27fbc97a00",
+        "simulation_seed": 46
+      },
+      {
+        "detected": true,
+        "fault_phase_first_sample_at": "2024-01-01T12:47:52.059692+00:00",
+        "first_detection_at": "2024-01-01T12:47:52.059692+00:00",
+        "sampled_detection_delay_seconds": 0.0,
+        "scenario_id": "malformed-sensor-payload",
+        "simulation_run_id": "bf41697c-6c6b-4a6f-bb0d-e3e8d3ce7e8b",
+        "simulation_seed": 47
+      },
+      {
+        "detected": true,
+        "fault_phase_first_sample_at": "2024-01-01T00:30:52.257877+00:00",
+        "first_detection_at": "2024-01-01T00:30:52.257877+00:00",
+        "sampled_detection_delay_seconds": 0.0,
+        "scenario_id": "malformed-sensor-payload",
+        "simulation_run_id": "53ce36e1-b181-4491-b5ba-e9cda98cde87",
+        "simulation_seed": 48
+      },
+      {
+        "detected": true,
+        "fault_phase_first_sample_at": "2024-01-01T00:44:57.236626+00:00",
+        "first_detection_at": "2024-01-01T00:44:57.236626+00:00",
+        "sampled_detection_delay_seconds": 0.0,
+        "scenario_id": "malformed-sensor-payload",
+        "simulation_run_id": "db228ab4-6291-4425-8e30-801b1c635c57",
+        "simulation_seed": 49
+      },
+      {
+        "detected": true,
+        "fault_phase_first_sample_at": "2024-01-01T00:59:02.632426+00:00",
+        "first_detection_at": "2024-01-01T00:59:02.632426+00:00",
+        "sampled_detection_delay_seconds": 0.0,
+        "scenario_id": "malformed-sensor-payload",
+        "simulation_run_id": "458aabeb-fd1c-4dad-a808-fc2296893aff",
+        "simulation_seed": 50
+      },
+      {
+        "detected": true,
+        "fault_phase_first_sample_at": "2024-01-01T01:13:08.304661+00:00",
+        "first_detection_at": "2024-01-01T01:13:08.304661+00:00",
+        "sampled_detection_delay_seconds": 0.0,
+        "scenario_id": "malformed-sensor-payload",
+        "simulation_run_id": "aff0d8a2-26cb-4b7c-9e47-2eaa5c17dad6",
+        "simulation_seed": 51
+      },
+      {
+        "detected": true,
+        "fault_phase_first_sample_at": "2024-01-01T01:27:13.373109+00:00",
+        "first_detection_at": "2024-01-01T01:27:13.373109+00:00",
+        "sampled_detection_delay_seconds": 0.0,
+        "scenario_id": "malformed-sensor-payload",
+        "simulation_run_id": "e259afc0-903e-470b-95d6-da5679e6dc23",
+        "simulation_seed": 52
+      },
+      {
+        "detected": true,
+        "fault_phase_first_sample_at": "2024-01-01T01:41:18.371734+00:00",
+        "first_detection_at": "2024-01-01T01:41:18.371734+00:00",
+        "sampled_detection_delay_seconds": 0.0,
+        "scenario_id": "malformed-sensor-payload",
+        "simulation_run_id": "3a281154-986b-4be9-a92d-d8ff6996253a",
+        "simulation_seed": 53
+      },
+      {
+        "detected": true,
+        "fault_phase_first_sample_at": "2024-01-01T01:55:23.566890+00:00",
+        "first_detection_at": "2024-01-01T01:55:23.566890+00:00",
+        "sampled_detection_delay_seconds": 0.0,
+        "scenario_id": "malformed-sensor-payload",
+        "simulation_run_id": "7ddcd2fe-1847-4ade-a6d6-be944e51df85",
+        "simulation_seed": 54
+      },
+      {
+        "detected": true,
+        "fault_phase_first_sample_at": "2024-01-01T02:09:28.952578+00:00",
+        "first_detection_at": "2024-01-01T02:09:28.952578+00:00",
+        "sampled_detection_delay_seconds": 0.0,
+        "scenario_id": "malformed-sensor-payload",
+        "simulation_run_id": "09817636-0244-42e1-840b-aee4c7ac1d30",
+        "simulation_seed": 55
+      },
+      {
+        "detected": true,
+        "fault_phase_first_sample_at": "2024-01-01T02:23:34.019426+00:00",
+        "first_detection_at": "2024-01-01T02:23:34.019426+00:00",
+        "sampled_detection_delay_seconds": 0.0,
+        "scenario_id": "malformed-sensor-payload",
+        "simulation_run_id": "21a49000-9444-4707-b503-77d5cde8408e",
+        "simulation_seed": 56
+      },
+      {
+        "detected": true,
+        "fault_phase_first_sample_at": "2024-01-01T02:37:38.951658+00:00",
+        "first_detection_at": "2024-01-01T02:37:38.951658+00:00",
+        "sampled_detection_delay_seconds": 0.0,
+        "scenario_id": "malformed-sensor-payload",
+        "simulation_run_id": "e45fc55c-d6b7-478d-b80e-a6aa09097784",
+        "simulation_seed": 57
+      },
+      {
+        "detected": true,
+        "fault_phase_first_sample_at": "2024-01-01T02:51:43.837528+00:00",
+        "first_detection_at": "2024-01-01T02:51:43.837528+00:00",
+        "sampled_detection_delay_seconds": 0.0,
+        "scenario_id": "malformed-sensor-payload",
+        "simulation_run_id": "3c9f2520-22db-45ea-813d-19a6a9ae1a04",
+        "simulation_seed": 58
+      },
+      {
+        "detected": true,
+        "fault_phase_first_sample_at": "2024-01-01T03:05:49.018928+00:00",
+        "first_detection_at": "2024-01-01T03:05:49.018928+00:00",
+        "sampled_detection_delay_seconds": 0.0,
+        "scenario_id": "malformed-sensor-payload",
+        "simulation_run_id": "6aef93be-2c31-44c7-8998-55dc23b1850b",
+        "simulation_seed": 59
+      },
+      {
+        "detected": true,
+        "fault_phase_first_sample_at": "2024-01-01T03:19:53.781192+00:00",
+        "first_detection_at": "2024-01-01T03:19:53.781192+00:00",
+        "sampled_detection_delay_seconds": 0.0,
+        "scenario_id": "malformed-sensor-payload",
+        "simulation_run_id": "8793070b-2bfd-426d-b278-49be31d5ac46",
+        "simulation_seed": 60
+      },
+      {
+        "detected": true,
+        "fault_phase_first_sample_at": "2024-01-01T03:33:58.473051+00:00",
+        "first_detection_at": "2024-01-01T03:33:58.473051+00:00",
+        "sampled_detection_delay_seconds": 0.0,
+        "scenario_id": "malformed-sensor-payload",
+        "simulation_run_id": "81b13015-aba5-4459-9f25-dd18cacfcc1d",
+        "simulation_seed": 61
+      },
+      {
+        "detected": true,
+        "fault_phase_first_sample_at": "2024-01-01T09:51:31.851742+00:00",
+        "first_detection_at": "2024-01-01T09:51:31.851742+00:00",
+        "sampled_detection_delay_seconds": 0.0,
+        "scenario_id": "missing-device-heartbeat",
+        "simulation_run_id": "15d77900-bb1c-432d-afba-bccf430de52c",
+        "simulation_seed": 42
+      },
+      {
+        "detected": true,
+        "fault_phase_first_sample_at": "2024-01-01T09:58:34.307886+00:00",
+        "first_detection_at": "2024-01-01T09:58:34.307886+00:00",
+        "sampled_detection_delay_seconds": 0.0,
+        "scenario_id": "missing-device-heartbeat",
+        "simulation_run_id": "5f09085f-48d5-4ed3-a772-c21d159ea710",
+        "simulation_seed": 43
+      },
+      {
+        "detected": true,
+        "fault_phase_first_sample_at": "2024-01-01T10:05:36.889171+00:00",
+        "first_detection_at": "2024-01-01T10:05:36.889171+00:00",
+        "sampled_detection_delay_seconds": 0.0,
+        "scenario_id": "missing-device-heartbeat",
+        "simulation_run_id": "79c9ca72-72b0-4709-aa7f-0b2b09358e8b",
+        "simulation_seed": 44
+      },
+      {
+        "detected": true,
+        "fault_phase_first_sample_at": "2024-01-01T10:12:40.559174+00:00",
+        "first_detection_at": "2024-01-01T10:12:40.559174+00:00",
+        "sampled_detection_delay_seconds": 0.0,
+        "scenario_id": "missing-device-heartbeat",
+        "simulation_run_id": "a2fa914b-a15f-4e22-a836-052c01759025",
+        "simulation_seed": 45
+      },
+      {
+        "detected": true,
+        "fault_phase_first_sample_at": "2024-01-01T10:19:45.495753+00:00",
+        "first_detection_at": "2024-01-01T10:19:45.495753+00:00",
+        "sampled_detection_delay_seconds": 0.0,
+        "scenario_id": "missing-device-heartbeat",
+        "simulation_run_id": "208fd980-60ba-4851-8d00-5f1f22bc6555",
+        "simulation_seed": 46
+      },
+      {
+        "detected": true,
+        "fault_phase_first_sample_at": "2024-01-01T10:26:47.932729+00:00",
+        "first_detection_at": "2024-01-01T10:26:47.932729+00:00",
+        "sampled_detection_delay_seconds": 0.0,
+        "scenario_id": "missing-device-heartbeat",
+        "simulation_run_id": "7f8416cc-6c4e-41f6-9d90-d82df1a68025",
+        "simulation_seed": 47
+      },
+      {
+        "detected": true,
+        "fault_phase_first_sample_at": "2024-01-01T10:33:50.424014+00:00",
+        "first_detection_at": "2024-01-01T10:33:50.424014+00:00",
+        "sampled_detection_delay_seconds": 0.0,
+        "scenario_id": "missing-device-heartbeat",
+        "simulation_run_id": "d2052d18-f561-4d3a-9645-5eb0de32f9b8",
+        "simulation_seed": 48
+      },
+      {
+        "detected": true,
+        "fault_phase_first_sample_at": "2024-01-01T10:40:53.777245+00:00",
+        "first_detection_at": "2024-01-01T10:40:53.777245+00:00",
+        "sampled_detection_delay_seconds": 0.0,
+        "scenario_id": "missing-device-heartbeat",
+        "simulation_run_id": "6f372e04-aa67-4453-a758-5ef2d363bbb5",
+        "simulation_seed": 49
+      },
+      {
+        "detected": true,
+        "fault_phase_first_sample_at": "2024-01-01T10:47:57.116163+00:00",
+        "first_detection_at": "2024-01-01T10:47:57.116163+00:00",
+        "sampled_detection_delay_seconds": 0.0,
+        "scenario_id": "missing-device-heartbeat",
+        "simulation_run_id": "3b9ed3f1-14a5-49cc-8ba8-e301cb496d59",
+        "simulation_seed": 50
+      },
+      {
+        "detected": true,
+        "fault_phase_first_sample_at": "2024-01-01T10:54:59.954732+00:00",
+        "first_detection_at": "2024-01-01T10:54:59.954732+00:00",
+        "sampled_detection_delay_seconds": 0.0,
+        "scenario_id": "missing-device-heartbeat",
+        "simulation_run_id": "62e27673-526a-426d-9607-c0db153efb9f",
+        "simulation_seed": 51
+      },
+      {
+        "detected": true,
+        "fault_phase_first_sample_at": "2024-01-01T11:02:02.927873+00:00",
+        "first_detection_at": "2024-01-01T11:02:02.927873+00:00",
+        "sampled_detection_delay_seconds": 0.0,
+        "scenario_id": "missing-device-heartbeat",
+        "simulation_run_id": "af662239-e274-43cb-8ac2-6c9c5d0eb89a",
+        "simulation_seed": 52
+      },
+      {
+        "detected": true,
+        "fault_phase_first_sample_at": "2024-01-01T11:09:06.594369+00:00",
+        "first_detection_at": "2024-01-01T11:09:06.594369+00:00",
+        "sampled_detection_delay_seconds": 0.0,
+        "scenario_id": "missing-device-heartbeat",
+        "simulation_run_id": "2450ee2e-f0a8-4ea6-b6bc-5673b959af82",
+        "simulation_seed": 53
+      },
+      {
+        "detected": true,
+        "fault_phase_first_sample_at": "2024-01-01T11:16:11.389774+00:00",
+        "first_detection_at": "2024-01-01T11:16:11.389774+00:00",
+        "sampled_detection_delay_seconds": 0.0,
+        "scenario_id": "missing-device-heartbeat",
+        "simulation_run_id": "79aaf7b3-09b2-43bd-af35-4391d7d317f4",
+        "simulation_seed": 54
+      },
+      {
+        "detected": true,
+        "fault_phase_first_sample_at": "2024-01-01T11:23:15.053382+00:00",
+        "first_detection_at": "2024-01-01T11:23:15.053382+00:00",
+        "sampled_detection_delay_seconds": 0.0,
+        "scenario_id": "missing-device-heartbeat",
+        "simulation_run_id": "af9ec9ca-20e9-496a-88a4-c253bbff28e2",
+        "simulation_seed": 55
+      },
+      {
+        "detected": true,
+        "fault_phase_first_sample_at": "2024-01-01T11:30:18.368479+00:00",
+        "first_detection_at": "2024-01-01T11:30:18.368479+00:00",
+        "sampled_detection_delay_seconds": 0.0,
+        "scenario_id": "missing-device-heartbeat",
+        "simulation_run_id": "80c1186b-6235-44d6-844f-ce52a7308f93",
+        "simulation_seed": 56
+      },
+      {
+        "detected": true,
+        "fault_phase_first_sample_at": "2024-01-01T11:37:21.212851+00:00",
+        "first_detection_at": "2024-01-01T11:37:21.212851+00:00",
+        "sampled_detection_delay_seconds": 0.0,
+        "scenario_id": "missing-device-heartbeat",
+        "simulation_run_id": "c98b24d5-83e5-47da-af8e-218ae8651f7c",
+        "simulation_seed": 57
+      },
+      {
+        "detected": true,
+        "fault_phase_first_sample_at": "2024-01-01T11:44:24.280487+00:00",
+        "first_detection_at": "2024-01-01T11:44:24.280487+00:00",
+        "sampled_detection_delay_seconds": 0.0,
+        "scenario_id": "missing-device-heartbeat",
+        "simulation_run_id": "7c7ff181-8ade-4a67-802e-f27d8f4c5e48",
+        "simulation_seed": 58
+      },
+      {
+        "detected": true,
+        "fault_phase_first_sample_at": "2024-01-01T11:51:27.213979+00:00",
+        "first_detection_at": "2024-01-01T11:51:27.213979+00:00",
+        "sampled_detection_delay_seconds": 0.0,
+        "scenario_id": "missing-device-heartbeat",
+        "simulation_run_id": "fca7a5bb-d788-427a-a58a-931bb8077c6b",
+        "simulation_seed": 59
+      },
+      {
+        "detected": true,
+        "fault_phase_first_sample_at": "2024-01-01T11:58:30.130175+00:00",
+        "first_detection_at": "2024-01-01T11:58:30.130175+00:00",
+        "sampled_detection_delay_seconds": 0.0,
+        "scenario_id": "missing-device-heartbeat",
+        "simulation_run_id": "98411ac4-288c-4cf6-ac08-d9647ac2576c",
+        "simulation_seed": 60
+      },
+      {
+        "detected": true,
+        "fault_phase_first_sample_at": "2024-01-01T12:05:32.847715+00:00",
+        "first_detection_at": "2024-01-01T12:05:32.847715+00:00",
+        "sampled_detection_delay_seconds": 0.0,
+        "scenario_id": "missing-device-heartbeat",
+        "simulation_run_id": "71cb3706-23a8-44ed-8747-544bdda23bc9",
+        "simulation_seed": 61
+      }
+    ]
+  },
+  "primary_stable_phase_metrics": {
+    "accuracy": 0.9957627118644068,
+    "confusion_matrix": {
+      "influxdb-write-failure": {
+        "influxdb-write-failure": 700,
+        "ingestion-backpressure": 0,
+        "malformed-sensor-payload": 0,
+        "missing-device-heartbeat": 0,
+        "normal": 20
+      },
+      "ingestion-backpressure": {
+        "influxdb-write-failure": 0,
+        "ingestion-backpressure": 720,
+        "malformed-sensor-payload": 0,
+        "missing-device-heartbeat": 0,
+        "normal": 0
+      },
+      "malformed-sensor-payload": {
+        "influxdb-write-failure": 0,
+        "ingestion-backpressure": 0,
+        "malformed-sensor-payload": 720,
+        "missing-device-heartbeat": 0,
+        "normal": 0
+      },
+      "missing-device-heartbeat": {
+        "influxdb-write-failure": 0,
+        "ingestion-backpressure": 0,
+        "malformed-sensor-payload": 0,
+        "missing-device-heartbeat": 720,
+        "normal": 0
+      },
+      "normal": {
+        "influxdb-write-failure": 0,
+        "ingestion-backpressure": 0,
+        "malformed-sensor-payload": 0,
+        "missing-device-heartbeat": 0,
+        "normal": 1840
+      }
+    },
+    "correct": 4700,
+    "labels": [
+      "normal",
+      "influxdb-write-failure",
+      "ingestion-backpressure",
+      "malformed-sensor-payload",
+      "missing-device-heartbeat"
+    ],
+    "macro_f1": 0.9961020175104682,
+    "per_label": {
+      "influxdb-write-failure": {
+        "f1": 0.9859154929577464,
+        "precision": 1.0,
+        "recall": 0.9722222222222222,
+        "support": 720
+      },
+      "ingestion-backpressure": {
+        "f1": 1.0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "support": 720
+      },
+      "malformed-sensor-payload": {
+        "f1": 1.0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "support": 720
+      },
+      "missing-device-heartbeat": {
+        "f1": 1.0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "support": 720
+      },
+      "normal": {
+        "f1": 0.9945945945945946,
+        "precision": 0.989247311827957,
+        "recall": 1.0,
+        "support": 1840
+      }
+    },
+    "rows": 4720
+  },
+  "recovery": {
+    "alert_rows": 40,
+    "max_sampled_clearance_delay_seconds": 5.031082,
+    "mean_sampled_clearance_delay_seconds": 2.5112380874999998,
+    "rows": 1920,
+    "runs": [
+      {
+        "alert_rate": 0.0,
+        "alert_rows": 0,
+        "cleared_during_observation": true,
+        "last_alert_offset_seconds": null,
+        "leading_alert_rows": 0,
+        "recovery_rows": 24,
+        "sampled_clearance_delay_seconds": 0.0,
+        "scenario_id": "influxdb-write-failure",
+        "simulation_run_id": "4af550f8-9242-43d7-85d8-b9566fb89b94",
+        "simulation_seed": 42
+      },
+      {
+        "alert_rate": 0.0,
+        "alert_rows": 0,
+        "cleared_during_observation": true,
+        "last_alert_offset_seconds": null,
+        "leading_alert_rows": 0,
+        "recovery_rows": 24,
+        "sampled_clearance_delay_seconds": 0.0,
+        "scenario_id": "influxdb-write-failure",
+        "simulation_run_id": "5c35b5a1-60a5-40ff-8411-508174e16760",
+        "simulation_seed": 43
+      },
+      {
+        "alert_rate": 0.0,
+        "alert_rows": 0,
+        "cleared_during_observation": true,
+        "last_alert_offset_seconds": null,
+        "leading_alert_rows": 0,
+        "recovery_rows": 24,
+        "sampled_clearance_delay_seconds": 0.0,
+        "scenario_id": "influxdb-write-failure",
+        "simulation_run_id": "90e3d883-59fa-4a6d-98e4-85565e1ff4ca",
+        "simulation_seed": 44
+      },
+      {
+        "alert_rate": 0.0,
+        "alert_rows": 0,
+        "cleared_during_observation": true,
+        "last_alert_offset_seconds": null,
+        "leading_alert_rows": 0,
+        "recovery_rows": 24,
+        "sampled_clearance_delay_seconds": 0.0,
+        "scenario_id": "influxdb-write-failure",
+        "simulation_run_id": "dd141d0f-3cd6-4524-adcb-d8930f71e4b6",
+        "simulation_seed": 45
+      },
+      {
+        "alert_rate": 0.0,
+        "alert_rows": 0,
+        "cleared_during_observation": true,
+        "last_alert_offset_seconds": null,
+        "leading_alert_rows": 0,
+        "recovery_rows": 24,
+        "sampled_clearance_delay_seconds": 0.0,
+        "scenario_id": "influxdb-write-failure",
+        "simulation_run_id": "c83de900-13e2-4ef9-a4cf-97c4276ea04e",
+        "simulation_seed": 46
+      },
+      {
+        "alert_rate": 0.0,
+        "alert_rows": 0,
+        "cleared_during_observation": true,
+        "last_alert_offset_seconds": null,
+        "leading_alert_rows": 0,
+        "recovery_rows": 24,
+        "sampled_clearance_delay_seconds": 0.0,
+        "scenario_id": "influxdb-write-failure",
+        "simulation_run_id": "da000b37-5f71-43dc-8ac4-678028391614",
+        "simulation_seed": 47
+      },
+      {
+        "alert_rate": 0.0,
+        "alert_rows": 0,
+        "cleared_during_observation": true,
+        "last_alert_offset_seconds": null,
+        "leading_alert_rows": 0,
+        "recovery_rows": 24,
+        "sampled_clearance_delay_seconds": 0.0,
+        "scenario_id": "influxdb-write-failure",
+        "simulation_run_id": "ab1d79e6-f35c-46e4-8793-6012cb32010a",
+        "simulation_seed": 48
+      },
+      {
+        "alert_rate": 0.0,
+        "alert_rows": 0,
+        "cleared_during_observation": true,
+        "last_alert_offset_seconds": null,
+        "leading_alert_rows": 0,
+        "recovery_rows": 24,
+        "sampled_clearance_delay_seconds": 0.0,
+        "scenario_id": "influxdb-write-failure",
+        "simulation_run_id": "ce267743-415a-4811-bac2-73f406499b7d",
+        "simulation_seed": 49
+      },
+      {
+        "alert_rate": 0.0,
+        "alert_rows": 0,
+        "cleared_during_observation": true,
+        "last_alert_offset_seconds": null,
+        "leading_alert_rows": 0,
+        "recovery_rows": 24,
+        "sampled_clearance_delay_seconds": 0.0,
+        "scenario_id": "influxdb-write-failure",
+        "simulation_run_id": "e84b58b8-fbce-4eda-b0cd-855b31224007",
+        "simulation_seed": 50
+      },
+      {
+        "alert_rate": 0.0,
+        "alert_rows": 0,
+        "cleared_during_observation": true,
+        "last_alert_offset_seconds": null,
+        "leading_alert_rows": 0,
+        "recovery_rows": 24,
+        "sampled_clearance_delay_seconds": 0.0,
+        "scenario_id": "influxdb-write-failure",
+        "simulation_run_id": "8d12fc63-1d6c-4bab-800e-ec447811f3b2",
+        "simulation_seed": 51
+      },
+      {
+        "alert_rate": 0.0,
+        "alert_rows": 0,
+        "cleared_during_observation": true,
+        "last_alert_offset_seconds": null,
+        "leading_alert_rows": 0,
+        "recovery_rows": 24,
+        "sampled_clearance_delay_seconds": 0.0,
+        "scenario_id": "influxdb-write-failure",
+        "simulation_run_id": "0e5dcce2-67b0-43ee-89ce-b2a790906245",
+        "simulation_seed": 52
+      },
+      {
+        "alert_rate": 0.0,
+        "alert_rows": 0,
+        "cleared_during_observation": true,
+        "last_alert_offset_seconds": null,
+        "leading_alert_rows": 0,
+        "recovery_rows": 24,
+        "sampled_clearance_delay_seconds": 0.0,
+        "scenario_id": "influxdb-write-failure",
+        "simulation_run_id": "61ec66c6-5b69-4b83-a1b7-2a2e837f40d3",
+        "simulation_seed": 53
+      },
+      {
+        "alert_rate": 0.0,
+        "alert_rows": 0,
+        "cleared_during_observation": true,
+        "last_alert_offset_seconds": null,
+        "leading_alert_rows": 0,
+        "recovery_rows": 24,
+        "sampled_clearance_delay_seconds": 0.0,
+        "scenario_id": "influxdb-write-failure",
+        "simulation_run_id": "e4ed2fc5-51a7-47e5-b1f4-e820cfa9787e",
+        "simulation_seed": 54
+      },
+      {
+        "alert_rate": 0.0,
+        "alert_rows": 0,
+        "cleared_during_observation": true,
+        "last_alert_offset_seconds": null,
+        "leading_alert_rows": 0,
+        "recovery_rows": 24,
+        "sampled_clearance_delay_seconds": 0.0,
+        "scenario_id": "influxdb-write-failure",
+        "simulation_run_id": "493e47b0-04aa-4c07-ae0d-e396046da1c0",
+        "simulation_seed": 55
+      },
+      {
+        "alert_rate": 0.0,
+        "alert_rows": 0,
+        "cleared_during_observation": true,
+        "last_alert_offset_seconds": null,
+        "leading_alert_rows": 0,
+        "recovery_rows": 24,
+        "sampled_clearance_delay_seconds": 0.0,
+        "scenario_id": "influxdb-write-failure",
+        "simulation_run_id": "4b85e92e-3823-4456-8e90-24ae4342ae8d",
+        "simulation_seed": 56
+      },
+      {
+        "alert_rate": 0.0,
+        "alert_rows": 0,
+        "cleared_during_observation": true,
+        "last_alert_offset_seconds": null,
+        "leading_alert_rows": 0,
+        "recovery_rows": 24,
+        "sampled_clearance_delay_seconds": 0.0,
+        "scenario_id": "influxdb-write-failure",
+        "simulation_run_id": "fda94bc8-6e3d-47ee-9412-0306b2cf739d",
+        "simulation_seed": 57
+      },
+      {
+        "alert_rate": 0.0,
+        "alert_rows": 0,
+        "cleared_during_observation": true,
+        "last_alert_offset_seconds": null,
+        "leading_alert_rows": 0,
+        "recovery_rows": 24,
+        "sampled_clearance_delay_seconds": 0.0,
+        "scenario_id": "influxdb-write-failure",
+        "simulation_run_id": "7105f779-a797-4e58-8de5-59d4fe93cf5d",
+        "simulation_seed": 58
+      },
+      {
+        "alert_rate": 0.0,
+        "alert_rows": 0,
+        "cleared_during_observation": true,
+        "last_alert_offset_seconds": null,
+        "leading_alert_rows": 0,
+        "recovery_rows": 24,
+        "sampled_clearance_delay_seconds": 0.0,
+        "scenario_id": "influxdb-write-failure",
+        "simulation_run_id": "cea92ce1-2b91-4239-8e7a-84be471fe97b",
+        "simulation_seed": 59
+      },
+      {
+        "alert_rate": 0.0,
+        "alert_rows": 0,
+        "cleared_during_observation": true,
+        "last_alert_offset_seconds": null,
+        "leading_alert_rows": 0,
+        "recovery_rows": 24,
+        "sampled_clearance_delay_seconds": 0.0,
+        "scenario_id": "influxdb-write-failure",
+        "simulation_run_id": "a81f3d31-1c51-43a2-a493-2394090586ef",
+        "simulation_seed": 60
+      },
+      {
+        "alert_rate": 0.0,
+        "alert_rows": 0,
+        "cleared_during_observation": true,
+        "last_alert_offset_seconds": null,
+        "leading_alert_rows": 0,
+        "recovery_rows": 24,
+        "sampled_clearance_delay_seconds": 0.0,
+        "scenario_id": "influxdb-write-failure",
+        "simulation_run_id": "05943042-84dd-47f7-84da-a585ae348dc7",
+        "simulation_seed": 61
+      },
+      {
+        "alert_rate": 0.041666666666666664,
+        "alert_rows": 1,
+        "cleared_during_observation": true,
+        "last_alert_offset_seconds": 0.0,
+        "leading_alert_rows": 1,
+        "recovery_rows": 24,
+        "sampled_clearance_delay_seconds": 5.017035,
+        "scenario_id": "ingestion-backpressure",
+        "simulation_run_id": "68245ab0-6d9c-4334-becb-4a3481234282",
+        "simulation_seed": 42
+      },
+      {
+        "alert_rate": 0.041666666666666664,
+        "alert_rows": 1,
+        "cleared_during_observation": true,
+        "last_alert_offset_seconds": 0.0,
+        "leading_alert_rows": 1,
+        "recovery_rows": 24,
+        "sampled_clearance_delay_seconds": 5.027043,
+        "scenario_id": "ingestion-backpressure",
+        "simulation_run_id": "3eefd881-b840-40e4-8b5c-d402c2c31e97",
+        "simulation_seed": 43
+      },
+      {
+        "alert_rate": 0.041666666666666664,
+        "alert_rows": 1,
+        "cleared_during_observation": true,
+        "last_alert_offset_seconds": 0.0,
+        "leading_alert_rows": 1,
+        "recovery_rows": 24,
+        "sampled_clearance_delay_seconds": 5.021129,
+        "scenario_id": "ingestion-backpressure",
+        "simulation_run_id": "1b59e37e-edb5-4258-b2df-79833cf7eaf0",
+        "simulation_seed": 44
+      },
+      {
+        "alert_rate": 0.041666666666666664,
+        "alert_rows": 1,
+        "cleared_during_observation": true,
+        "last_alert_offset_seconds": 0.0,
+        "leading_alert_rows": 1,
+        "recovery_rows": 24,
+        "sampled_clearance_delay_seconds": 5.023193,
+        "scenario_id": "ingestion-backpressure",
+        "simulation_run_id": "66c42cea-b141-4d55-a03c-fc5bdbd9b973",
+        "simulation_seed": 45
+      },
+      {
+        "alert_rate": 0.041666666666666664,
+        "alert_rows": 1,
+        "cleared_during_observation": true,
+        "last_alert_offset_seconds": 0.0,
+        "leading_alert_rows": 1,
+        "recovery_rows": 24,
+        "sampled_clearance_delay_seconds": 5.024552,
+        "scenario_id": "ingestion-backpressure",
+        "simulation_run_id": "f1087841-15d0-4277-8d06-e6c8e4760dd4",
+        "simulation_seed": 46
+      },
+      {
+        "alert_rate": 0.041666666666666664,
+        "alert_rows": 1,
+        "cleared_during_observation": true,
+        "last_alert_offset_seconds": 0.0,
+        "leading_alert_rows": 1,
+        "recovery_rows": 24,
+        "sampled_clearance_delay_seconds": 5.026992,
+        "scenario_id": "ingestion-backpressure",
+        "simulation_run_id": "fdee4eb0-2a94-419c-b29d-a5c0928ff7bd",
+        "simulation_seed": 47
+      },
+      {
+        "alert_rate": 0.041666666666666664,
+        "alert_rows": 1,
+        "cleared_during_observation": true,
+        "last_alert_offset_seconds": 0.0,
+        "leading_alert_rows": 1,
+        "recovery_rows": 24,
+        "sampled_clearance_delay_seconds": 5.017276,
+        "scenario_id": "ingestion-backpressure",
+        "simulation_run_id": "d227dbe8-82ea-463e-baf3-f87caf4b79bd",
+        "simulation_seed": 48
+      },
+      {
+        "alert_rate": 0.041666666666666664,
+        "alert_rows": 1,
+        "cleared_during_observation": true,
+        "last_alert_offset_seconds": 0.0,
+        "leading_alert_rows": 1,
+        "recovery_rows": 24,
+        "sampled_clearance_delay_seconds": 5.019235,
+        "scenario_id": "ingestion-backpressure",
+        "simulation_run_id": "a7960c66-5695-4c20-b717-faab8c4199d3",
+        "simulation_seed": 49
+      },
+      {
+        "alert_rate": 0.041666666666666664,
+        "alert_rows": 1,
+        "cleared_during_observation": true,
+        "last_alert_offset_seconds": 0.0,
+        "leading_alert_rows": 1,
+        "recovery_rows": 24,
+        "sampled_clearance_delay_seconds": 5.029813,
+        "scenario_id": "ingestion-backpressure",
+        "simulation_run_id": "83c8251f-6595-4928-8295-18f5f0a2bd68",
+        "simulation_seed": 50
+      },
+      {
+        "alert_rate": 0.041666666666666664,
+        "alert_rows": 1,
+        "cleared_during_observation": true,
+        "last_alert_offset_seconds": 0.0,
+        "leading_alert_rows": 1,
+        "recovery_rows": 24,
+        "sampled_clearance_delay_seconds": 5.031082,
+        "scenario_id": "ingestion-backpressure",
+        "simulation_run_id": "a6fd7d66-e832-47ef-9d3d-6ff440d609f6",
+        "simulation_seed": 51
+      },
+      {
+        "alert_rate": 0.041666666666666664,
+        "alert_rows": 1,
+        "cleared_during_observation": true,
+        "last_alert_offset_seconds": 0.0,
+        "leading_alert_rows": 1,
+        "recovery_rows": 24,
+        "sampled_clearance_delay_seconds": 5.018632,
+        "scenario_id": "ingestion-backpressure",
+        "simulation_run_id": "10ddf1db-dda0-4957-a1c1-1a8ddd0d0bae",
+        "simulation_seed": 52
+      },
+      {
+        "alert_rate": 0.041666666666666664,
+        "alert_rows": 1,
+        "cleared_during_observation": true,
+        "last_alert_offset_seconds": 0.0,
+        "leading_alert_rows": 1,
+        "recovery_rows": 24,
+        "sampled_clearance_delay_seconds": 5.021496,
+        "scenario_id": "ingestion-backpressure",
+        "simulation_run_id": "b283db79-07aa-4073-9302-5f061e95223d",
+        "simulation_seed": 53
+      },
+      {
+        "alert_rate": 0.041666666666666664,
+        "alert_rows": 1,
+        "cleared_during_observation": true,
+        "last_alert_offset_seconds": 0.0,
+        "leading_alert_rows": 1,
+        "recovery_rows": 24,
+        "sampled_clearance_delay_seconds": 5.014952,
+        "scenario_id": "ingestion-backpressure",
+        "simulation_run_id": "d45099d2-e720-44da-b9e6-bae51a1befb7",
+        "simulation_seed": 54
+      },
+      {
+        "alert_rate": 0.041666666666666664,
+        "alert_rows": 1,
+        "cleared_during_observation": true,
+        "last_alert_offset_seconds": 0.0,
+        "leading_alert_rows": 1,
+        "recovery_rows": 24,
+        "sampled_clearance_delay_seconds": 5.014845,
+        "scenario_id": "ingestion-backpressure",
+        "simulation_run_id": "c7715dc9-b227-4f12-982e-e68986565472",
+        "simulation_seed": 55
+      },
+      {
+        "alert_rate": 0.041666666666666664,
+        "alert_rows": 1,
+        "cleared_during_observation": true,
+        "last_alert_offset_seconds": 0.0,
+        "leading_alert_rows": 1,
+        "recovery_rows": 24,
+        "sampled_clearance_delay_seconds": 5.014663,
+        "scenario_id": "ingestion-backpressure",
+        "simulation_run_id": "05cac417-ad2f-49ff-a9cb-de4ccc4b8534",
+        "simulation_seed": 56
+      },
+      {
+        "alert_rate": 0.041666666666666664,
+        "alert_rows": 1,
+        "cleared_during_observation": true,
+        "last_alert_offset_seconds": 0.0,
+        "leading_alert_rows": 1,
+        "recovery_rows": 24,
+        "sampled_clearance_delay_seconds": 5.020924,
+        "scenario_id": "ingestion-backpressure",
+        "simulation_run_id": "dccdd07a-d0bc-4e6c-8f9d-bd746ac73464",
+        "simulation_seed": 57
+      },
+      {
+        "alert_rate": 0.041666666666666664,
+        "alert_rows": 1,
+        "cleared_during_observation": true,
+        "last_alert_offset_seconds": 0.0,
+        "leading_alert_rows": 1,
+        "recovery_rows": 24,
+        "sampled_clearance_delay_seconds": 5.017766,
+        "scenario_id": "ingestion-backpressure",
+        "simulation_run_id": "bdab6b52-7891-4b7b-9113-2d72f7eba0ab",
+        "simulation_seed": 58
+      },
+      {
+        "alert_rate": 0.041666666666666664,
+        "alert_rows": 1,
+        "cleared_during_observation": true,
+        "last_alert_offset_seconds": 0.0,
+        "leading_alert_rows": 1,
+        "recovery_rows": 24,
+        "sampled_clearance_delay_seconds": 5.030321,
+        "scenario_id": "ingestion-backpressure",
+        "simulation_run_id": "4655606c-81ac-4735-bc20-360d20d27bdf",
+        "simulation_seed": 59
+      },
+      {
+        "alert_rate": 0.041666666666666664,
+        "alert_rows": 1,
+        "cleared_during_observation": true,
+        "last_alert_offset_seconds": 0.0,
+        "leading_alert_rows": 1,
+        "recovery_rows": 24,
+        "sampled_clearance_delay_seconds": 5.0284,
+        "scenario_id": "ingestion-backpressure",
+        "simulation_run_id": "95d08117-1a9b-48b7-92ce-28b98e66d11e",
+        "simulation_seed": 60
+      },
+      {
+        "alert_rate": 0.041666666666666664,
+        "alert_rows": 1,
+        "cleared_during_observation": true,
+        "last_alert_offset_seconds": 0.0,
+        "leading_alert_rows": 1,
+        "recovery_rows": 24,
+        "sampled_clearance_delay_seconds": 5.029585,
+        "scenario_id": "ingestion-backpressure",
+        "simulation_run_id": "39c8b1d5-0be2-420e-b61e-e57433f3d4d2",
+        "simulation_seed": 61
+      },
+      {
+        "alert_rate": 0.041666666666666664,
+        "alert_rows": 1,
+        "cleared_during_observation": true,
+        "last_alert_offset_seconds": 0.0,
+        "leading_alert_rows": 1,
+        "recovery_rows": 24,
+        "sampled_clearance_delay_seconds": 5.026321,
+        "scenario_id": "malformed-sensor-payload",
+        "simulation_run_id": "123b15fe-1d4d-4aff-9ec1-20d198b76ef7",
+        "simulation_seed": 42
+      },
+      {
+        "alert_rate": 0.041666666666666664,
+        "alert_rows": 1,
+        "cleared_during_observation": true,
+        "last_alert_offset_seconds": 0.0,
+        "leading_alert_rows": 1,
+        "recovery_rows": 24,
+        "sampled_clearance_delay_seconds": 5.02796,
+        "scenario_id": "malformed-sensor-payload",
+        "simulation_run_id": "fc5059c9-1540-4982-b381-4324e0d6a537",
+        "simulation_seed": 43
+      },
+      {
+        "alert_rate": 0.041666666666666664,
+        "alert_rows": 1,
+        "cleared_during_observation": true,
+        "last_alert_offset_seconds": 0.0,
+        "leading_alert_rows": 1,
+        "recovery_rows": 24,
+        "sampled_clearance_delay_seconds": 5.014618,
+        "scenario_id": "malformed-sensor-payload",
+        "simulation_run_id": "6972f8f2-9172-42b8-831d-c8bf68f987a8",
+        "simulation_seed": 44
+      },
+      {
+        "alert_rate": 0.041666666666666664,
+        "alert_rows": 1,
+        "cleared_during_observation": true,
+        "last_alert_offset_seconds": 0.0,
+        "leading_alert_rows": 1,
+        "recovery_rows": 24,
+        "sampled_clearance_delay_seconds": 5.02872,
+        "scenario_id": "malformed-sensor-payload",
+        "simulation_run_id": "43000720-8b3c-4624-bee6-be7e3ea9c1c5",
+        "simulation_seed": 45
+      },
+      {
+        "alert_rate": 0.041666666666666664,
+        "alert_rows": 1,
+        "cleared_during_observation": true,
+        "last_alert_offset_seconds": 0.0,
+        "leading_alert_rows": 1,
+        "recovery_rows": 24,
+        "sampled_clearance_delay_seconds": 5.01981,
+        "scenario_id": "malformed-sensor-payload",
+        "simulation_run_id": "39d77ce5-490e-4c28-8f6c-de27fbc97a00",
+        "simulation_seed": 46
+      },
+      {
+        "alert_rate": 0.041666666666666664,
+        "alert_rows": 1,
+        "cleared_during_observation": true,
+        "last_alert_offset_seconds": 0.0,
+        "leading_alert_rows": 1,
+        "recovery_rows": 24,
+        "sampled_clearance_delay_seconds": 5.027925,
+        "scenario_id": "malformed-sensor-payload",
+        "simulation_run_id": "bf41697c-6c6b-4a6f-bb0d-e3e8d3ce7e8b",
+        "simulation_seed": 47
+      },
+      {
+        "alert_rate": 0.041666666666666664,
+        "alert_rows": 1,
+        "cleared_during_observation": true,
+        "last_alert_offset_seconds": 0.0,
+        "leading_alert_rows": 1,
+        "recovery_rows": 24,
+        "sampled_clearance_delay_seconds": 5.017017,
+        "scenario_id": "malformed-sensor-payload",
+        "simulation_run_id": "53ce36e1-b181-4491-b5ba-e9cda98cde87",
+        "simulation_seed": 48
+      },
+      {
+        "alert_rate": 0.041666666666666664,
+        "alert_rows": 1,
+        "cleared_during_observation": true,
+        "last_alert_offset_seconds": 0.0,
+        "leading_alert_rows": 1,
+        "recovery_rows": 24,
+        "sampled_clearance_delay_seconds": 5.013427,
+        "scenario_id": "malformed-sensor-payload",
+        "simulation_run_id": "db228ab4-6291-4425-8e30-801b1c635c57",
+        "simulation_seed": 49
+      },
+      {
+        "alert_rate": 0.041666666666666664,
+        "alert_rows": 1,
+        "cleared_during_observation": true,
+        "last_alert_offset_seconds": 0.0,
+        "leading_alert_rows": 1,
+        "recovery_rows": 24,
+        "sampled_clearance_delay_seconds": 5.026467,
+        "scenario_id": "malformed-sensor-payload",
+        "simulation_run_id": "458aabeb-fd1c-4dad-a808-fc2296893aff",
+        "simulation_seed": 50
+      },
+      {
+        "alert_rate": 0.041666666666666664,
+        "alert_rows": 1,
+        "cleared_during_observation": true,
+        "last_alert_offset_seconds": 0.0,
+        "leading_alert_rows": 1,
+        "recovery_rows": 24,
+        "sampled_clearance_delay_seconds": 5.024892,
+        "scenario_id": "malformed-sensor-payload",
+        "simulation_run_id": "aff0d8a2-26cb-4b7c-9e47-2eaa5c17dad6",
+        "simulation_seed": 51
+      },
+      {
+        "alert_rate": 0.041666666666666664,
+        "alert_rows": 1,
+        "cleared_during_observation": true,
+        "last_alert_offset_seconds": 0.0,
+        "leading_alert_rows": 1,
+        "recovery_rows": 24,
+        "sampled_clearance_delay_seconds": 5.028874,
+        "scenario_id": "malformed-sensor-payload",
+        "simulation_run_id": "e259afc0-903e-470b-95d6-da5679e6dc23",
+        "simulation_seed": 52
+      },
+      {
+        "alert_rate": 0.041666666666666664,
+        "alert_rows": 1,
+        "cleared_during_observation": true,
+        "last_alert_offset_seconds": 0.0,
+        "leading_alert_rows": 1,
+        "recovery_rows": 24,
+        "sampled_clearance_delay_seconds": 5.01523,
+        "scenario_id": "malformed-sensor-payload",
+        "simulation_run_id": "3a281154-986b-4be9-a92d-d8ff6996253a",
+        "simulation_seed": 53
+      },
+      {
+        "alert_rate": 0.041666666666666664,
+        "alert_rows": 1,
+        "cleared_during_observation": true,
+        "last_alert_offset_seconds": 0.0,
+        "leading_alert_rows": 1,
+        "recovery_rows": 24,
+        "sampled_clearance_delay_seconds": 5.029844,
+        "scenario_id": "malformed-sensor-payload",
+        "simulation_run_id": "7ddcd2fe-1847-4ade-a6d6-be944e51df85",
+        "simulation_seed": 54
+      },
+      {
+        "alert_rate": 0.041666666666666664,
+        "alert_rows": 1,
+        "cleared_during_observation": true,
+        "last_alert_offset_seconds": 0.0,
+        "leading_alert_rows": 1,
+        "recovery_rows": 24,
+        "sampled_clearance_delay_seconds": 5.016634,
+        "scenario_id": "malformed-sensor-payload",
+        "simulation_run_id": "09817636-0244-42e1-840b-aee4c7ac1d30",
+        "simulation_seed": 55
+      },
+      {
+        "alert_rate": 0.041666666666666664,
+        "alert_rows": 1,
+        "cleared_during_observation": true,
+        "last_alert_offset_seconds": 0.0,
+        "leading_alert_rows": 1,
+        "recovery_rows": 24,
+        "sampled_clearance_delay_seconds": 5.014403,
+        "scenario_id": "malformed-sensor-payload",
+        "simulation_run_id": "21a49000-9444-4707-b503-77d5cde8408e",
+        "simulation_seed": 56
+      },
+      {
+        "alert_rate": 0.041666666666666664,
+        "alert_rows": 1,
+        "cleared_during_observation": true,
+        "last_alert_offset_seconds": 0.0,
+        "leading_alert_rows": 1,
+        "recovery_rows": 24,
+        "sampled_clearance_delay_seconds": 5.020841,
+        "scenario_id": "malformed-sensor-payload",
+        "simulation_run_id": "e45fc55c-d6b7-478d-b80e-a6aa09097784",
+        "simulation_seed": 57
+      },
+      {
+        "alert_rate": 0.041666666666666664,
+        "alert_rows": 1,
+        "cleared_during_observation": true,
+        "last_alert_offset_seconds": 0.0,
+        "leading_alert_rows": 1,
+        "recovery_rows": 24,
+        "sampled_clearance_delay_seconds": 5.020288,
+        "scenario_id": "malformed-sensor-payload",
+        "simulation_run_id": "3c9f2520-22db-45ea-813d-19a6a9ae1a04",
+        "simulation_seed": 58
+      },
+      {
+        "alert_rate": 0.041666666666666664,
+        "alert_rows": 1,
+        "cleared_during_observation": true,
+        "last_alert_offset_seconds": 0.0,
+        "leading_alert_rows": 1,
+        "recovery_rows": 24,
+        "sampled_clearance_delay_seconds": 5.029501,
+        "scenario_id": "malformed-sensor-payload",
+        "simulation_run_id": "6aef93be-2c31-44c7-8998-55dc23b1850b",
+        "simulation_seed": 59
+      },
+      {
+        "alert_rate": 0.041666666666666664,
+        "alert_rows": 1,
+        "cleared_during_observation": true,
+        "last_alert_offset_seconds": 0.0,
+        "leading_alert_rows": 1,
+        "recovery_rows": 24,
+        "sampled_clearance_delay_seconds": 5.02305,
+        "scenario_id": "malformed-sensor-payload",
+        "simulation_run_id": "8793070b-2bfd-426d-b278-49be31d5ac46",
+        "simulation_seed": 60
+      },
+      {
+        "alert_rate": 0.041666666666666664,
+        "alert_rows": 1,
+        "cleared_during_observation": true,
+        "last_alert_offset_seconds": 0.0,
+        "leading_alert_rows": 1,
+        "recovery_rows": 24,
+        "sampled_clearance_delay_seconds": 5.024291,
+        "scenario_id": "malformed-sensor-payload",
+        "simulation_run_id": "81b13015-aba5-4459-9f25-dd18cacfcc1d",
+        "simulation_seed": 61
+      },
+      {
+        "alert_rate": 0.0,
+        "alert_rows": 0,
+        "cleared_during_observation": true,
+        "last_alert_offset_seconds": null,
+        "leading_alert_rows": 0,
+        "recovery_rows": 24,
+        "sampled_clearance_delay_seconds": 0.0,
+        "scenario_id": "missing-device-heartbeat",
+        "simulation_run_id": "15d77900-bb1c-432d-afba-bccf430de52c",
+        "simulation_seed": 42
+      },
+      {
+        "alert_rate": 0.0,
+        "alert_rows": 0,
+        "cleared_during_observation": true,
+        "last_alert_offset_seconds": null,
+        "leading_alert_rows": 0,
+        "recovery_rows": 24,
+        "sampled_clearance_delay_seconds": 0.0,
+        "scenario_id": "missing-device-heartbeat",
+        "simulation_run_id": "5f09085f-48d5-4ed3-a772-c21d159ea710",
+        "simulation_seed": 43
+      },
+      {
+        "alert_rate": 0.0,
+        "alert_rows": 0,
+        "cleared_during_observation": true,
+        "last_alert_offset_seconds": null,
+        "leading_alert_rows": 0,
+        "recovery_rows": 24,
+        "sampled_clearance_delay_seconds": 0.0,
+        "scenario_id": "missing-device-heartbeat",
+        "simulation_run_id": "79c9ca72-72b0-4709-aa7f-0b2b09358e8b",
+        "simulation_seed": 44
+      },
+      {
+        "alert_rate": 0.0,
+        "alert_rows": 0,
+        "cleared_during_observation": true,
+        "last_alert_offset_seconds": null,
+        "leading_alert_rows": 0,
+        "recovery_rows": 24,
+        "sampled_clearance_delay_seconds": 0.0,
+        "scenario_id": "missing-device-heartbeat",
+        "simulation_run_id": "a2fa914b-a15f-4e22-a836-052c01759025",
+        "simulation_seed": 45
+      },
+      {
+        "alert_rate": 0.0,
+        "alert_rows": 0,
+        "cleared_during_observation": true,
+        "last_alert_offset_seconds": null,
+        "leading_alert_rows": 0,
+        "recovery_rows": 24,
+        "sampled_clearance_delay_seconds": 0.0,
+        "scenario_id": "missing-device-heartbeat",
+        "simulation_run_id": "208fd980-60ba-4851-8d00-5f1f22bc6555",
+        "simulation_seed": 46
+      },
+      {
+        "alert_rate": 0.0,
+        "alert_rows": 0,
+        "cleared_during_observation": true,
+        "last_alert_offset_seconds": null,
+        "leading_alert_rows": 0,
+        "recovery_rows": 24,
+        "sampled_clearance_delay_seconds": 0.0,
+        "scenario_id": "missing-device-heartbeat",
+        "simulation_run_id": "7f8416cc-6c4e-41f6-9d90-d82df1a68025",
+        "simulation_seed": 47
+      },
+      {
+        "alert_rate": 0.0,
+        "alert_rows": 0,
+        "cleared_during_observation": true,
+        "last_alert_offset_seconds": null,
+        "leading_alert_rows": 0,
+        "recovery_rows": 24,
+        "sampled_clearance_delay_seconds": 0.0,
+        "scenario_id": "missing-device-heartbeat",
+        "simulation_run_id": "d2052d18-f561-4d3a-9645-5eb0de32f9b8",
+        "simulation_seed": 48
+      },
+      {
+        "alert_rate": 0.0,
+        "alert_rows": 0,
+        "cleared_during_observation": true,
+        "last_alert_offset_seconds": null,
+        "leading_alert_rows": 0,
+        "recovery_rows": 24,
+        "sampled_clearance_delay_seconds": 0.0,
+        "scenario_id": "missing-device-heartbeat",
+        "simulation_run_id": "6f372e04-aa67-4453-a758-5ef2d363bbb5",
+        "simulation_seed": 49
+      },
+      {
+        "alert_rate": 0.0,
+        "alert_rows": 0,
+        "cleared_during_observation": true,
+        "last_alert_offset_seconds": null,
+        "leading_alert_rows": 0,
+        "recovery_rows": 24,
+        "sampled_clearance_delay_seconds": 0.0,
+        "scenario_id": "missing-device-heartbeat",
+        "simulation_run_id": "3b9ed3f1-14a5-49cc-8ba8-e301cb496d59",
+        "simulation_seed": 50
+      },
+      {
+        "alert_rate": 0.0,
+        "alert_rows": 0,
+        "cleared_during_observation": true,
+        "last_alert_offset_seconds": null,
+        "leading_alert_rows": 0,
+        "recovery_rows": 24,
+        "sampled_clearance_delay_seconds": 0.0,
+        "scenario_id": "missing-device-heartbeat",
+        "simulation_run_id": "62e27673-526a-426d-9607-c0db153efb9f",
+        "simulation_seed": 51
+      },
+      {
+        "alert_rate": 0.0,
+        "alert_rows": 0,
+        "cleared_during_observation": true,
+        "last_alert_offset_seconds": null,
+        "leading_alert_rows": 0,
+        "recovery_rows": 24,
+        "sampled_clearance_delay_seconds": 0.0,
+        "scenario_id": "missing-device-heartbeat",
+        "simulation_run_id": "af662239-e274-43cb-8ac2-6c9c5d0eb89a",
+        "simulation_seed": 52
+      },
+      {
+        "alert_rate": 0.0,
+        "alert_rows": 0,
+        "cleared_during_observation": true,
+        "last_alert_offset_seconds": null,
+        "leading_alert_rows": 0,
+        "recovery_rows": 24,
+        "sampled_clearance_delay_seconds": 0.0,
+        "scenario_id": "missing-device-heartbeat",
+        "simulation_run_id": "2450ee2e-f0a8-4ea6-b6bc-5673b959af82",
+        "simulation_seed": 53
+      },
+      {
+        "alert_rate": 0.0,
+        "alert_rows": 0,
+        "cleared_during_observation": true,
+        "last_alert_offset_seconds": null,
+        "leading_alert_rows": 0,
+        "recovery_rows": 24,
+        "sampled_clearance_delay_seconds": 0.0,
+        "scenario_id": "missing-device-heartbeat",
+        "simulation_run_id": "79aaf7b3-09b2-43bd-af35-4391d7d317f4",
+        "simulation_seed": 54
+      },
+      {
+        "alert_rate": 0.0,
+        "alert_rows": 0,
+        "cleared_during_observation": true,
+        "last_alert_offset_seconds": null,
+        "leading_alert_rows": 0,
+        "recovery_rows": 24,
+        "sampled_clearance_delay_seconds": 0.0,
+        "scenario_id": "missing-device-heartbeat",
+        "simulation_run_id": "af9ec9ca-20e9-496a-88a4-c253bbff28e2",
+        "simulation_seed": 55
+      },
+      {
+        "alert_rate": 0.0,
+        "alert_rows": 0,
+        "cleared_during_observation": true,
+        "last_alert_offset_seconds": null,
+        "leading_alert_rows": 0,
+        "recovery_rows": 24,
+        "sampled_clearance_delay_seconds": 0.0,
+        "scenario_id": "missing-device-heartbeat",
+        "simulation_run_id": "80c1186b-6235-44d6-844f-ce52a7308f93",
+        "simulation_seed": 56
+      },
+      {
+        "alert_rate": 0.0,
+        "alert_rows": 0,
+        "cleared_during_observation": true,
+        "last_alert_offset_seconds": null,
+        "leading_alert_rows": 0,
+        "recovery_rows": 24,
+        "sampled_clearance_delay_seconds": 0.0,
+        "scenario_id": "missing-device-heartbeat",
+        "simulation_run_id": "c98b24d5-83e5-47da-af8e-218ae8651f7c",
+        "simulation_seed": 57
+      },
+      {
+        "alert_rate": 0.0,
+        "alert_rows": 0,
+        "cleared_during_observation": true,
+        "last_alert_offset_seconds": null,
+        "leading_alert_rows": 0,
+        "recovery_rows": 24,
+        "sampled_clearance_delay_seconds": 0.0,
+        "scenario_id": "missing-device-heartbeat",
+        "simulation_run_id": "7c7ff181-8ade-4a67-802e-f27d8f4c5e48",
+        "simulation_seed": 58
+      },
+      {
+        "alert_rate": 0.0,
+        "alert_rows": 0,
+        "cleared_during_observation": true,
+        "last_alert_offset_seconds": null,
+        "leading_alert_rows": 0,
+        "recovery_rows": 24,
+        "sampled_clearance_delay_seconds": 0.0,
+        "scenario_id": "missing-device-heartbeat",
+        "simulation_run_id": "fca7a5bb-d788-427a-a58a-931bb8077c6b",
+        "simulation_seed": 59
+      },
+      {
+        "alert_rate": 0.0,
+        "alert_rows": 0,
+        "cleared_during_observation": true,
+        "last_alert_offset_seconds": null,
+        "leading_alert_rows": 0,
+        "recovery_rows": 24,
+        "sampled_clearance_delay_seconds": 0.0,
+        "scenario_id": "missing-device-heartbeat",
+        "simulation_run_id": "98411ac4-288c-4cf6-ac08-d9647ac2576c",
+        "simulation_seed": 60
+      },
+      {
+        "alert_rate": 0.0,
+        "alert_rows": 0,
+        "cleared_during_observation": true,
+        "last_alert_offset_seconds": null,
+        "leading_alert_rows": 0,
+        "recovery_rows": 24,
+        "sampled_clearance_delay_seconds": 0.0,
+        "scenario_id": "missing-device-heartbeat",
+        "simulation_run_id": "71cb3706-23a8-44ed-8747-544bdda23bc9",
+        "simulation_seed": 61
+      }
+    ],
+    "runs_with_alerts": 40
+  },
+  "schema_version": "1.0",
+  "stable_metrics_by_scenario": {
+    "influxdb-write-failure": {
+      "accuracy": 0.9830508474576272,
+      "confusion_matrix": {
+        "influxdb-write-failure": {
+          "influxdb-write-failure": 700,
+          "ingestion-backpressure": 0,
+          "malformed-sensor-payload": 0,
+          "missing-device-heartbeat": 0,
+          "normal": 20
+        },
+        "ingestion-backpressure": {
+          "influxdb-write-failure": 0,
+          "ingestion-backpressure": 0,
+          "malformed-sensor-payload": 0,
+          "missing-device-heartbeat": 0,
+          "normal": 0
+        },
+        "malformed-sensor-payload": {
+          "influxdb-write-failure": 0,
+          "ingestion-backpressure": 0,
+          "malformed-sensor-payload": 0,
+          "missing-device-heartbeat": 0,
+          "normal": 0
+        },
+        "missing-device-heartbeat": {
+          "influxdb-write-failure": 0,
+          "ingestion-backpressure": 0,
+          "malformed-sensor-payload": 0,
+          "missing-device-heartbeat": 0,
+          "normal": 0
+        },
+        "normal": {
+          "influxdb-write-failure": 0,
+          "ingestion-backpressure": 0,
+          "malformed-sensor-payload": 0,
+          "missing-device-heartbeat": 0,
+          "normal": 460
+        }
+      },
+      "correct": 1160,
+      "labels": [
+        "normal",
+        "influxdb-write-failure",
+        "ingestion-backpressure",
+        "malformed-sensor-payload",
+        "missing-device-heartbeat"
+      ],
+      "macro_f1": 0.9823194486065328,
+      "per_label": {
+        "influxdb-write-failure": {
+          "f1": 0.9859154929577464,
+          "precision": 1.0,
+          "recall": 0.9722222222222222,
+          "support": 720
+        },
+        "ingestion-backpressure": {
+          "f1": 0.0,
+          "precision": 0.0,
+          "recall": 0.0,
+          "support": 0
+        },
+        "malformed-sensor-payload": {
+          "f1": 0.0,
+          "precision": 0.0,
+          "recall": 0.0,
+          "support": 0
+        },
+        "missing-device-heartbeat": {
+          "f1": 0.0,
+          "precision": 0.0,
+          "recall": 0.0,
+          "support": 0
+        },
+        "normal": {
+          "f1": 0.9787234042553191,
+          "precision": 0.9583333333333334,
+          "recall": 1.0,
+          "support": 460
+        }
+      },
+      "rows": 1180
+    },
+    "ingestion-backpressure": {
+      "accuracy": 1.0,
+      "confusion_matrix": {
+        "influxdb-write-failure": {
+          "influxdb-write-failure": 0,
+          "ingestion-backpressure": 0,
+          "malformed-sensor-payload": 0,
+          "missing-device-heartbeat": 0,
+          "normal": 0
+        },
+        "ingestion-backpressure": {
+          "influxdb-write-failure": 0,
+          "ingestion-backpressure": 720,
+          "malformed-sensor-payload": 0,
+          "missing-device-heartbeat": 0,
+          "normal": 0
+        },
+        "malformed-sensor-payload": {
+          "influxdb-write-failure": 0,
+          "ingestion-backpressure": 0,
+          "malformed-sensor-payload": 0,
+          "missing-device-heartbeat": 0,
+          "normal": 0
+        },
+        "missing-device-heartbeat": {
+          "influxdb-write-failure": 0,
+          "ingestion-backpressure": 0,
+          "malformed-sensor-payload": 0,
+          "missing-device-heartbeat": 0,
+          "normal": 0
+        },
+        "normal": {
+          "influxdb-write-failure": 0,
+          "ingestion-backpressure": 0,
+          "malformed-sensor-payload": 0,
+          "missing-device-heartbeat": 0,
+          "normal": 460
+        }
+      },
+      "correct": 1180,
+      "labels": [
+        "normal",
+        "influxdb-write-failure",
+        "ingestion-backpressure",
+        "malformed-sensor-payload",
+        "missing-device-heartbeat"
+      ],
+      "macro_f1": 1.0,
+      "per_label": {
+        "influxdb-write-failure": {
+          "f1": 0.0,
+          "precision": 0.0,
+          "recall": 0.0,
+          "support": 0
+        },
+        "ingestion-backpressure": {
+          "f1": 1.0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "support": 720
+        },
+        "malformed-sensor-payload": {
+          "f1": 0.0,
+          "precision": 0.0,
+          "recall": 0.0,
+          "support": 0
+        },
+        "missing-device-heartbeat": {
+          "f1": 0.0,
+          "precision": 0.0,
+          "recall": 0.0,
+          "support": 0
+        },
+        "normal": {
+          "f1": 1.0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "support": 460
+        }
+      },
+      "rows": 1180
+    },
+    "malformed-sensor-payload": {
+      "accuracy": 1.0,
+      "confusion_matrix": {
+        "influxdb-write-failure": {
+          "influxdb-write-failure": 0,
+          "ingestion-backpressure": 0,
+          "malformed-sensor-payload": 0,
+          "missing-device-heartbeat": 0,
+          "normal": 0
+        },
+        "ingestion-backpressure": {
+          "influxdb-write-failure": 0,
+          "ingestion-backpressure": 0,
+          "malformed-sensor-payload": 0,
+          "missing-device-heartbeat": 0,
+          "normal": 0
+        },
+        "malformed-sensor-payload": {
+          "influxdb-write-failure": 0,
+          "ingestion-backpressure": 0,
+          "malformed-sensor-payload": 720,
+          "missing-device-heartbeat": 0,
+          "normal": 0
+        },
+        "missing-device-heartbeat": {
+          "influxdb-write-failure": 0,
+          "ingestion-backpressure": 0,
+          "malformed-sensor-payload": 0,
+          "missing-device-heartbeat": 0,
+          "normal": 0
+        },
+        "normal": {
+          "influxdb-write-failure": 0,
+          "ingestion-backpressure": 0,
+          "malformed-sensor-payload": 0,
+          "missing-device-heartbeat": 0,
+          "normal": 460
+        }
+      },
+      "correct": 1180,
+      "labels": [
+        "normal",
+        "influxdb-write-failure",
+        "ingestion-backpressure",
+        "malformed-sensor-payload",
+        "missing-device-heartbeat"
+      ],
+      "macro_f1": 1.0,
+      "per_label": {
+        "influxdb-write-failure": {
+          "f1": 0.0,
+          "precision": 0.0,
+          "recall": 0.0,
+          "support": 0
+        },
+        "ingestion-backpressure": {
+          "f1": 0.0,
+          "precision": 0.0,
+          "recall": 0.0,
+          "support": 0
+        },
+        "malformed-sensor-payload": {
+          "f1": 1.0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "support": 720
+        },
+        "missing-device-heartbeat": {
+          "f1": 0.0,
+          "precision": 0.0,
+          "recall": 0.0,
+          "support": 0
+        },
+        "normal": {
+          "f1": 1.0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "support": 460
+        }
+      },
+      "rows": 1180
+    },
+    "missing-device-heartbeat": {
+      "accuracy": 1.0,
+      "confusion_matrix": {
+        "influxdb-write-failure": {
+          "influxdb-write-failure": 0,
+          "ingestion-backpressure": 0,
+          "malformed-sensor-payload": 0,
+          "missing-device-heartbeat": 0,
+          "normal": 0
+        },
+        "ingestion-backpressure": {
+          "influxdb-write-failure": 0,
+          "ingestion-backpressure": 0,
+          "malformed-sensor-payload": 0,
+          "missing-device-heartbeat": 0,
+          "normal": 0
+        },
+        "malformed-sensor-payload": {
+          "influxdb-write-failure": 0,
+          "ingestion-backpressure": 0,
+          "malformed-sensor-payload": 0,
+          "missing-device-heartbeat": 0,
+          "normal": 0
+        },
+        "missing-device-heartbeat": {
+          "influxdb-write-failure": 0,
+          "ingestion-backpressure": 0,
+          "malformed-sensor-payload": 0,
+          "missing-device-heartbeat": 720,
+          "normal": 0
+        },
+        "normal": {
+          "influxdb-write-failure": 0,
+          "ingestion-backpressure": 0,
+          "malformed-sensor-payload": 0,
+          "missing-device-heartbeat": 0,
+          "normal": 460
+        }
+      },
+      "correct": 1180,
+      "labels": [
+        "normal",
+        "influxdb-write-failure",
+        "ingestion-backpressure",
+        "malformed-sensor-payload",
+        "missing-device-heartbeat"
+      ],
+      "macro_f1": 1.0,
+      "per_label": {
+        "influxdb-write-failure": {
+          "f1": 0.0,
+          "precision": 0.0,
+          "recall": 0.0,
+          "support": 0
+        },
+        "ingestion-backpressure": {
+          "f1": 0.0,
+          "precision": 0.0,
+          "recall": 0.0,
+          "support": 0
+        },
+        "malformed-sensor-payload": {
+          "f1": 0.0,
+          "precision": 0.0,
+          "recall": 0.0,
+          "support": 0
+        },
+        "missing-device-heartbeat": {
+          "f1": 1.0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "support": 720
+        },
+        "normal": {
+          "f1": 1.0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "support": 460
+        }
+      },
+      "rows": 1180
+    }
+  },
+  "stable_metrics_by_seed": {
+    "42": {
+      "accuracy": 0.9957627118644068,
+      "confusion_matrix": {
+        "influxdb-write-failure": {
+          "influxdb-write-failure": 35,
+          "ingestion-backpressure": 0,
+          "malformed-sensor-payload": 0,
+          "missing-device-heartbeat": 0,
+          "normal": 1
+        },
+        "ingestion-backpressure": {
+          "influxdb-write-failure": 0,
+          "ingestion-backpressure": 36,
+          "malformed-sensor-payload": 0,
+          "missing-device-heartbeat": 0,
+          "normal": 0
+        },
+        "malformed-sensor-payload": {
+          "influxdb-write-failure": 0,
+          "ingestion-backpressure": 0,
+          "malformed-sensor-payload": 36,
+          "missing-device-heartbeat": 0,
+          "normal": 0
+        },
+        "missing-device-heartbeat": {
+          "influxdb-write-failure": 0,
+          "ingestion-backpressure": 0,
+          "malformed-sensor-payload": 0,
+          "missing-device-heartbeat": 36,
+          "normal": 0
+        },
+        "normal": {
+          "influxdb-write-failure": 0,
+          "ingestion-backpressure": 0,
+          "malformed-sensor-payload": 0,
+          "missing-device-heartbeat": 0,
+          "normal": 92
+        }
+      },
+      "correct": 235,
+      "labels": [
+        "normal",
+        "influxdb-write-failure",
+        "ingestion-backpressure",
+        "malformed-sensor-payload",
+        "missing-device-heartbeat"
+      ],
+      "macro_f1": 0.9961020175104682,
+      "per_label": {
+        "influxdb-write-failure": {
+          "f1": 0.9859154929577464,
+          "precision": 1.0,
+          "recall": 0.9722222222222222,
+          "support": 36
+        },
+        "ingestion-backpressure": {
+          "f1": 1.0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "support": 36
+        },
+        "malformed-sensor-payload": {
+          "f1": 1.0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "support": 36
+        },
+        "missing-device-heartbeat": {
+          "f1": 1.0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "support": 36
+        },
+        "normal": {
+          "f1": 0.9945945945945946,
+          "precision": 0.989247311827957,
+          "recall": 1.0,
+          "support": 92
+        }
+      },
+      "rows": 236
+    },
+    "43": {
+      "accuracy": 0.9957627118644068,
+      "confusion_matrix": {
+        "influxdb-write-failure": {
+          "influxdb-write-failure": 35,
+          "ingestion-backpressure": 0,
+          "malformed-sensor-payload": 0,
+          "missing-device-heartbeat": 0,
+          "normal": 1
+        },
+        "ingestion-backpressure": {
+          "influxdb-write-failure": 0,
+          "ingestion-backpressure": 36,
+          "malformed-sensor-payload": 0,
+          "missing-device-heartbeat": 0,
+          "normal": 0
+        },
+        "malformed-sensor-payload": {
+          "influxdb-write-failure": 0,
+          "ingestion-backpressure": 0,
+          "malformed-sensor-payload": 36,
+          "missing-device-heartbeat": 0,
+          "normal": 0
+        },
+        "missing-device-heartbeat": {
+          "influxdb-write-failure": 0,
+          "ingestion-backpressure": 0,
+          "malformed-sensor-payload": 0,
+          "missing-device-heartbeat": 36,
+          "normal": 0
+        },
+        "normal": {
+          "influxdb-write-failure": 0,
+          "ingestion-backpressure": 0,
+          "malformed-sensor-payload": 0,
+          "missing-device-heartbeat": 0,
+          "normal": 92
+        }
+      },
+      "correct": 235,
+      "labels": [
+        "normal",
+        "influxdb-write-failure",
+        "ingestion-backpressure",
+        "malformed-sensor-payload",
+        "missing-device-heartbeat"
+      ],
+      "macro_f1": 0.9961020175104682,
+      "per_label": {
+        "influxdb-write-failure": {
+          "f1": 0.9859154929577464,
+          "precision": 1.0,
+          "recall": 0.9722222222222222,
+          "support": 36
+        },
+        "ingestion-backpressure": {
+          "f1": 1.0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "support": 36
+        },
+        "malformed-sensor-payload": {
+          "f1": 1.0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "support": 36
+        },
+        "missing-device-heartbeat": {
+          "f1": 1.0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "support": 36
+        },
+        "normal": {
+          "f1": 0.9945945945945946,
+          "precision": 0.989247311827957,
+          "recall": 1.0,
+          "support": 92
+        }
+      },
+      "rows": 236
+    },
+    "44": {
+      "accuracy": 0.9957627118644068,
+      "confusion_matrix": {
+        "influxdb-write-failure": {
+          "influxdb-write-failure": 35,
+          "ingestion-backpressure": 0,
+          "malformed-sensor-payload": 0,
+          "missing-device-heartbeat": 0,
+          "normal": 1
+        },
+        "ingestion-backpressure": {
+          "influxdb-write-failure": 0,
+          "ingestion-backpressure": 36,
+          "malformed-sensor-payload": 0,
+          "missing-device-heartbeat": 0,
+          "normal": 0
+        },
+        "malformed-sensor-payload": {
+          "influxdb-write-failure": 0,
+          "ingestion-backpressure": 0,
+          "malformed-sensor-payload": 36,
+          "missing-device-heartbeat": 0,
+          "normal": 0
+        },
+        "missing-device-heartbeat": {
+          "influxdb-write-failure": 0,
+          "ingestion-backpressure": 0,
+          "malformed-sensor-payload": 0,
+          "missing-device-heartbeat": 36,
+          "normal": 0
+        },
+        "normal": {
+          "influxdb-write-failure": 0,
+          "ingestion-backpressure": 0,
+          "malformed-sensor-payload": 0,
+          "missing-device-heartbeat": 0,
+          "normal": 92
+        }
+      },
+      "correct": 235,
+      "labels": [
+        "normal",
+        "influxdb-write-failure",
+        "ingestion-backpressure",
+        "malformed-sensor-payload",
+        "missing-device-heartbeat"
+      ],
+      "macro_f1": 0.9961020175104682,
+      "per_label": {
+        "influxdb-write-failure": {
+          "f1": 0.9859154929577464,
+          "precision": 1.0,
+          "recall": 0.9722222222222222,
+          "support": 36
+        },
+        "ingestion-backpressure": {
+          "f1": 1.0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "support": 36
+        },
+        "malformed-sensor-payload": {
+          "f1": 1.0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "support": 36
+        },
+        "missing-device-heartbeat": {
+          "f1": 1.0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "support": 36
+        },
+        "normal": {
+          "f1": 0.9945945945945946,
+          "precision": 0.989247311827957,
+          "recall": 1.0,
+          "support": 92
+        }
+      },
+      "rows": 236
+    },
+    "45": {
+      "accuracy": 0.9957627118644068,
+      "confusion_matrix": {
+        "influxdb-write-failure": {
+          "influxdb-write-failure": 35,
+          "ingestion-backpressure": 0,
+          "malformed-sensor-payload": 0,
+          "missing-device-heartbeat": 0,
+          "normal": 1
+        },
+        "ingestion-backpressure": {
+          "influxdb-write-failure": 0,
+          "ingestion-backpressure": 36,
+          "malformed-sensor-payload": 0,
+          "missing-device-heartbeat": 0,
+          "normal": 0
+        },
+        "malformed-sensor-payload": {
+          "influxdb-write-failure": 0,
+          "ingestion-backpressure": 0,
+          "malformed-sensor-payload": 36,
+          "missing-device-heartbeat": 0,
+          "normal": 0
+        },
+        "missing-device-heartbeat": {
+          "influxdb-write-failure": 0,
+          "ingestion-backpressure": 0,
+          "malformed-sensor-payload": 0,
+          "missing-device-heartbeat": 36,
+          "normal": 0
+        },
+        "normal": {
+          "influxdb-write-failure": 0,
+          "ingestion-backpressure": 0,
+          "malformed-sensor-payload": 0,
+          "missing-device-heartbeat": 0,
+          "normal": 92
+        }
+      },
+      "correct": 235,
+      "labels": [
+        "normal",
+        "influxdb-write-failure",
+        "ingestion-backpressure",
+        "malformed-sensor-payload",
+        "missing-device-heartbeat"
+      ],
+      "macro_f1": 0.9961020175104682,
+      "per_label": {
+        "influxdb-write-failure": {
+          "f1": 0.9859154929577464,
+          "precision": 1.0,
+          "recall": 0.9722222222222222,
+          "support": 36
+        },
+        "ingestion-backpressure": {
+          "f1": 1.0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "support": 36
+        },
+        "malformed-sensor-payload": {
+          "f1": 1.0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "support": 36
+        },
+        "missing-device-heartbeat": {
+          "f1": 1.0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "support": 36
+        },
+        "normal": {
+          "f1": 0.9945945945945946,
+          "precision": 0.989247311827957,
+          "recall": 1.0,
+          "support": 92
+        }
+      },
+      "rows": 236
+    },
+    "46": {
+      "accuracy": 0.9957627118644068,
+      "confusion_matrix": {
+        "influxdb-write-failure": {
+          "influxdb-write-failure": 35,
+          "ingestion-backpressure": 0,
+          "malformed-sensor-payload": 0,
+          "missing-device-heartbeat": 0,
+          "normal": 1
+        },
+        "ingestion-backpressure": {
+          "influxdb-write-failure": 0,
+          "ingestion-backpressure": 36,
+          "malformed-sensor-payload": 0,
+          "missing-device-heartbeat": 0,
+          "normal": 0
+        },
+        "malformed-sensor-payload": {
+          "influxdb-write-failure": 0,
+          "ingestion-backpressure": 0,
+          "malformed-sensor-payload": 36,
+          "missing-device-heartbeat": 0,
+          "normal": 0
+        },
+        "missing-device-heartbeat": {
+          "influxdb-write-failure": 0,
+          "ingestion-backpressure": 0,
+          "malformed-sensor-payload": 0,
+          "missing-device-heartbeat": 36,
+          "normal": 0
+        },
+        "normal": {
+          "influxdb-write-failure": 0,
+          "ingestion-backpressure": 0,
+          "malformed-sensor-payload": 0,
+          "missing-device-heartbeat": 0,
+          "normal": 92
+        }
+      },
+      "correct": 235,
+      "labels": [
+        "normal",
+        "influxdb-write-failure",
+        "ingestion-backpressure",
+        "malformed-sensor-payload",
+        "missing-device-heartbeat"
+      ],
+      "macro_f1": 0.9961020175104682,
+      "per_label": {
+        "influxdb-write-failure": {
+          "f1": 0.9859154929577464,
+          "precision": 1.0,
+          "recall": 0.9722222222222222,
+          "support": 36
+        },
+        "ingestion-backpressure": {
+          "f1": 1.0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "support": 36
+        },
+        "malformed-sensor-payload": {
+          "f1": 1.0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "support": 36
+        },
+        "missing-device-heartbeat": {
+          "f1": 1.0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "support": 36
+        },
+        "normal": {
+          "f1": 0.9945945945945946,
+          "precision": 0.989247311827957,
+          "recall": 1.0,
+          "support": 92
+        }
+      },
+      "rows": 236
+    },
+    "47": {
+      "accuracy": 0.9957627118644068,
+      "confusion_matrix": {
+        "influxdb-write-failure": {
+          "influxdb-write-failure": 35,
+          "ingestion-backpressure": 0,
+          "malformed-sensor-payload": 0,
+          "missing-device-heartbeat": 0,
+          "normal": 1
+        },
+        "ingestion-backpressure": {
+          "influxdb-write-failure": 0,
+          "ingestion-backpressure": 36,
+          "malformed-sensor-payload": 0,
+          "missing-device-heartbeat": 0,
+          "normal": 0
+        },
+        "malformed-sensor-payload": {
+          "influxdb-write-failure": 0,
+          "ingestion-backpressure": 0,
+          "malformed-sensor-payload": 36,
+          "missing-device-heartbeat": 0,
+          "normal": 0
+        },
+        "missing-device-heartbeat": {
+          "influxdb-write-failure": 0,
+          "ingestion-backpressure": 0,
+          "malformed-sensor-payload": 0,
+          "missing-device-heartbeat": 36,
+          "normal": 0
+        },
+        "normal": {
+          "influxdb-write-failure": 0,
+          "ingestion-backpressure": 0,
+          "malformed-sensor-payload": 0,
+          "missing-device-heartbeat": 0,
+          "normal": 92
+        }
+      },
+      "correct": 235,
+      "labels": [
+        "normal",
+        "influxdb-write-failure",
+        "ingestion-backpressure",
+        "malformed-sensor-payload",
+        "missing-device-heartbeat"
+      ],
+      "macro_f1": 0.9961020175104682,
+      "per_label": {
+        "influxdb-write-failure": {
+          "f1": 0.9859154929577464,
+          "precision": 1.0,
+          "recall": 0.9722222222222222,
+          "support": 36
+        },
+        "ingestion-backpressure": {
+          "f1": 1.0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "support": 36
+        },
+        "malformed-sensor-payload": {
+          "f1": 1.0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "support": 36
+        },
+        "missing-device-heartbeat": {
+          "f1": 1.0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "support": 36
+        },
+        "normal": {
+          "f1": 0.9945945945945946,
+          "precision": 0.989247311827957,
+          "recall": 1.0,
+          "support": 92
+        }
+      },
+      "rows": 236
+    },
+    "48": {
+      "accuracy": 0.9957627118644068,
+      "confusion_matrix": {
+        "influxdb-write-failure": {
+          "influxdb-write-failure": 35,
+          "ingestion-backpressure": 0,
+          "malformed-sensor-payload": 0,
+          "missing-device-heartbeat": 0,
+          "normal": 1
+        },
+        "ingestion-backpressure": {
+          "influxdb-write-failure": 0,
+          "ingestion-backpressure": 36,
+          "malformed-sensor-payload": 0,
+          "missing-device-heartbeat": 0,
+          "normal": 0
+        },
+        "malformed-sensor-payload": {
+          "influxdb-write-failure": 0,
+          "ingestion-backpressure": 0,
+          "malformed-sensor-payload": 36,
+          "missing-device-heartbeat": 0,
+          "normal": 0
+        },
+        "missing-device-heartbeat": {
+          "influxdb-write-failure": 0,
+          "ingestion-backpressure": 0,
+          "malformed-sensor-payload": 0,
+          "missing-device-heartbeat": 36,
+          "normal": 0
+        },
+        "normal": {
+          "influxdb-write-failure": 0,
+          "ingestion-backpressure": 0,
+          "malformed-sensor-payload": 0,
+          "missing-device-heartbeat": 0,
+          "normal": 92
+        }
+      },
+      "correct": 235,
+      "labels": [
+        "normal",
+        "influxdb-write-failure",
+        "ingestion-backpressure",
+        "malformed-sensor-payload",
+        "missing-device-heartbeat"
+      ],
+      "macro_f1": 0.9961020175104682,
+      "per_label": {
+        "influxdb-write-failure": {
+          "f1": 0.9859154929577464,
+          "precision": 1.0,
+          "recall": 0.9722222222222222,
+          "support": 36
+        },
+        "ingestion-backpressure": {
+          "f1": 1.0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "support": 36
+        },
+        "malformed-sensor-payload": {
+          "f1": 1.0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "support": 36
+        },
+        "missing-device-heartbeat": {
+          "f1": 1.0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "support": 36
+        },
+        "normal": {
+          "f1": 0.9945945945945946,
+          "precision": 0.989247311827957,
+          "recall": 1.0,
+          "support": 92
+        }
+      },
+      "rows": 236
+    },
+    "49": {
+      "accuracy": 0.9957627118644068,
+      "confusion_matrix": {
+        "influxdb-write-failure": {
+          "influxdb-write-failure": 35,
+          "ingestion-backpressure": 0,
+          "malformed-sensor-payload": 0,
+          "missing-device-heartbeat": 0,
+          "normal": 1
+        },
+        "ingestion-backpressure": {
+          "influxdb-write-failure": 0,
+          "ingestion-backpressure": 36,
+          "malformed-sensor-payload": 0,
+          "missing-device-heartbeat": 0,
+          "normal": 0
+        },
+        "malformed-sensor-payload": {
+          "influxdb-write-failure": 0,
+          "ingestion-backpressure": 0,
+          "malformed-sensor-payload": 36,
+          "missing-device-heartbeat": 0,
+          "normal": 0
+        },
+        "missing-device-heartbeat": {
+          "influxdb-write-failure": 0,
+          "ingestion-backpressure": 0,
+          "malformed-sensor-payload": 0,
+          "missing-device-heartbeat": 36,
+          "normal": 0
+        },
+        "normal": {
+          "influxdb-write-failure": 0,
+          "ingestion-backpressure": 0,
+          "malformed-sensor-payload": 0,
+          "missing-device-heartbeat": 0,
+          "normal": 92
+        }
+      },
+      "correct": 235,
+      "labels": [
+        "normal",
+        "influxdb-write-failure",
+        "ingestion-backpressure",
+        "malformed-sensor-payload",
+        "missing-device-heartbeat"
+      ],
+      "macro_f1": 0.9961020175104682,
+      "per_label": {
+        "influxdb-write-failure": {
+          "f1": 0.9859154929577464,
+          "precision": 1.0,
+          "recall": 0.9722222222222222,
+          "support": 36
+        },
+        "ingestion-backpressure": {
+          "f1": 1.0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "support": 36
+        },
+        "malformed-sensor-payload": {
+          "f1": 1.0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "support": 36
+        },
+        "missing-device-heartbeat": {
+          "f1": 1.0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "support": 36
+        },
+        "normal": {
+          "f1": 0.9945945945945946,
+          "precision": 0.989247311827957,
+          "recall": 1.0,
+          "support": 92
+        }
+      },
+      "rows": 236
+    },
+    "50": {
+      "accuracy": 0.9957627118644068,
+      "confusion_matrix": {
+        "influxdb-write-failure": {
+          "influxdb-write-failure": 35,
+          "ingestion-backpressure": 0,
+          "malformed-sensor-payload": 0,
+          "missing-device-heartbeat": 0,
+          "normal": 1
+        },
+        "ingestion-backpressure": {
+          "influxdb-write-failure": 0,
+          "ingestion-backpressure": 36,
+          "malformed-sensor-payload": 0,
+          "missing-device-heartbeat": 0,
+          "normal": 0
+        },
+        "malformed-sensor-payload": {
+          "influxdb-write-failure": 0,
+          "ingestion-backpressure": 0,
+          "malformed-sensor-payload": 36,
+          "missing-device-heartbeat": 0,
+          "normal": 0
+        },
+        "missing-device-heartbeat": {
+          "influxdb-write-failure": 0,
+          "ingestion-backpressure": 0,
+          "malformed-sensor-payload": 0,
+          "missing-device-heartbeat": 36,
+          "normal": 0
+        },
+        "normal": {
+          "influxdb-write-failure": 0,
+          "ingestion-backpressure": 0,
+          "malformed-sensor-payload": 0,
+          "missing-device-heartbeat": 0,
+          "normal": 92
+        }
+      },
+      "correct": 235,
+      "labels": [
+        "normal",
+        "influxdb-write-failure",
+        "ingestion-backpressure",
+        "malformed-sensor-payload",
+        "missing-device-heartbeat"
+      ],
+      "macro_f1": 0.9961020175104682,
+      "per_label": {
+        "influxdb-write-failure": {
+          "f1": 0.9859154929577464,
+          "precision": 1.0,
+          "recall": 0.9722222222222222,
+          "support": 36
+        },
+        "ingestion-backpressure": {
+          "f1": 1.0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "support": 36
+        },
+        "malformed-sensor-payload": {
+          "f1": 1.0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "support": 36
+        },
+        "missing-device-heartbeat": {
+          "f1": 1.0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "support": 36
+        },
+        "normal": {
+          "f1": 0.9945945945945946,
+          "precision": 0.989247311827957,
+          "recall": 1.0,
+          "support": 92
+        }
+      },
+      "rows": 236
+    },
+    "51": {
+      "accuracy": 0.9957627118644068,
+      "confusion_matrix": {
+        "influxdb-write-failure": {
+          "influxdb-write-failure": 35,
+          "ingestion-backpressure": 0,
+          "malformed-sensor-payload": 0,
+          "missing-device-heartbeat": 0,
+          "normal": 1
+        },
+        "ingestion-backpressure": {
+          "influxdb-write-failure": 0,
+          "ingestion-backpressure": 36,
+          "malformed-sensor-payload": 0,
+          "missing-device-heartbeat": 0,
+          "normal": 0
+        },
+        "malformed-sensor-payload": {
+          "influxdb-write-failure": 0,
+          "ingestion-backpressure": 0,
+          "malformed-sensor-payload": 36,
+          "missing-device-heartbeat": 0,
+          "normal": 0
+        },
+        "missing-device-heartbeat": {
+          "influxdb-write-failure": 0,
+          "ingestion-backpressure": 0,
+          "malformed-sensor-payload": 0,
+          "missing-device-heartbeat": 36,
+          "normal": 0
+        },
+        "normal": {
+          "influxdb-write-failure": 0,
+          "ingestion-backpressure": 0,
+          "malformed-sensor-payload": 0,
+          "missing-device-heartbeat": 0,
+          "normal": 92
+        }
+      },
+      "correct": 235,
+      "labels": [
+        "normal",
+        "influxdb-write-failure",
+        "ingestion-backpressure",
+        "malformed-sensor-payload",
+        "missing-device-heartbeat"
+      ],
+      "macro_f1": 0.9961020175104682,
+      "per_label": {
+        "influxdb-write-failure": {
+          "f1": 0.9859154929577464,
+          "precision": 1.0,
+          "recall": 0.9722222222222222,
+          "support": 36
+        },
+        "ingestion-backpressure": {
+          "f1": 1.0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "support": 36
+        },
+        "malformed-sensor-payload": {
+          "f1": 1.0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "support": 36
+        },
+        "missing-device-heartbeat": {
+          "f1": 1.0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "support": 36
+        },
+        "normal": {
+          "f1": 0.9945945945945946,
+          "precision": 0.989247311827957,
+          "recall": 1.0,
+          "support": 92
+        }
+      },
+      "rows": 236
+    },
+    "52": {
+      "accuracy": 0.9957627118644068,
+      "confusion_matrix": {
+        "influxdb-write-failure": {
+          "influxdb-write-failure": 35,
+          "ingestion-backpressure": 0,
+          "malformed-sensor-payload": 0,
+          "missing-device-heartbeat": 0,
+          "normal": 1
+        },
+        "ingestion-backpressure": {
+          "influxdb-write-failure": 0,
+          "ingestion-backpressure": 36,
+          "malformed-sensor-payload": 0,
+          "missing-device-heartbeat": 0,
+          "normal": 0
+        },
+        "malformed-sensor-payload": {
+          "influxdb-write-failure": 0,
+          "ingestion-backpressure": 0,
+          "malformed-sensor-payload": 36,
+          "missing-device-heartbeat": 0,
+          "normal": 0
+        },
+        "missing-device-heartbeat": {
+          "influxdb-write-failure": 0,
+          "ingestion-backpressure": 0,
+          "malformed-sensor-payload": 0,
+          "missing-device-heartbeat": 36,
+          "normal": 0
+        },
+        "normal": {
+          "influxdb-write-failure": 0,
+          "ingestion-backpressure": 0,
+          "malformed-sensor-payload": 0,
+          "missing-device-heartbeat": 0,
+          "normal": 92
+        }
+      },
+      "correct": 235,
+      "labels": [
+        "normal",
+        "influxdb-write-failure",
+        "ingestion-backpressure",
+        "malformed-sensor-payload",
+        "missing-device-heartbeat"
+      ],
+      "macro_f1": 0.9961020175104682,
+      "per_label": {
+        "influxdb-write-failure": {
+          "f1": 0.9859154929577464,
+          "precision": 1.0,
+          "recall": 0.9722222222222222,
+          "support": 36
+        },
+        "ingestion-backpressure": {
+          "f1": 1.0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "support": 36
+        },
+        "malformed-sensor-payload": {
+          "f1": 1.0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "support": 36
+        },
+        "missing-device-heartbeat": {
+          "f1": 1.0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "support": 36
+        },
+        "normal": {
+          "f1": 0.9945945945945946,
+          "precision": 0.989247311827957,
+          "recall": 1.0,
+          "support": 92
+        }
+      },
+      "rows": 236
+    },
+    "53": {
+      "accuracy": 0.9957627118644068,
+      "confusion_matrix": {
+        "influxdb-write-failure": {
+          "influxdb-write-failure": 35,
+          "ingestion-backpressure": 0,
+          "malformed-sensor-payload": 0,
+          "missing-device-heartbeat": 0,
+          "normal": 1
+        },
+        "ingestion-backpressure": {
+          "influxdb-write-failure": 0,
+          "ingestion-backpressure": 36,
+          "malformed-sensor-payload": 0,
+          "missing-device-heartbeat": 0,
+          "normal": 0
+        },
+        "malformed-sensor-payload": {
+          "influxdb-write-failure": 0,
+          "ingestion-backpressure": 0,
+          "malformed-sensor-payload": 36,
+          "missing-device-heartbeat": 0,
+          "normal": 0
+        },
+        "missing-device-heartbeat": {
+          "influxdb-write-failure": 0,
+          "ingestion-backpressure": 0,
+          "malformed-sensor-payload": 0,
+          "missing-device-heartbeat": 36,
+          "normal": 0
+        },
+        "normal": {
+          "influxdb-write-failure": 0,
+          "ingestion-backpressure": 0,
+          "malformed-sensor-payload": 0,
+          "missing-device-heartbeat": 0,
+          "normal": 92
+        }
+      },
+      "correct": 235,
+      "labels": [
+        "normal",
+        "influxdb-write-failure",
+        "ingestion-backpressure",
+        "malformed-sensor-payload",
+        "missing-device-heartbeat"
+      ],
+      "macro_f1": 0.9961020175104682,
+      "per_label": {
+        "influxdb-write-failure": {
+          "f1": 0.9859154929577464,
+          "precision": 1.0,
+          "recall": 0.9722222222222222,
+          "support": 36
+        },
+        "ingestion-backpressure": {
+          "f1": 1.0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "support": 36
+        },
+        "malformed-sensor-payload": {
+          "f1": 1.0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "support": 36
+        },
+        "missing-device-heartbeat": {
+          "f1": 1.0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "support": 36
+        },
+        "normal": {
+          "f1": 0.9945945945945946,
+          "precision": 0.989247311827957,
+          "recall": 1.0,
+          "support": 92
+        }
+      },
+      "rows": 236
+    },
+    "54": {
+      "accuracy": 0.9957627118644068,
+      "confusion_matrix": {
+        "influxdb-write-failure": {
+          "influxdb-write-failure": 35,
+          "ingestion-backpressure": 0,
+          "malformed-sensor-payload": 0,
+          "missing-device-heartbeat": 0,
+          "normal": 1
+        },
+        "ingestion-backpressure": {
+          "influxdb-write-failure": 0,
+          "ingestion-backpressure": 36,
+          "malformed-sensor-payload": 0,
+          "missing-device-heartbeat": 0,
+          "normal": 0
+        },
+        "malformed-sensor-payload": {
+          "influxdb-write-failure": 0,
+          "ingestion-backpressure": 0,
+          "malformed-sensor-payload": 36,
+          "missing-device-heartbeat": 0,
+          "normal": 0
+        },
+        "missing-device-heartbeat": {
+          "influxdb-write-failure": 0,
+          "ingestion-backpressure": 0,
+          "malformed-sensor-payload": 0,
+          "missing-device-heartbeat": 36,
+          "normal": 0
+        },
+        "normal": {
+          "influxdb-write-failure": 0,
+          "ingestion-backpressure": 0,
+          "malformed-sensor-payload": 0,
+          "missing-device-heartbeat": 0,
+          "normal": 92
+        }
+      },
+      "correct": 235,
+      "labels": [
+        "normal",
+        "influxdb-write-failure",
+        "ingestion-backpressure",
+        "malformed-sensor-payload",
+        "missing-device-heartbeat"
+      ],
+      "macro_f1": 0.9961020175104682,
+      "per_label": {
+        "influxdb-write-failure": {
+          "f1": 0.9859154929577464,
+          "precision": 1.0,
+          "recall": 0.9722222222222222,
+          "support": 36
+        },
+        "ingestion-backpressure": {
+          "f1": 1.0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "support": 36
+        },
+        "malformed-sensor-payload": {
+          "f1": 1.0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "support": 36
+        },
+        "missing-device-heartbeat": {
+          "f1": 1.0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "support": 36
+        },
+        "normal": {
+          "f1": 0.9945945945945946,
+          "precision": 0.989247311827957,
+          "recall": 1.0,
+          "support": 92
+        }
+      },
+      "rows": 236
+    },
+    "55": {
+      "accuracy": 0.9957627118644068,
+      "confusion_matrix": {
+        "influxdb-write-failure": {
+          "influxdb-write-failure": 35,
+          "ingestion-backpressure": 0,
+          "malformed-sensor-payload": 0,
+          "missing-device-heartbeat": 0,
+          "normal": 1
+        },
+        "ingestion-backpressure": {
+          "influxdb-write-failure": 0,
+          "ingestion-backpressure": 36,
+          "malformed-sensor-payload": 0,
+          "missing-device-heartbeat": 0,
+          "normal": 0
+        },
+        "malformed-sensor-payload": {
+          "influxdb-write-failure": 0,
+          "ingestion-backpressure": 0,
+          "malformed-sensor-payload": 36,
+          "missing-device-heartbeat": 0,
+          "normal": 0
+        },
+        "missing-device-heartbeat": {
+          "influxdb-write-failure": 0,
+          "ingestion-backpressure": 0,
+          "malformed-sensor-payload": 0,
+          "missing-device-heartbeat": 36,
+          "normal": 0
+        },
+        "normal": {
+          "influxdb-write-failure": 0,
+          "ingestion-backpressure": 0,
+          "malformed-sensor-payload": 0,
+          "missing-device-heartbeat": 0,
+          "normal": 92
+        }
+      },
+      "correct": 235,
+      "labels": [
+        "normal",
+        "influxdb-write-failure",
+        "ingestion-backpressure",
+        "malformed-sensor-payload",
+        "missing-device-heartbeat"
+      ],
+      "macro_f1": 0.9961020175104682,
+      "per_label": {
+        "influxdb-write-failure": {
+          "f1": 0.9859154929577464,
+          "precision": 1.0,
+          "recall": 0.9722222222222222,
+          "support": 36
+        },
+        "ingestion-backpressure": {
+          "f1": 1.0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "support": 36
+        },
+        "malformed-sensor-payload": {
+          "f1": 1.0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "support": 36
+        },
+        "missing-device-heartbeat": {
+          "f1": 1.0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "support": 36
+        },
+        "normal": {
+          "f1": 0.9945945945945946,
+          "precision": 0.989247311827957,
+          "recall": 1.0,
+          "support": 92
+        }
+      },
+      "rows": 236
+    },
+    "56": {
+      "accuracy": 0.9957627118644068,
+      "confusion_matrix": {
+        "influxdb-write-failure": {
+          "influxdb-write-failure": 35,
+          "ingestion-backpressure": 0,
+          "malformed-sensor-payload": 0,
+          "missing-device-heartbeat": 0,
+          "normal": 1
+        },
+        "ingestion-backpressure": {
+          "influxdb-write-failure": 0,
+          "ingestion-backpressure": 36,
+          "malformed-sensor-payload": 0,
+          "missing-device-heartbeat": 0,
+          "normal": 0
+        },
+        "malformed-sensor-payload": {
+          "influxdb-write-failure": 0,
+          "ingestion-backpressure": 0,
+          "malformed-sensor-payload": 36,
+          "missing-device-heartbeat": 0,
+          "normal": 0
+        },
+        "missing-device-heartbeat": {
+          "influxdb-write-failure": 0,
+          "ingestion-backpressure": 0,
+          "malformed-sensor-payload": 0,
+          "missing-device-heartbeat": 36,
+          "normal": 0
+        },
+        "normal": {
+          "influxdb-write-failure": 0,
+          "ingestion-backpressure": 0,
+          "malformed-sensor-payload": 0,
+          "missing-device-heartbeat": 0,
+          "normal": 92
+        }
+      },
+      "correct": 235,
+      "labels": [
+        "normal",
+        "influxdb-write-failure",
+        "ingestion-backpressure",
+        "malformed-sensor-payload",
+        "missing-device-heartbeat"
+      ],
+      "macro_f1": 0.9961020175104682,
+      "per_label": {
+        "influxdb-write-failure": {
+          "f1": 0.9859154929577464,
+          "precision": 1.0,
+          "recall": 0.9722222222222222,
+          "support": 36
+        },
+        "ingestion-backpressure": {
+          "f1": 1.0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "support": 36
+        },
+        "malformed-sensor-payload": {
+          "f1": 1.0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "support": 36
+        },
+        "missing-device-heartbeat": {
+          "f1": 1.0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "support": 36
+        },
+        "normal": {
+          "f1": 0.9945945945945946,
+          "precision": 0.989247311827957,
+          "recall": 1.0,
+          "support": 92
+        }
+      },
+      "rows": 236
+    },
+    "57": {
+      "accuracy": 0.9957627118644068,
+      "confusion_matrix": {
+        "influxdb-write-failure": {
+          "influxdb-write-failure": 35,
+          "ingestion-backpressure": 0,
+          "malformed-sensor-payload": 0,
+          "missing-device-heartbeat": 0,
+          "normal": 1
+        },
+        "ingestion-backpressure": {
+          "influxdb-write-failure": 0,
+          "ingestion-backpressure": 36,
+          "malformed-sensor-payload": 0,
+          "missing-device-heartbeat": 0,
+          "normal": 0
+        },
+        "malformed-sensor-payload": {
+          "influxdb-write-failure": 0,
+          "ingestion-backpressure": 0,
+          "malformed-sensor-payload": 36,
+          "missing-device-heartbeat": 0,
+          "normal": 0
+        },
+        "missing-device-heartbeat": {
+          "influxdb-write-failure": 0,
+          "ingestion-backpressure": 0,
+          "malformed-sensor-payload": 0,
+          "missing-device-heartbeat": 36,
+          "normal": 0
+        },
+        "normal": {
+          "influxdb-write-failure": 0,
+          "ingestion-backpressure": 0,
+          "malformed-sensor-payload": 0,
+          "missing-device-heartbeat": 0,
+          "normal": 92
+        }
+      },
+      "correct": 235,
+      "labels": [
+        "normal",
+        "influxdb-write-failure",
+        "ingestion-backpressure",
+        "malformed-sensor-payload",
+        "missing-device-heartbeat"
+      ],
+      "macro_f1": 0.9961020175104682,
+      "per_label": {
+        "influxdb-write-failure": {
+          "f1": 0.9859154929577464,
+          "precision": 1.0,
+          "recall": 0.9722222222222222,
+          "support": 36
+        },
+        "ingestion-backpressure": {
+          "f1": 1.0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "support": 36
+        },
+        "malformed-sensor-payload": {
+          "f1": 1.0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "support": 36
+        },
+        "missing-device-heartbeat": {
+          "f1": 1.0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "support": 36
+        },
+        "normal": {
+          "f1": 0.9945945945945946,
+          "precision": 0.989247311827957,
+          "recall": 1.0,
+          "support": 92
+        }
+      },
+      "rows": 236
+    },
+    "58": {
+      "accuracy": 0.9957627118644068,
+      "confusion_matrix": {
+        "influxdb-write-failure": {
+          "influxdb-write-failure": 35,
+          "ingestion-backpressure": 0,
+          "malformed-sensor-payload": 0,
+          "missing-device-heartbeat": 0,
+          "normal": 1
+        },
+        "ingestion-backpressure": {
+          "influxdb-write-failure": 0,
+          "ingestion-backpressure": 36,
+          "malformed-sensor-payload": 0,
+          "missing-device-heartbeat": 0,
+          "normal": 0
+        },
+        "malformed-sensor-payload": {
+          "influxdb-write-failure": 0,
+          "ingestion-backpressure": 0,
+          "malformed-sensor-payload": 36,
+          "missing-device-heartbeat": 0,
+          "normal": 0
+        },
+        "missing-device-heartbeat": {
+          "influxdb-write-failure": 0,
+          "ingestion-backpressure": 0,
+          "malformed-sensor-payload": 0,
+          "missing-device-heartbeat": 36,
+          "normal": 0
+        },
+        "normal": {
+          "influxdb-write-failure": 0,
+          "ingestion-backpressure": 0,
+          "malformed-sensor-payload": 0,
+          "missing-device-heartbeat": 0,
+          "normal": 92
+        }
+      },
+      "correct": 235,
+      "labels": [
+        "normal",
+        "influxdb-write-failure",
+        "ingestion-backpressure",
+        "malformed-sensor-payload",
+        "missing-device-heartbeat"
+      ],
+      "macro_f1": 0.9961020175104682,
+      "per_label": {
+        "influxdb-write-failure": {
+          "f1": 0.9859154929577464,
+          "precision": 1.0,
+          "recall": 0.9722222222222222,
+          "support": 36
+        },
+        "ingestion-backpressure": {
+          "f1": 1.0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "support": 36
+        },
+        "malformed-sensor-payload": {
+          "f1": 1.0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "support": 36
+        },
+        "missing-device-heartbeat": {
+          "f1": 1.0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "support": 36
+        },
+        "normal": {
+          "f1": 0.9945945945945946,
+          "precision": 0.989247311827957,
+          "recall": 1.0,
+          "support": 92
+        }
+      },
+      "rows": 236
+    },
+    "59": {
+      "accuracy": 0.9957627118644068,
+      "confusion_matrix": {
+        "influxdb-write-failure": {
+          "influxdb-write-failure": 35,
+          "ingestion-backpressure": 0,
+          "malformed-sensor-payload": 0,
+          "missing-device-heartbeat": 0,
+          "normal": 1
+        },
+        "ingestion-backpressure": {
+          "influxdb-write-failure": 0,
+          "ingestion-backpressure": 36,
+          "malformed-sensor-payload": 0,
+          "missing-device-heartbeat": 0,
+          "normal": 0
+        },
+        "malformed-sensor-payload": {
+          "influxdb-write-failure": 0,
+          "ingestion-backpressure": 0,
+          "malformed-sensor-payload": 36,
+          "missing-device-heartbeat": 0,
+          "normal": 0
+        },
+        "missing-device-heartbeat": {
+          "influxdb-write-failure": 0,
+          "ingestion-backpressure": 0,
+          "malformed-sensor-payload": 0,
+          "missing-device-heartbeat": 36,
+          "normal": 0
+        },
+        "normal": {
+          "influxdb-write-failure": 0,
+          "ingestion-backpressure": 0,
+          "malformed-sensor-payload": 0,
+          "missing-device-heartbeat": 0,
+          "normal": 92
+        }
+      },
+      "correct": 235,
+      "labels": [
+        "normal",
+        "influxdb-write-failure",
+        "ingestion-backpressure",
+        "malformed-sensor-payload",
+        "missing-device-heartbeat"
+      ],
+      "macro_f1": 0.9961020175104682,
+      "per_label": {
+        "influxdb-write-failure": {
+          "f1": 0.9859154929577464,
+          "precision": 1.0,
+          "recall": 0.9722222222222222,
+          "support": 36
+        },
+        "ingestion-backpressure": {
+          "f1": 1.0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "support": 36
+        },
+        "malformed-sensor-payload": {
+          "f1": 1.0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "support": 36
+        },
+        "missing-device-heartbeat": {
+          "f1": 1.0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "support": 36
+        },
+        "normal": {
+          "f1": 0.9945945945945946,
+          "precision": 0.989247311827957,
+          "recall": 1.0,
+          "support": 92
+        }
+      },
+      "rows": 236
+    },
+    "60": {
+      "accuracy": 0.9957627118644068,
+      "confusion_matrix": {
+        "influxdb-write-failure": {
+          "influxdb-write-failure": 35,
+          "ingestion-backpressure": 0,
+          "malformed-sensor-payload": 0,
+          "missing-device-heartbeat": 0,
+          "normal": 1
+        },
+        "ingestion-backpressure": {
+          "influxdb-write-failure": 0,
+          "ingestion-backpressure": 36,
+          "malformed-sensor-payload": 0,
+          "missing-device-heartbeat": 0,
+          "normal": 0
+        },
+        "malformed-sensor-payload": {
+          "influxdb-write-failure": 0,
+          "ingestion-backpressure": 0,
+          "malformed-sensor-payload": 36,
+          "missing-device-heartbeat": 0,
+          "normal": 0
+        },
+        "missing-device-heartbeat": {
+          "influxdb-write-failure": 0,
+          "ingestion-backpressure": 0,
+          "malformed-sensor-payload": 0,
+          "missing-device-heartbeat": 36,
+          "normal": 0
+        },
+        "normal": {
+          "influxdb-write-failure": 0,
+          "ingestion-backpressure": 0,
+          "malformed-sensor-payload": 0,
+          "missing-device-heartbeat": 0,
+          "normal": 92
+        }
+      },
+      "correct": 235,
+      "labels": [
+        "normal",
+        "influxdb-write-failure",
+        "ingestion-backpressure",
+        "malformed-sensor-payload",
+        "missing-device-heartbeat"
+      ],
+      "macro_f1": 0.9961020175104682,
+      "per_label": {
+        "influxdb-write-failure": {
+          "f1": 0.9859154929577464,
+          "precision": 1.0,
+          "recall": 0.9722222222222222,
+          "support": 36
+        },
+        "ingestion-backpressure": {
+          "f1": 1.0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "support": 36
+        },
+        "malformed-sensor-payload": {
+          "f1": 1.0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "support": 36
+        },
+        "missing-device-heartbeat": {
+          "f1": 1.0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "support": 36
+        },
+        "normal": {
+          "f1": 0.9945945945945946,
+          "precision": 0.989247311827957,
+          "recall": 1.0,
+          "support": 92
+        }
+      },
+      "rows": 236
+    },
+    "61": {
+      "accuracy": 0.9957627118644068,
+      "confusion_matrix": {
+        "influxdb-write-failure": {
+          "influxdb-write-failure": 35,
+          "ingestion-backpressure": 0,
+          "malformed-sensor-payload": 0,
+          "missing-device-heartbeat": 0,
+          "normal": 1
+        },
+        "ingestion-backpressure": {
+          "influxdb-write-failure": 0,
+          "ingestion-backpressure": 36,
+          "malformed-sensor-payload": 0,
+          "missing-device-heartbeat": 0,
+          "normal": 0
+        },
+        "malformed-sensor-payload": {
+          "influxdb-write-failure": 0,
+          "ingestion-backpressure": 0,
+          "malformed-sensor-payload": 36,
+          "missing-device-heartbeat": 0,
+          "normal": 0
+        },
+        "missing-device-heartbeat": {
+          "influxdb-write-failure": 0,
+          "ingestion-backpressure": 0,
+          "malformed-sensor-payload": 0,
+          "missing-device-heartbeat": 36,
+          "normal": 0
+        },
+        "normal": {
+          "influxdb-write-failure": 0,
+          "ingestion-backpressure": 0,
+          "malformed-sensor-payload": 0,
+          "missing-device-heartbeat": 0,
+          "normal": 92
+        }
+      },
+      "correct": 235,
+      "labels": [
+        "normal",
+        "influxdb-write-failure",
+        "ingestion-backpressure",
+        "malformed-sensor-payload",
+        "missing-device-heartbeat"
+      ],
+      "macro_f1": 0.9961020175104682,
+      "per_label": {
+        "influxdb-write-failure": {
+          "f1": 0.9859154929577464,
+          "precision": 1.0,
+          "recall": 0.9722222222222222,
+          "support": 36
+        },
+        "ingestion-backpressure": {
+          "f1": 1.0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "support": 36
+        },
+        "malformed-sensor-payload": {
+          "f1": 1.0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "support": 36
+        },
+        "missing-device-heartbeat": {
+          "f1": 1.0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "support": 36
+        },
+        "normal": {
+          "f1": 0.9945945945945946,
+          "precision": 0.989247311827957,
+          "recall": 1.0,
+          "support": 92
+        }
+      },
+      "rows": 236
+    }
+  }
+}
