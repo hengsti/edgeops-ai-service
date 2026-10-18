@@ -26,10 +26,7 @@ def create_app(
         if runtime_settings.prediction_backend is PredictionBackendName.RULES:
             predictor: Predictor = RuleBasedPredictor()
         else:
-            from edgeops_ai.ml import ModelArtifactError, load_ml_predictor
-
-            if not runtime_settings.model_artifact_sha256:
-                raise ModelArtifactError("MODEL_ARTIFACT_SHA256 is required for the ml backend.")
+            from edgeops_ai.ml import load_ml_predictor
 
             predictor = load_ml_predictor(
                 runtime_settings.model_artifact_path, runtime_settings.model_artifact_sha256
