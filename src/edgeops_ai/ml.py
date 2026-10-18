@@ -4,20 +4,21 @@ import hashlib
 from collections.abc import Callable, Mapping
 from math import isfinite, log1p
 from pathlib import Path
-from typing import Any, cast
+from typing import Any, cast, get_args
 
 import joblib
 
 from edgeops_ai.prediction import Prediction, PredictionBackendName, recommendation_for
 from edgeops_ai.schemas import FeatureVector, PredictionLabel
 
-ML_MODEL_VERSION = "lightweight-ml-0.5.0"
+FEATURE_CONTRACT_VERSION = "1.0"
 ARTIFACT_SCHEMA_VERSION = "2.0"
 
 REQUIRED_ARTIFACT_FIELDS = frozenset(
     {
         "schema_version",
         "model_version",
+        "feature_contract_version",
         "feature_columns",
         "labels",
         "model",
@@ -151,11 +152,11 @@ class MlPredictor:
     """
     Serves predictions from a trained probability classifier.
 
-    Works with any estimator exposing predict() and predict_proba(),
+    Works with any classifier exposing predict_proba(), classes_, and n_features_in_,
     validated once at startup by load_ml_predictor().
     """
 
-    def __init__(self, *, model: Any, model_version: str = ML_MODEL_VERSION) -> None:
+    def __init__(self, *, model: Any, model_version: str) -> None:
         self._model = model
         self._model_version = model_version
 
@@ -170,15 +171,13 @@ class MlPredictor:
     def predict(self, features: FeatureVector) -> Prediction:
         matrix = [vectorize_model_features(features)]
 
-        predicted_label = str(self._model.predict(matrix)[0])
-
-        classes = [str(value) for value in self._model.classes_]
         probabilities = self._model.predict_proba(matrix)[0]
-        confidence = float(probabilities[classes.index(predicted_label)])
+        index, confidence = max(enumerate(probabilities), key=lambda item: item[1])
+        predicted_label = str(self._model.classes_[index])
 
         return Prediction(
             label=cast(PredictionLabel, predicted_label),
-            confidence=confidence,
+            confidence=float(confidence),
             recommendation=recommendation_for(predicted_label, features),
             model_version=self._model_version,
         )
@@ -221,23 +220,43 @@ def load_ml_predictor(artifact_path: Path, expected_sha256: str | None = None) -
             f"Expected {ARTIFACT_SCHEMA_VERSION!r}."
         )
 
-    if artifact["model_version"] != ML_MODEL_VERSION:
+    if artifact["feature_contract_version"] != FEATURE_CONTRACT_VERSION:
         raise ModelArtifactError(
-            f"Unsupported ML model version: {artifact['model_version']!r}. "
-            f"Expected {ML_MODEL_VERSION!r}."
+            f"Unsupported feature contract version: {artifact['feature_contract_version']!r}. "
+            f"Expected {FEATURE_CONTRACT_VERSION!r}."
         )
 
-    if tuple(artifact["feature_columns"]) != MODEL_FEATURE_COLUMNS:
+    if not isinstance(artifact["model_version"], str) or not artifact["model_version"].strip():
+        raise ModelArtifactError("Artifact model_version must be a non-empty string.")
+
+    columns = artifact["feature_columns"]
+    if not isinstance(columns, (list, tuple)) or tuple(columns) != MODEL_FEATURE_COLUMNS:
         raise ModelArtifactError(
             "Artifact feature_columns does not match the expected training order. "
-            f"Expected {MODEL_FEATURE_COLUMNS!r}, received {tuple(artifact['feature_columns'])!r}."
+            f"Expected {MODEL_FEATURE_COLUMNS!r}, received {columns!r}."
         )
 
     model = artifact["model"]
 
-    if not callable(getattr(model, "predict", None)) or not callable(
-        getattr(model, "predict_proba", None)
-    ):
-        raise ModelArtifactError("ML model must provide predict() and predict_proba().")
+    if not callable(getattr(model, "predict_proba", None)):
+        raise ModelArtifactError("ML model must provide predict_proba().")
+
+    try:
+        classes = set(model.classes_)
+        class_count = len(model.classes_)
+    except (AttributeError, TypeError) as error:
+        raise ModelArtifactError("ML model must expose a sequence of classes_.") from error
+    if not classes or len(classes) != class_count or not classes <= set(get_args(PredictionLabel)):
+        raise ModelArtifactError("ML model classes_ must be unique, known PredictionLabels.")
+
+    if getattr(model, "n_features_in_", None) != len(MODEL_FEATURE_COLUMNS):
+        raise ModelArtifactError(f"ML model feature count must equal {len(MODEL_FEATURE_COLUMNS)}.")
+
+    try:
+        labels = set(artifact["labels"])
+    except TypeError as error:
+        raise ModelArtifactError("Artifact labels must match the model classes_.") from error
+    if labels != classes:
+        raise ModelArtifactError("Artifact labels must match the model classes_.")
 
     return MlPredictor(model=model, model_version=artifact["model_version"])
