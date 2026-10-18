@@ -8,13 +8,7 @@ __pycache__/
 
 .env
 
-data/*
-!data/generated/
-data/generated/*
-!data/generated/rule-baseline-report.json
-!data/holdout/
-data/holdout/*
-!data/holdout/deployed-ml-report.json
+data/
 
 artifacts/*
 !artifacts/model.joblib
