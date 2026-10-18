@@ -5,6 +5,7 @@ from urllib.parse import quote
 import httpx
 
 from edgeops_ai.schemas import (
+    METRICS,
     OPTIONAL_METRIC_MAPPING,
     REQUIRED_METRIC_MAPPING,
     ZERO_DEFAULT_METRIC_MAPPING,
@@ -38,6 +39,14 @@ class CollectorClient:
     async def fetch_observation(self) -> ObservationV1:
         payload = await self._get_json("/v1/metrics/ingestion")
         collector_metrics = payload["data"]
+
+        # A successful production metrics response comes from a fresh ingest scrape.
+        metadata = payload["metadata"]
+        if metadata.get("collector_mode") == "production" and metadata.get("simulated") is False:
+            collector_metrics = dict(collector_metrics)
+            for metric in METRICS.values():
+                if metric.absent_zero:
+                    collector_metrics.setdefault(metric.source_name, 0.0)
 
         metrics = {
             target_name: collector_metrics[source_name]
