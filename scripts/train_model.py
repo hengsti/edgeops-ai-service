@@ -29,7 +29,7 @@ from sklearn.tree import DecisionTreeClassifier
 
 from edgeops_ai.ml import (
     ARTIFACT_SCHEMA_VERSION,
-    ML_MODEL_VERSION,
+    FEATURE_CONTRACT_VERSION,
     MODEL_FEATURE_COLUMNS,
     vectorize_model_features,
 )
@@ -61,8 +61,6 @@ METADATA_COLUMNS = (
     "simulation_phase",
     "expected_label",
 )
-
-DEFAULT_MODEL_VERSION = ML_MODEL_VERSION
 
 
 class DatasetError(ValueError):
@@ -439,14 +437,13 @@ def train_model(
     input_dir: Path,
     artifact_path: Path,
     report_path: Path,
-    model_version: str = DEFAULT_MODEL_VERSION,
+    model_version: str | None = None,
     min_accuracy: float = 0.95,
     min_label_recall: float = 0.90,
 ) -> dict[str, Any]:
-    if model_version != ML_MODEL_VERSION:
-        raise DatasetError(
-            f"Unsupported model version {model_version!r}; expected {ML_MODEL_VERSION!r}"
-        )
+    if model_version is not None and not model_version.strip():
+        raise DatasetError("The model version must be a non-empty string.")
+    model_version = model_version or datetime.now(UTC).strftime("lightweight-ml-%Y%m%dT%H%M%S.%fZ")
 
     dataset = load_training_dataset(input_dir)
 
@@ -467,6 +464,7 @@ def train_model(
         "schema_version": "1.0",
         "dataset_schema_version": DATASET_SCHEMA_VERSION,
         "model_version": model_version,
+        "feature_contract_version": FEATURE_CONTRACT_VERSION,
         "generated_at": datetime.now(UTC).isoformat(),
         "candidate_configuration": {name: repr(model) for name, model in CANDIDATE_MODELS.items()},
         "dataset": {
@@ -506,6 +504,7 @@ def train_model(
 
     artifact = {
         "schema_version": ARTIFACT_SCHEMA_VERSION,
+        "feature_contract_version": FEATURE_CONTRACT_VERSION,
         "dataset_schema_version": DATASET_SCHEMA_VERSION,
         "model_version": model_version,
         "model_name": selected_model,
@@ -550,7 +549,7 @@ def parse_args(
     )
     parser.add_argument(
         "--model-version",
-        default=DEFAULT_MODEL_VERSION,
+        help="Artifact model version (default: a generated UTC timestamp version).",
     )
     parser.add_argument(
         "--min-accuracy",
