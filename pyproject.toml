@@ -30,6 +30,9 @@ dev = [
 requires = ["hatchling"]
 build-backend = "hatchling.build"
 
+[project.scripts]
+edgeops-train = "edgeops_ai.training.cli:main"
+
 [tool.hatch.build.targets.wheel]
 packages = ["src/edgeops_ai"]
 
@@ -58,5 +61,5 @@ select = [
 [tool.ruff.format]
 
 [[tool.mypy.overrides]]
-module = ["joblib", "onnxruntime"]
+module = ["joblib", "onnxruntime", "sklearn.*", "skl2onnx.*"]
 ignore_missing_imports = true
