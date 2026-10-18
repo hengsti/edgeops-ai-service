@@ -12,6 +12,7 @@ end-to-end test of the deployed inference path:
 
 Example (PowerShell):
     uv run python -m scripts.evaluate_deployed_model `
+        --expected-model-version <version-from-training-report> `
         --seed-range 62 66 `
         --speed 1
 """
@@ -33,7 +34,6 @@ from typing import Any
 import httpx
 
 from edgeops_ai.collector_client import CollectorClient
-from edgeops_ai.ml import ML_MODEL_VERSION
 from edgeops_ai.schemas import ObservationV1
 from edgeops_ai.settings import Settings
 from scripts.common import (
@@ -69,7 +69,6 @@ from scripts.simulation_manifest import (
 
 DEFAULT_HOLDOUT_SEEDS = tuple(range(62, 67))
 DEFAULT_AI_BASE_URL = "http://localhost:8096"
-EXPECTED_MODEL_VERSION = ML_MODEL_VERSION
 
 RESULT_COLUMNS = (
     "expected_label",
@@ -207,6 +206,7 @@ def write_dataset(
 async def require_ml_backend(
     client: httpx.AsyncClient,
     ai_base_url: str,
+    expected_model_version: str,
 ) -> None:
     response = await client.get(f"{ai_base_url.rstrip('/')}/health")
 
@@ -223,15 +223,15 @@ async def require_ml_backend(
             f"{health.get('prediction_backend')!r}."
         )
 
-    if health.get("model_version") != EXPECTED_MODEL_VERSION:
+    if health.get("model_version") != expected_model_version:
         raise ScriptError(
             "AI service exposes the wrong model version: "
-            f"expected {EXPECTED_MODEL_VERSION!r}, "
+            f"expected {expected_model_version!r}, "
             f"got {health.get('model_version')!r}."
         )
 
     print(
-        f"Verified deployed backend: prediction_backend=ml, model_version={EXPECTED_MODEL_VERSION}"
+        f"Verified deployed backend: prediction_backend=ml, model_version={expected_model_version}"
     )
 
 
@@ -240,6 +240,7 @@ async def post_observation(
     *,
     ai_base_url: str,
     observation: ObservationV1,
+    expected_model_version: str,
 ) -> dict[str, Any]:
     response = await client.post(
         f"{ai_base_url.rstrip('/')}/v1/observations",
@@ -259,11 +260,11 @@ async def post_observation(
 
     model_version = payload.get("model_version")
 
-    if model_version != EXPECTED_MODEL_VERSION:
+    if model_version != expected_model_version:
         raise ScriptError(
             "Observation was not evaluated by the expected "
             "deployed model: "
-            f"expected {EXPECTED_MODEL_VERSION!r}, "
+            f"expected {expected_model_version!r}, "
             f"got {model_version!r}."
         )
 
@@ -286,6 +287,7 @@ async def collect_run(
     max_samples: int,
     api_timeout_seconds: float,
     start_phase: str,
+    expected_model_version: str,
 ) -> tuple[list[dict[str, Any]], int, int, dict[str, object]]:
     start_response = start_simulation(
         url=simulation_runs_url(simulation_base_url),
@@ -363,6 +365,7 @@ async def collect_run(
             api_client,
             ai_base_url=ai_base_url,
             observation=observation,
+            expected_model_version=expected_model_version,
         )
 
         collected_observations += 1
@@ -479,6 +482,7 @@ async def evaluate(
         await require_ml_backend(
             api_client,
             args.ai_base_url,
+            args.expected_model_version,
         )
 
         for seed in args.seeds:
@@ -503,6 +507,7 @@ async def evaluate(
                     max_samples=args.max_samples,
                     api_timeout_seconds=args.api_timeout,
                     start_phase=args.start_phase,
+                    expected_model_version=args.expected_model_version,
                 )
 
                 output = dataset_path(
@@ -560,6 +565,11 @@ def parse_args(
 ) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
 
+    parser.add_argument(
+        "--expected-model-version",
+        required=True,
+        help="Candidate artifact version expected from the deployed ML backend.",
+    )
     seed_group = parser.add_mutually_exclusive_group()
 
     seed_group.add_argument(
