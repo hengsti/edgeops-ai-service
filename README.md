@@ -263,6 +263,7 @@ Relative paths are resolved from the terminal's current directory.
 | `analyze-features`, `ablate` | Produce feature and ablation evidence |
 | `validate` | Check holdout gates and, with `--training-dir`, all release gates |
 | `export-onnx` | Convert an existing trusted source artifact without retraining |
+| `check-distributions` | Compare normal simulation inputs with saved production observations |
 
 Production polling keeps its default `http://localhost:8095`. Training collection
 uses the independent simulation collector at `http://localhost:8097`, with explicit
@@ -325,6 +326,9 @@ uv run edgeops-train evaluate-deployed --expected-model-version $modelVersion `
   --simulation-base-url http://localhost:8097 --ai-base-url http://localhost:8096 `
   --output-dir $holdout
 
+uv run edgeops-train check-distributions --input-dir $training `
+  --production-observations data/production-observations.jsonl
+
 uv run edgeops-train validate --input-dir $holdout --training-dir $training `
   --expected-model-version $modelVersion
 ```
@@ -335,7 +339,47 @@ the CSVs and `simulation-manifest.json`. The validator combines holdout checks
 (unseen seeds, contract, finite features, version, accuracy, recall, detection,
 and recovery) with training, feature availability, ablation, and recovery gates.
 Its `release-validation.json` records every gate. Omitting `--training-dir`
-runs only holdout checks; `--training-seed-range` then defaults to 42–61.
+runs holdout and production-distribution checks; `--training-seed-range` then
+defaults to 42–61.
+
+Release validation also requires `distribution-report.json`. It checks the recorded
+feature results, contract version, and source hashes; missing or changed evidence
+fails the release. With `--training-dir`, the report defaults to that training
+directory; otherwise use `--distribution-report <path>` or place it in the holdout
+directory. The legacy acceptance command enforces this gate too.
+
+Save fresh observations from a representative normal production period as JSONL:
+one `ObservationV1.model_dump_json()` per line from `CollectorClient.fetch_observation()`.
+Keep the real production metadata, device roster, and broker evidence. Use at least
+21 observations that produce 20 usable windows after warmup and counter resets.
+Then run:
+
+```powershell
+uv run edgeops-train check-distributions --input-dir $training `
+  --production-observations data/production-observations.jsonl
+
+# Or include the check before training in the pipeline:
+uv run edgeops-train pipeline --output-dir $training --seed-range 42 61 --train `
+  --production-observations data/production-observations.jsonl
+```
+
+The comparison uses stable simulation rows labelled `normal`, excluding recovery.
+It checks all 46 vectorized model inputs, including availability, and the unclipped
+`processing_ratio` so the old `1.2` mismatch remains visible. Each feature records
+both value ranges, the fraction outside the simulation range, and the
+[two-sample KS distance](https://docs.scipy.org/doc/scipy/reference/generated/scipy.stats.ks_2samp.html).
+Defaults fail a feature above distance `0.3` or outside fraction `0.1`;
+`check-distributions` exposes both thresholds. These are drift limits, with no
+statistical significance claim. Use representative data to assess their suitability.
+The report includes source hashes, capture coverage, queue-growth range, and replayed
+rules predictions. Unlabelled production observations do not establish accuracy.
+Offline training without snapshots remains available for experiments; release
+validation requires the production comparison.
+
+The [2026-10-18 production evaluation](docs/model-validation/issue16-production-2026-10-18.md)
+confirmed comparable counters and normal rules/ONNX predictions. Its distribution
+gate still failed on eight inputs; the saved baseline is not approved for a new
+release against that capture.
 
 Generated datasets and candidate reports under `data/` stay outside git.
 Obsolete local model candidates are archived under `artifacts/archive/`.
@@ -343,6 +387,22 @@ After all release gates pass, promote explicitly: copy the source candidate to
 `artifacts/model.joblib` and its ONNX export to `artifacts/model.onnx`, record
 the new hashes and validation evidence below, then rebuild/restart with the new
 `MODEL_ARTIFACT_SHA256`. The runtime default is always `artifacts/model.onnx`.
+
+## Production counter compatibility
+
+The ingestion counter fix (ingestion-service #15) must be deployed before collecting
+new production evidence. `ingest_messages_enqueued_total` and
+`ingest_messages_processed_total` both cover sensor and status messages, labelled
+by `kind`. The collector sums both sides across the same kinds; the AI uses their
+deltas for processing ratio and queue growth. It does not mix the combined enqueue
+count with the sensor-only processed count. A ratio above one can still describe
+backlog drainage, so the runtime keeps the measured value.
+
+After a successful production ingestion-metrics response, known lazy failure
+counters that are absent default to zero. Explicit `null` optional metrics stay
+unknown, and simulation masks remain intact. Gauges and other required counters
+are not inferred from missing data; in particular, missing InfluxDB health is not
+treated as healthy. Failed scrapes continue to fail visibly.
 
 ## Broker versus device diagnosis
 
