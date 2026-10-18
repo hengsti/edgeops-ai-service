@@ -1,13 +1,11 @@
 import csv
 from datetime import UTC, datetime
-from inspect import signature
 from pathlib import Path
 from types import SimpleNamespace
 from typing import Any
 
 import joblib
 import pytest
-import scripts.train_model as train_model_module
 from scripts.collect_rules_dataset import build_dataset_row, write_dataset
 from scripts.common import (
     DATASET_COLUMNS,
@@ -33,7 +31,6 @@ from scripts.run_pipeline import (
 )
 from scripts.simulation_manifest import empty_manifest, upsert_manifest_run, write_manifest_atomic
 from scripts.train_model import (
-    SOURCE_FEATURE_COLUMNS,
     DatasetError,
     load_training_dataset,
     train_model,
@@ -45,8 +42,8 @@ from scripts.train_model import (
 from edgeops_ai.ml import (
     ML_MODEL_VERSION,
     MODEL_FEATURE_COLUMNS,
-    build_model_feature_row,
     load_ml_predictor,
+    vectorize_model_features,
 )
 
 OPTIONAL_SOURCE_COLUMNS = (
@@ -389,10 +386,6 @@ def test_dataset_evaluation_rejects_old_dataset_version(tmp_path: Path) -> None:
         read_dataset(path)
 
 
-def test_source_columns_match_the_shared_model_builder() -> None:
-    assert tuple(signature(build_model_feature_row).parameters) == SOURCE_FEATURE_COLUMNS
-
-
 def test_valid_release_a_dataset_loads_without_preprocessing(tmp_path: Path) -> None:
     write_training_matrix(tmp_path)
 
@@ -544,24 +537,52 @@ def test_retrained_model_accepts_healthy_production_heartbeat_age(
     )
 
 
-def test_training_loader_passes_every_source_to_shared_builder(
+@pytest.mark.parametrize("broker_available", [None, True, False])
+def test_training_and_runtime_use_the_same_vector(
     tmp_path: Path,
-    monkeypatch: pytest.MonkeyPatch,
+    make_features,
+    broker_available: bool | None,
 ) -> None:
-    write_training_matrix(tmp_path)
-    calls: list[dict[str, Any]] = []
-    real_builder = build_model_feature_row
+    features = make_features(
+        messages_enqueued_rate=10,
+        queue_growth_rate=2,
+        processing_ratio=0.8,
+        queue_full_rate=1,
+        transform_failure_ratio=0.15,
+        persistence_ratio=0.5,
+        heartbeat_missing=True,
+        queue_utilization_ratio=0.25,
+        influx_write_failure_ratio=0.2,
+        influxdb_healthy=0,
+        pipeline_duration_average_seconds=2,
+        heartbeat_age_max_seconds=3,
+        missing_device_ratio=0.5,
+        device_metrics_available=True,
+        decode_failure_ratio=0.1,
+        raw_validation_failure_ratio=0.2,
+        business_validation_failure_ratio=0.3,
+        transform_deserialize_failure_ratio=0.05,
+        event_queue_drop_ratio=0.1,
+        wal_queue_full_ratio=0.1,
+        durability_ack_failure_rate=3,
+        dlq_publish_failure_ratio=0.1,
+        wal_retry_rate=2,
+        wal_drop_ratio=0.2,
+        wal_retry_outage_active=1,
+        decode_duration_average_seconds=2,
+        transform_duration_average_seconds=3,
+        persist_duration_average_seconds=4,
+        influx_write_duration_average_seconds=5,
+        broker_available=broker_available,
+    )
+    for seed in (42, 43):
+        rows = training_rows(seed)
+        rows[0].update(features.model_dump())
+        write_csv(tmp_path / f"matrix-seed-{seed}.csv", list(DATASET_COLUMNS), rows)
 
-    def recording_builder(**values: Any) -> list[float]:
-        calls.append(values)
-        return real_builder(**values)
+    dataset = load_training_dataset(tmp_path)
 
-    monkeypatch.setattr(train_model_module, "build_model_feature_row", recording_builder)
-
-    dataset = train_model_module.load_training_dataset(tmp_path)
-
-    assert len(calls) == dataset.row_count
-    assert all(tuple(call) == SOURCE_FEATURE_COLUMNS for call in calls)
+    assert dataset.features[0].tolist() == pytest.approx(vectorize_model_features(features))
 
 
 def test_blank_optional_values_remain_unavailable(tmp_path: Path) -> None:

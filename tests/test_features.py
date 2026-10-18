@@ -4,6 +4,7 @@ from typing import Any
 import pytest
 
 from edgeops_ai.features import FeatureExtractor, safe_ratio
+from edgeops_ai.ml import vectorize_model_features
 from edgeops_ai.schemas import FeatureVector, ObservationV1
 
 BASE_METRICS: dict[str, float] = {
@@ -83,6 +84,117 @@ def test_safe_ratio_uses_default_for_empty_denominator() -> None:
     assert safe_ratio(3, 6) == 0.5
     assert safe_ratio(3, 0) == 0.0
     assert safe_ratio(3, 0, default=1.0) == 1.0
+
+
+def test_observation_pair_matches_golden_model_vector() -> None:
+    current = {
+        "influx_write_success_total": 8,
+        "mqtt_messages_received_total": 90,
+        "event_queue_full_total": 10,
+        "incoming_oversized_total": 2,
+        "incoming_non_utf8_total": 3,
+        "incoming_invalid_json_total": 5,
+        "raw_validation_success_total": 7,
+        "raw_validation_ignored_total": 1,
+        "raw_validation_failed_total": 2,
+        "business_validation_success_total": 7,
+        "business_validation_failed_total": 3,
+        "transform_attempt_total": 100,
+        "transform_deserialize_failed_total": 5,
+        "wal_queue_full_total": 10,
+        "wal_queue_closed_total": 10,
+        "durability_ack_failed_total": 30,
+        "dlq_messages_published_total": 9,
+        "dlq_publish_errors_total": 1,
+        "wal_committed_total": 8,
+        "wal_drop_total": 2,
+        "wal_retry_total": 20,
+        "decode_duration_seconds_sum": 4,
+        "decode_duration_seconds_count": 2,
+        "transform_duration_seconds_sum": 9,
+        "transform_duration_seconds_count": 3,
+        "persist_duration_seconds_sum": 16,
+        "persist_duration_seconds_count": 4,
+        "influx_write_duration_seconds_sum": 25,
+        "influx_write_duration_seconds_count": 5,
+    }
+    previous = dict.fromkeys(current, 0)
+    current.update(
+        {
+            "messages_enqueued_total": 200,
+            "messages_processed_total": 180,
+            "queue_full_total": 20,
+            "transform_success_total": 160,
+            "transform_failed_total": 10,
+            "influx_lines_written_total": 130,
+            "influx_write_failed_total": 2,
+            "influxdb_healthy": 0,
+            "queue_depth": 25,
+            "queue_capacity": 100,
+            "wal_retry_outage_active": 1,
+            "pipeline_duration_seconds_sum": 30,
+            "pipeline_duration_seconds_count": 110,
+        }
+    )
+    features = extract_features(
+        previous_metrics=previous,
+        current_metrics=current,
+        current_devices=[
+            {"device_id": "sensor-a", "heartbeat_missing": True, "heartbeat_age_seconds": 3},
+            {"device_id": "sensor-b", "heartbeat_missing": False, "heartbeat_age_seconds": 1},
+        ],
+    ).model_copy(update={"broker_available": False})
+
+    assert vectorize_model_features(features) == pytest.approx(
+        [
+            0.2,
+            0.8,
+            0.2,
+            0.15,
+            0.5,
+            1,
+            0.25,
+            1,
+            0.2,
+            1,
+            0,
+            1.0986122886681098,
+            1.3862943611198906,
+            1,
+            0.5,
+            1,
+            0.1,
+            1,
+            0.2,
+            1,
+            0.3,
+            1,
+            0.05,
+            1,
+            0.1,
+            1,
+            0.08333333333333333,
+            1,
+            1.3862943611198906,
+            1,
+            0.1,
+            1,
+            1.0986122886681098,
+            0.2,
+            1,
+            1,
+            1.0986122886681098,
+            1,
+            1.3862943611198906,
+            1,
+            1.6094379124341003,
+            1,
+            1.791759469228055,
+            1,
+            1,
+            1,
+        ]
+    )
 
 
 @pytest.mark.parametrize(
@@ -224,14 +336,32 @@ def test_pipeline_average_uses_window_deltas() -> None:
     assert features.pipeline_duration_average_seconds == 2
 
 
-def test_production_persistence_override_is_preserved() -> None:
+@pytest.mark.parametrize("collector_mode", ["production", "simulation"])
+def test_healthy_batched_persistence_uses_the_same_rule_in_both_modes(collector_mode: str) -> None:
     features = extract_features(
         previous_metrics={"transform_success_total": 100, "influx_lines_written_total": 100},
         current_metrics={"transform_success_total": 110, "influx_lines_written_total": 100},
-        collector_mode="production",
+        collector_mode=collector_mode,
     )
 
     assert features.persistence_ratio == 1
+
+
+@pytest.mark.parametrize("collector_mode", ["production", "simulation"])
+@pytest.mark.parametrize("fault", [{"influxdb_healthy": 0}, {"influx_write_failed_total": 1}])
+def test_persistence_shortfall_is_preserved_when_sink_has_faults(
+    collector_mode: str, fault: dict[str, float]
+) -> None:
+    features = extract_features(
+        previous_metrics={"transform_success_total": 100, "influx_lines_written_total": 100},
+        current_metrics={
+            "transform_success_total": 110,
+            "influx_lines_written_total": 102,
+            **fault,
+        },
+        collector_mode=collector_mode,
+    )
+    assert features.persistence_ratio == 0.2
 
 
 def test_stream_change_restarts_warmup() -> None:

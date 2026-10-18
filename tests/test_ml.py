@@ -12,11 +12,11 @@ from edgeops_ai.ml import (
     MODEL_FEATURE_COLUMNS,
     MlPredictor,
     ModelArtifactError,
-    build_model_feature_row,
     load_ml_predictor,
     vectorize_model_features,
 )
 from edgeops_ai.prediction import PredictionBackendName
+from edgeops_ai.schemas import FeatureVector
 
 
 class FakeModel:
@@ -101,38 +101,40 @@ def test_model_feature_columns_match_release_a_contract() -> None:
     )
 
 
-def test_build_model_feature_row_normalizes_and_bounds() -> None:
-    row = build_model_feature_row(
-        messages_enqueued_rate=10.0,
-        queue_growth_rate=5.0,
-        processing_ratio=1.7,
-        queue_full_rate=2.0,
-        transform_failure_ratio=0.25,
-        persistence_ratio=0.5,
-        heartbeat_missing=True,
-        queue_utilization_ratio=1.2,
-        influx_write_failure_ratio=0.25,
-        influxdb_healthy=1.5,
-        pipeline_duration_average_seconds=3.0,
-        heartbeat_age_max_seconds=3.0,
-        missing_device_ratio=1.2,
-        device_metrics_available=True,
-        decode_failure_ratio=0.1,
-        raw_validation_failure_ratio=0.2,
-        business_validation_failure_ratio=0.3,
-        transform_deserialize_failure_ratio=0.4,
-        event_queue_drop_ratio=0.5,
-        wal_queue_full_ratio=0.6,
-        durability_ack_failure_rate=3.0,
-        dlq_publish_failure_ratio=0.7,
-        wal_retry_rate=3.0,
-        wal_drop_ratio=0.8,
-        wal_retry_outage_active=1.0,
-        decode_duration_average_seconds=3.0,
-        transform_duration_average_seconds=3.0,
-        persist_duration_average_seconds=3.0,
-        influx_write_duration_average_seconds=3.0,
-        broker_available=False,
+def test_vectorize_model_features_normalizes_and_bounds() -> None:
+    row = vectorize_model_features(
+        FeatureVector.model_construct(
+            messages_enqueued_rate=10.0,
+            queue_growth_rate=5.0,
+            processing_ratio=1.7,
+            queue_full_rate=2.0,
+            transform_failure_ratio=0.25,
+            persistence_ratio=0.5,
+            heartbeat_missing=True,
+            queue_utilization_ratio=1.2,
+            influx_write_failure_ratio=0.25,
+            influxdb_healthy=1.5,
+            pipeline_duration_average_seconds=3.0,
+            heartbeat_age_max_seconds=3.0,
+            missing_device_ratio=1.2,
+            device_metrics_available=True,
+            decode_failure_ratio=0.1,
+            raw_validation_failure_ratio=0.2,
+            business_validation_failure_ratio=0.3,
+            transform_deserialize_failure_ratio=0.4,
+            event_queue_drop_ratio=0.5,
+            wal_queue_full_ratio=0.6,
+            durability_ack_failure_rate=3.0,
+            dlq_publish_failure_ratio=0.7,
+            wal_retry_rate=3.0,
+            wal_drop_ratio=0.8,
+            wal_retry_outage_active=1.0,
+            decode_duration_average_seconds=3.0,
+            transform_duration_average_seconds=3.0,
+            persist_duration_average_seconds=3.0,
+            influx_write_duration_average_seconds=3.0,
+            broker_available=False,
+        )
     )
 
     log_four = log1p(3.0)
@@ -199,9 +201,11 @@ def base_model_row(**overrides: Any) -> list[float]:
         "transform_failure_ratio": 0.0,
         "persistence_ratio": 1.0,
         "heartbeat_missing": False,
+        "influxdb_healthy": 1.0,
+        "pipeline_duration_average_seconds": 0.0,
     }
     values.update(overrides)
-    return build_model_feature_row(**values)
+    return vectorize_model_features(FeatureVector.model_construct(**values))
 
 
 def named_row(row: list[float]) -> dict[str, float]:
