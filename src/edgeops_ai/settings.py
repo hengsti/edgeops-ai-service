@@ -1,5 +1,8 @@
+import re
 from pathlib import Path
+from typing import Self
 
+from pydantic import model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from edgeops_ai.prediction import PredictionBackendName
@@ -18,6 +21,16 @@ class Settings(BaseSettings):
     prediction_backend: PredictionBackendName = PredictionBackendName.RULES
     model_artifact_path: Path = Path("artifacts/model.joblib")
     model_artifact_sha256: str | None = None
+
+    @model_validator(mode="after")
+    def validate_model_artifact(self) -> Self:
+        digest = (self.model_artifact_sha256 or "").strip().lower()
+        if digest and re.fullmatch(r"[0-9a-f]{64}", digest) is None:
+            raise ValueError("MODEL_ARTIFACT_SHA256 must contain exactly 64 hexadecimal digits.")
+        if self.prediction_backend is PredictionBackendName.ML and not digest:
+            raise ValueError("MODEL_ARTIFACT_SHA256 is required for the ml backend.")
+        self.model_artifact_sha256 = digest or None
+        return self
 
     @property
     def device_ids(self) -> tuple[str, ...]:
