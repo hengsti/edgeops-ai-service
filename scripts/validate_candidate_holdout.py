@@ -12,7 +12,6 @@ from typing import Any
 
 import numpy as np
 
-from edgeops_ai.ml import ML_MODEL_VERSION
 from scripts.common import DATASET_SCHEMA_VERSION, LABELS, SCENARIOS
 from scripts.simulation_manifest import (
     SIMULATION_CONTRACT_VERSION,
@@ -42,6 +41,7 @@ def build_holdout_validation(
     manifest: Mapping[str, Any],
     evaluation_report: Mapping[str, Any],
     model_versions: set[str],
+    expected_model_version: str,
     stable_matrix_finite: bool,
     training_seeds: set[int],
     min_accuracy: float = 0.95,
@@ -110,8 +110,8 @@ def build_holdout_validation(
         _gate(
             "candidate-model-version",
             sorted(model_versions),
-            [ML_MODEL_VERSION],
-            model_versions == {ML_MODEL_VERSION},
+            [expected_model_version],
+            model_versions == {expected_model_version},
         ),
         _gate(
             "stable-accuracy-and-macro-f1",
@@ -187,6 +187,7 @@ def _model_versions(input_dir: Path) -> set[str]:
 
 def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--expected-model-version", required=True)
     parser.add_argument("--input-dir", type=Path, required=True)
     parser.add_argument("--evaluation-report", type=Path)
     parser.add_argument("--output", type=Path)
@@ -209,6 +210,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             manifest=manifest,
             evaluation_report=_read_json(args.evaluation_report),
             model_versions=_model_versions(args.input_dir),
+            expected_model_version=args.expected_model_version,
             stable_matrix_finite=bool(np.isfinite(dataset.features).all()),
             training_seeds=set(range(first, last + 1)),
         )
