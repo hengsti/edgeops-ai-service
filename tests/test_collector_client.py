@@ -189,6 +189,60 @@ def test_missing_required_metric_fails_visibly() -> None:
         asyncio.run(fetch_observation(metrics))
 
 
+def test_successful_production_scrape_defaults_absent_failure_counters_to_zero() -> None:
+    metrics = collector_metrics()
+    failures = {
+        "ingest_transform_failed_total": "transform_failed_total",
+        "influx_write_failed_total": "influx_write_failed_total",
+        "ingest_event_queue_full_total": "event_queue_full_total",
+        "ingest_incoming_invalid_json_total": "incoming_invalid_json_total",
+        "ingest_validate_raw_failed_total": "raw_validation_failed_total",
+        "ingest_transform_deserialize_failed_total": "transform_deserialize_failed_total",
+        "ingest_validate_business_failed_total": "business_validation_failed_total",
+    }
+    for name in failures:
+        metrics.pop(name)
+    result = asyncio.run(fetch_observation(metrics))
+    for name in failures.values():
+        assert getattr(result.metrics, name) == 0.0
+    assert result.metrics.queue_full_total == 0.0
+
+
+def test_unknown_health_is_not_filled_with_a_zero_failure_default() -> None:
+    metrics = collector_metrics()
+    metrics.pop("influxdb_healthy")
+    metrics.pop("wal_forwarder_retry_outage_active")
+    with pytest.raises(KeyError, match="influxdb_healthy"):
+        asyncio.run(fetch_observation(metrics))
+
+
+@pytest.mark.parametrize("processed", [120, 90])
+def test_post_fix_sensor_and_status_totals_remain_comparable(processed: int) -> None:
+    previous_metrics = collector_metrics()
+    previous_metrics.update(
+        ingest_messages_enqueued_total=1000,
+        ingest_messages_processed_total=1000,
+        ingest_sensor_messages_processed_total=800,
+        ingest_status_messages_processed_total=200,
+    )
+    current_metrics = {
+        **previous_metrics,
+        "ingest_messages_enqueued_total": 1120,
+        "ingest_messages_processed_total": 1000 + processed,
+        "ingest_sensor_messages_processed_total": 800 + processed * 5 / 6,
+        "ingest_status_messages_processed_total": 200 + processed / 6,
+    }
+    previous = asyncio.run(fetch_observation(previous_metrics))
+    current = asyncio.run(fetch_observation(current_metrics))
+    current.metadata.captured_at += timedelta(seconds=10)
+    extractor = FeatureExtractor()
+    assert extractor.update(previous) is None
+    features = extractor.update(current)
+    assert features is not None
+    assert features.processing_ratio == processed / 120
+    assert features.queue_growth_rate == (120 - processed) / 10
+
+
 def test_masked_a2_group_remains_nullable_and_keeps_legacy_shape() -> None:
     metrics = collector_metrics()
     for source_name in EXPECTED_A2_MAPPING:

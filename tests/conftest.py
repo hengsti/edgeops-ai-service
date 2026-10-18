@@ -1,9 +1,10 @@
 from collections.abc import Callable
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 import pytest
 
-from edgeops_ai.schemas import FeatureVector
+from edgeops_ai.schemas import METRICS, FeatureVector, ObservationV1
 
 HEALTHY_FEATURE_VALUES: dict[str, Any] = {
     "elapsed_seconds": 5.0,
@@ -63,3 +64,47 @@ def make_features() -> Callable[..., FeatureVector]:
         return FeatureVector(**{**HEALTHY_FEATURE_VALUES, **overrides})
 
     return _make
+
+
+@pytest.fixture
+def production_snapshots(tmp_path):
+    """Synthetic production-format observations; not evidence from a live server."""
+    path = tmp_path / "production-fixture.jsonl"
+    rows = []
+    for sample in range(31):
+        metrics = {name: 0.0 for name, metric in METRICS.items() if metric.kind == "counter"}
+        metrics.update(
+            messages_enqueued_total=sample * 10,
+            messages_processed_total=sample * 10,
+            sensor_messages_processed_total=sample * 8,
+            status_messages_processed_total=sample * 2,
+            transform_success_total=sample * 10,
+            influx_lines_written_total=sample * 10,
+            pipeline_duration_seconds_sum=sample * 0.5,
+            pipeline_duration_seconds_count=sample * 10,
+            influx_write_success_total=sample,
+            mqtt_messages_received_total=sample * 10,
+            transform_attempt_total=sample * 10,
+            raw_validation_success_total=sample * 10,
+            business_validation_success_total=sample * 10,
+            influxdb_healthy=1,
+            queue_depth=0,
+            queue_capacity=100,
+            wal_retry_outage_active=0,
+        )
+        observation = ObservationV1.model_validate(
+            {
+                "schema_version": "1.0",
+                "metadata": {
+                    "captured_at": datetime(2026, 10, 18, tzinfo=UTC) + timedelta(seconds=sample),
+                    "collector_mode": "production",
+                    "simulated": False,
+                    "source_host": "fixture",
+                },
+                "metrics": metrics,
+                "broker_available": True,
+            }
+        )
+        rows.append(observation.model_dump_json())
+    path.write_text("\n".join(rows) + "\n", encoding="utf-8")
+    return path

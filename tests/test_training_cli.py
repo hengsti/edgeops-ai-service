@@ -211,7 +211,9 @@ def test_pipeline_generates_in_process_with_explicit_simulation_settings(
     assert not output.with_suffix(".tmp.csv").exists()
 
 
-def test_release_cli_combines_holdout_and_training_gates(training_data, tmp_path):
+def test_release_cli_combines_holdout_and_training_gates(
+    training_data, tmp_path, production_snapshots
+):
     from edgeops_ai.training.evaluate import evaluate_dataset
     from edgeops_ai.training.manifest import load_manifest
     from edgeops_ai.training.reports import write_report
@@ -272,6 +274,18 @@ def test_release_cli_combines_holdout_and_training_gates(training_data, tmp_path
         }
     }
     write_report(ablation, training_data / "ablation-report.json")
+    assert (
+        main(
+            [
+                "check-distributions",
+                "--input-dir",
+                str(training_data),
+                "--production-observations",
+                str(production_snapshots),
+            ]
+        )
+        == 0
+    )
     argv = [
         "validate",
         "--input-dir",
@@ -283,7 +297,7 @@ def test_release_cli_combines_holdout_and_training_gates(training_data, tmp_path
     ]
     assert main(argv) == 0
     result = json.loads((holdout_dir / "release-validation.json").read_text())
-    assert len(result["gates"]) == 18
+    assert len(result["gates"]) == 19
     assert result["passed"]
 
     ablation["feature_sets"]["full"]["candidates"]["tree"]["per_seed"] = [
@@ -296,3 +310,50 @@ def test_release_cli_combines_holdout_and_training_gates(training_data, tmp_path
     assert any(
         not gate["passed"] and gate["name"].startswith("training-") for gate in result["gates"]
     )
+
+
+def test_pipeline_writes_distribution_evidence(training_data, production_snapshots):
+    assert (
+        main(
+            [
+                "pipeline",
+                "--output-dir",
+                str(training_data),
+                "--production-observations",
+                str(production_snapshots),
+            ]
+        )
+        == 0
+    )
+    report = json.loads((training_data / "distribution-report.json").read_text())
+    assert report["passed"]
+    assert report["production_rows"] == 30
+    assert report["production_rules_predictions"] == {"normal": 30}
+
+
+def test_pipeline_stops_before_training_on_production_skew(
+    training_data, production_snapshots, tmp_path
+):
+    rows = [json.loads(line) for line in production_snapshots.read_text().splitlines()]
+    for index, row in enumerate(rows):
+        row["metrics"]["messages_processed_total"] = index * 12
+    production_snapshots.write_text("\n".join(json.dumps(row) for row in rows), encoding="utf-8")
+    artifact = tmp_path / "candidate.joblib"
+    assert (
+        main(
+            [
+                "pipeline",
+                "--output-dir",
+                str(training_data),
+                "--train",
+                "--model-artifact",
+                str(artifact),
+                "--production-observations",
+                str(production_snapshots),
+            ]
+        )
+        == 1
+    )
+    assert not artifact.exists()
+    report = json.loads((training_data / "distribution-report.json").read_text())
+    assert not report["features"]["raw_processing_ratio"]["passed"]
