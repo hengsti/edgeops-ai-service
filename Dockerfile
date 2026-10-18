@@ -13,7 +13,7 @@ RUN uv sync --frozen --no-dev --no-install-project
 COPY src ./src
 RUN uv sync --frozen --no-dev --no-editable
 
-COPY artifacts/model.joblib ./artifacts/model.joblib
+COPY artifacts/model.onnx ./artifacts/model.onnx
 
 RUN useradd --uid 10001 --create-home edgeops
 USER edgeops
