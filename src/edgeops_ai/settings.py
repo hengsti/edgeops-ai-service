@@ -19,7 +19,7 @@ class Settings(BaseSettings):
     collector_device_ids: str = ""
 
     prediction_backend: PredictionBackendName = PredictionBackendName.RULES
-    model_artifact_path: Path = Path("artifacts/model.joblib")
+    model_artifact_path: Path = Path("artifacts/model.onnx")
     model_artifact_sha256: str | None = None
 
     @model_validator(mode="after")
