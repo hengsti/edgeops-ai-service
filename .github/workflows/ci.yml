@@ -18,7 +18,10 @@ jobs:
       - run: uv run ruff check .
       - run: uv run ruff format --check .
       - run: uv run mypy src
-      - run: uv run pytest
+      - name: Offline training pipeline smoke test
+        timeout-minutes: 1
+        run: uv run pytest tests/test_training_cli.py::test_training_pipeline_cli_smoke -q
+      - run: uv run pytest --deselect tests/test_training_cli.py::test_training_pipeline_cli_smoke
 
   container:
     runs-on: ubuntu-latest
