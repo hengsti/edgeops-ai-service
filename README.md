@@ -259,7 +259,7 @@ $run = Get-Date -Format 'yyyyMMdd-HHmmss'
 $training = "data/model-v0.5-$run"
 $candidate = "artifacts/model-v0.5-$run.joblib"
 
-# collect 20 grouped seeds, evaluate rules, and train a version 0.5 candidate
+# collect 20 grouped seeds, evaluate rules, and train a candidate
 uv run python -m scripts.run_pipeline --seed-range 42 61 --speed 100 --interval 0.05 --train `
   --output-dir $training `
   --evaluation-report "$training/rule-report.json" `
@@ -269,6 +269,7 @@ uv run python -m scripts.run_pipeline --seed-range 42 61 --speed 100 --interval 
 # repeat offline training on the freshly generated dataset
 uv run python -m scripts.train_model --input-dir $training `
   --artifact $candidate --report "$training/training-report.json"
+$modelVersion = (Get-Content "$training/training-report.json" -Raw | ConvertFrom-Json).model_version
 
 # contract-v2 evidence and deterministic acceptance gates
 uv run python -m scripts.analyze_features --input-dir $training
@@ -295,6 +296,7 @@ docker run --rm -p 8096:8080 -e PREDICTION_BACKEND=ml -e COLLECTOR_POLLING_ENABL
 
 # In the training terminal (the script runs on the host, so it uses host ports):
 uv run python -m scripts.evaluate_deployed_model `
+  --expected-model-version $modelVersion `
   --seed-range 62 71 `
   --speed 50 `
   --interval 0.05 `
@@ -303,7 +305,8 @@ uv run python -m scripts.evaluate_deployed_model `
   --output-dir "data/holdout-v0.5-$run" `
   --report "data/holdout-v0.5-$run/candidate-report.json"
 
-uv run python -m scripts.validate_candidate_holdout --input-dir "data/holdout-v0.5-$run"
+uv run python -m scripts.validate_candidate_holdout --input-dir "data/holdout-v0.5-$run" `
+  --expected-model-version $modelVersion
 uv run python -m scripts.validate_phase6_acceptance `
   --input-dir $training `
   --holdout-report "data/holdout-v0.5-$run/candidate-report.json"
@@ -336,7 +339,8 @@ simulation uses periodic heartbeat ages and timestamps in simulated seconds. Its
 device cadence before collecting data for other hardware. Restart or rebuild the simulation
 collector before generating new data. Old schema-2.0 CSVs must be regenerated, not relabeled.
 
-Training, loading, and deployed evaluation use `lightweight-ml-0.5.0`. Version 0.5 adds the
+The approved model is `lightweight-ml-0.5.0`. New training runs record a supplied or
+generated model version independently of the service release. Version 0.5 adds the
 `mqtt-broker-unavailable` label and two broker columns (`broker_unavailable`,
 `broker_metrics_available`), so 0.4 and older artifacts need retraining on schema-2.2 data;
 changing their version string does not fix their learned decisions. Training requires every
@@ -391,13 +395,31 @@ only loads an artifact whose SHA-256 matches `MODEL_ARTIFACT_SHA256`, and the ha
 checked before `joblib.load`. Only use hashes of artifacts you trained yourself with
 `scripts/train_model.py` and recorded below.
 
+Settings validate the hash before ML startup: it must contain 64 hexadecimal digits.
+Rules mode accepts an unset or blank hash.
+
+Each artifact manifest records its own non-empty `model_version` and
+`feature_contract_version`. The current feature contract is `1.0`; loading also checks
+the exact 46-column order, estimator feature count, known unique classes, and matching
+manifest labels. Inference uses one `predict_proba()` call and selects its highest
+probability. A new compatible model version needs no service code change.
+
+Training accepts `--model-version <name>` or generates a UTC timestamp version when
+omitted. The training report records that version; pass it as `--expected-model-version`
+to both holdout commands so evaluating the wrong candidate still fails.
+
+The approved artifact below has only been repackaged to add contract version `1.0`;
+its estimator and training metadata are unchanged. Its SHA-256 has changed: update
+`MODEL_ARTIFACT_SHA256` when deploying this artifact. Older artifacts without a contract
+version are rejected; new training runs write the required manifest.
+
 `artifacts/model.joblib` is the only tracked artifact. Experimental and candidate
 artifacts stay local (`artifacts/*` is gitignored); delete or archive them outside
 git once a candidate is promoted or rejected.
 
 | Artifact | Status | SHA-256 | Provenance | Validation |
 | --- | --- | --- | --- | --- |
-| `artifacts/model.joblib` | Approved | `6112373eb459e3c824f562afef96c2fdff51cf151cb319eb0033be41a3db515a` | `lightweight-ml-0.5.0`, decision tree (max depth 7), 46 features, dataset schema 2.2, trained 2026-10-11 on 3174 stable rows from seeds 42-61 (run `data/model-v0.5-20261011-221326`); leave-one-seed-out accuracy 0.977 | `data/holdout/deployed-ml-report.json` (seeds 62-71, stable accuracy 0.993); holdout and acceptance gates passed |
+| `artifacts/model.joblib` | Approved | `bfbffdc925185fb308f8c1073adb96b80a3eaea480e8f5caa3bada549ee360f7` | `lightweight-ml-0.5.0`, decision tree (max depth 7), 46 features, dataset schema 2.2, trained 2026-10-11 on 3174 stable rows from seeds 42-61 (run `data/model-v0.5-20261011-221326`); leave-one-seed-out accuracy 0.977 | `data/holdout/deployed-ml-report.json` (seeds 62-71, stable accuracy 0.993); holdout and acceptance gates passed |
 
 When promoting a new candidate, replace the row above with its version, hash, training run
 directory, seeds, and the holdout/acceptance report that approved it.
@@ -412,9 +434,8 @@ generated data under `data/` is gitignored.
 Two extension points, depending on what you want:
 
 - **Different estimator, same features:** add it to `CANDIDATE_MODELS` in
-  `scripts/train_model.py` and retrain. Anything with `predict()` and
-  `predict_proba()` works; the artifact loader and `MlPredictor` don't care what's
-  inside.
+  `scripts/train_model.py` and retrain. Serving requires `predict_proba()`, `classes_`,
+  and `n_features_in_`; training evaluation also uses `predict()`.
 - **Different prediction method entirely:** implement the `Predictor` protocol,
   add a value to `PredictionBackendName`, and wire it up in the lifespan in
   `main.py`.
