@@ -14,6 +14,7 @@ COMMANDS = {
     "analyze-features": "features",
     "ablate": "ablation",
     "export-onnx": "export",
+    "check-distributions": "distributions",
 }
 
 
