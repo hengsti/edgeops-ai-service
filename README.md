@@ -60,7 +60,7 @@ The runtime has explicit ownership boundaries:
 
 Rules mode loads no ML modules. ML mode loads the same approved artifact and still
 requires its SHA-256 before deserialization. The training scripts reuse the runtime
-feature extractor/vectorizer and share dataset provenance in `scripts/common.py`.
+feature extractor/vectorizer and share dataset provenance in `edgeops_ai.training.common`.
 `MODEL_FEATURES` in `ml.py` defines the ordered model columns and their calculations.
 Training parses scalar feature fields from `FeatureVector` and uses the same vectorizer.
 Availability comes from missing values; unknown telemetry stays distinct from a measured zero.
@@ -227,7 +227,7 @@ The latest detection response looks like this:
 I deliberately started with a rule-based classifier (`src/edgeops_ai/rules.py`).
 Five thresholds, readable in one screen, easy to debug against the collector's
 simulation scenarios. That baseline reaches 99.6 % accuracy on stable phases
-across 80 simulated runs (`data/generated/rule-baseline-report.json`) - and more
+across 80 simulated runs (`docs/model-validation/rule-baseline-report.json`) - and more
 importantly, it produced labeled training data.
 
 The ML backend is a scikit-learn model trained on exactly that data. Two
@@ -240,125 +240,109 @@ memorize the simulation's message rates.
 The deployed `lightweight-ml-0.5.0` model classified 3782 of 3810 stable-phase samples
 (99.3 %) correctly across ten unseen simulation seeds (62-71) evaluated through the
 deployed API, and detected all 50 incidents with a mean delay of 2.1 s
-(`data/holdout/deployed-ml-report.json`).
+(`docs/model-validation/deployed-ml-report.json`).
 
 Both backends implement the same `Predictor` protocol
 (`src/edgeops_ai/prediction.py`), so switching is a config change, not a code
 change.
 
-## Training and evaluation pipeline
+## Training and evaluation
 
-Everything lives in `scripts/`. Production polling keeps its default
-`http://localhost:8095`; dataset generation talks only to the independent
-simulation collector on `http://localhost:8097`:
+Offline tooling lives in `edgeops_ai.training`. Install development dependencies
+with `uv sync --dev`, then use `uv run edgeops-train <command> --help`.
+The old `python -m scripts.<name>` commands remain thin compatibility wrappers.
+Relative paths are resolved from the terminal's current directory.
+
+| Command | Purpose |
+| --- | --- |
+| `collect` | Collect one labelled rules dataset |
+| `pipeline` | Collect missing runs, evaluate the complete matrix, optionally train |
+| `train` | Train and evaluate candidates from existing CSVs |
+| `evaluate` | Evaluate collected predictions, detection delay, and recovery |
+| `evaluate-deployed` | Collect holdout predictions through the real AI API |
+| `analyze-features`, `ablate` | Produce feature and ablation evidence |
+| `validate` | Check holdout gates and, with `--training-dir`, all release gates |
+| `export-onnx` | Convert an existing trusted source artifact without retraining |
+
+Production polling keeps its default `http://localhost:8095`. Training collection
+uses the independent simulation collector at `http://localhost:8097`, with explicit
+read/admin credentials. Start that collector first, then run from this checkout:
 
 ```powershell
-# Start the updated simulation collector first (see its README).
-# Use a fresh directory: version 0.5 requires regenerated schema-2.2 data.
 $run = Get-Date -Format 'yyyyMMdd-HHmmss'
-$training = "data/model-v0.5-$run"
-$candidate = "artifacts/model-v0.5-$run.joblib"
+$training = "data/training-$run"
+$holdout = "data/holdout-$run"
 
-# collect 20 grouped seeds, evaluate rules, and train a candidate
-uv run python -m scripts.run_pipeline --seed-range 42 61 --speed 100 --interval 0.05 --train `
-  --output-dir $training `
-  --evaluation-report "$training/rule-report.json" `
-  --training-report "$training/training-report.json" `
-  --model-artifact $candidate
+uv run edgeops-train pipeline --seed-range 42 61 --speed 100 --interval 0.05 --train `
+  --output-dir $training
 
-# repeat offline training on the freshly generated dataset
-uv run python -m scripts.train_model --input-dir $training `
-  --artifact $candidate --report "$training/training-report.json"
-$modelVersion = (Get-Content "$training/training-report.json" -Raw | ConvertFrom-Json).model_version
+$report = Get-Content "$training/training-report.json" -Raw | ConvertFrom-Json
+$candidate = $report.artifact_path
+$modelVersion = $report.model_version
 
-# Export the fitted candidate for serving; this does not retrain it.
+# Export the fitted candidate; this does not retrain it.
 $onnxCandidate = [System.IO.Path]::ChangeExtension($candidate, '.onnx')
 $sourceHash = (Get-FileHash $candidate -Algorithm SHA256).Hash
-uv run python -m scripts.export_onnx --input $candidate --output $onnxCandidate --sha256 $sourceHash
+uv run edgeops-train export-onnx --input $candidate --output $onnxCandidate --sha256 $sourceHash
 
-# contract-v2 evidence and deterministic acceptance gates
-uv run python -m scripts.analyze_features --input-dir $training
-uv run python -m scripts.evaluate_feature_ablation --input-dir $training
+uv run edgeops-train analyze-features --input-dir $training
+uv run edgeops-train ablate --input-dir $training
 ```
 
-Before promotion, run the selected experimental artifact through the real API on
-unused contract-v2 seeds. Start the AI service with `PREDICTION_BACKEND=ml`,
-`MODEL_ARTIFACT_PATH=<experimental artifact>`, and collector polling disabled,
-then run:
+Training and pipeline share the default candidate path
+`artifacts/model-<contract>-<yyyymmdd>/model-<contract>-<yyyymmdd>.joblib` (UTC date).
+A sibling `manifest.json` records the artifact metadata and SHA-256. Use
+`train --artifact <path>` or `pipeline --model-artifact <path>` to keep multiple
+candidates from one day in separate directories. Retraining the default replaces
+that day's candidate; it does not promote it to the runtime default.
+
+Reports default to the selected dataset directory: `rule-report.json`,
+`training-report.json`, `feature-audit.json`, and `ablation-report.json`.
+The pipeline reuses only complete CSVs with the current schema and matching
+simulation manifest, including scenario, seed, severity variant, and run ID.
+Otherwise it collects and validates a replacement before publishing it.
+Training excludes recovery rows, uses leave-one-seed-out evaluation, requires
+every label, and writes the candidate only when its quality gate passes.
+Failed stages return a nonzero exit status.
+
+For a release evaluation, start a separate AI instance on port 8096 with the
+candidate ONNX file and polling disabled. In a second terminal:
 
 ```powershell
-# In a separate terminal, from edgeops-ai-service:
 $env:PREDICTION_BACKEND = 'ml'
-$env:MODEL_ARTIFACT_PATH = '<ONNX path printed by export_onnx above>'
+$env:MODEL_ARTIFACT_PATH = '<ONNX candidate path from the training terminal>'
 $env:MODEL_ARTIFACT_SHA256 = (Get-FileHash $env:MODEL_ARTIFACT_PATH -Algorithm SHA256).Hash
 $env:COLLECTOR_POLLING_ENABLED = 'false'
 uv run uvicorn edgeops_ai.main:create_app --factory --port 8096
-
-# Or the same in Docker, publishing container port 8080 on host port 8096:
-docker run --rm -p 8096:8080 -e PREDICTION_BACKEND=ml -e COLLECTOR_POLLING_ENABLED=false `
-  -e MODEL_ARTIFACT_SHA256=$env:MODEL_ARTIFACT_SHA256 `
-  -v "${PWD}/$($env:MODEL_ARTIFACT_PATH):/app/artifacts/model.onnx:ro" edgeops-ai-service
-
-# In the training terminal (the script runs on the host, so it uses host ports):
-uv run python -m scripts.evaluate_deployed_model `
-  --expected-model-version $modelVersion `
-  --seed-range 62 71 `
-  --speed 50 `
-  --interval 0.05 `
-  --simulation-base-url http://localhost:8097 `
-  --ai-base-url http://localhost:8096 `
-  --output-dir "data/holdout-v0.5-$run" `
-  --report "data/holdout-v0.5-$run/candidate-report.json"
-
-uv run python -m scripts.validate_candidate_holdout --input-dir "data/holdout-v0.5-$run" `
-  --expected-model-version $modelVersion
-uv run python -m scripts.validate_phase6_acceptance `
-  --input-dir $training `
-  --holdout-report "data/holdout-v0.5-$run/candidate-report.json"
 ```
 
-The holdout command sends explicit balanced variants, uses separate simulation
-read/admin keys, and writes a contract-v2 `simulation-manifest.json` beside the
-CSVs. It does not load the model directly; predictions must come from the running
-FastAPI ML backend.
+Back in the training terminal, collect unseen holdout seeds and run the combined
+release validator:
 
-Datasets are CSVs under `data/` (gitignored, the JSON reports are kept). Generated
-rows carry `dataset_schema_version="2.2"`; stale CSVs are regenerated instead of
-being silently reused. Reuse also requires a matching contract-v2
-`simulation-manifest.json`, including the planned severity variant, resolved effects,
-masked optional groups, collector version, and exact CSV run ID. The pipeline passes
-separate simulation read/admin keys to child processes and never relies on the
-production `.env`. Training writes only the explicitly selected experimental path
-together with a training report and refuses to save a model that doesn't pass the
-quality gate. Promote a candidate's source and ONNX artifacts only after the full
-evaluation passes. `evaluate_deployed_model.py` is the honest check: it uses
-holdout seeds the model has never seen and goes through the real HTTP endpoint
-instead of calling the model directly.
+```powershell
+uv run edgeops-train evaluate-deployed --expected-model-version $modelVersion `
+  --seed-range 62 71 --speed 50 --interval 0.05 `
+  --simulation-base-url http://localhost:8097 --ai-base-url http://localhost:8096 `
+  --output-dir $holdout
 
-Version 0.4 fixes two training-data errors: healthy simulated devices previously had
-exactly zero heartbeat age on every read, which let the tree learn a false heartbeat
-cutoff below the normal two-second publishing interval; accelerated counters also used
-wall-clock timestamps, inflating rate features by the simulation speed. The updated
-simulation uses periodic heartbeat ages and timestamps in simulated seconds. Its profile's
-`heartbeat_interval_seconds` defaults to `2.0`, matching the ESP32 firmware; adjust it to the
-device cadence before collecting data for other hardware. Restart or rebuild the simulation
-collector before generating new data. Old schema-2.0 CSVs must be regenerated, not relabeled.
+uv run edgeops-train validate --input-dir $holdout --training-dir $training `
+  --expected-model-version $modelVersion
+```
 
-The approved model is `lightweight-ml-0.5.0`. New training runs record a supplied or
-generated model version independently of the service release. Version 0.5 adds the
-`mqtt-broker-unavailable` label and two broker columns (`broker_unavailable`,
-`broker_metrics_available`), so 0.4 and older artifacts need retraining on schema-2.2 data;
-changing their version string does not fix their learned decisions. Training requires every
-label; the simulation collector's `mqtt-broker-unavailable` scenario provides it (EMQX unhealthy,
-restarting or exited, stale heartbeats and dropping traffic, then recovery), while the other
-scenarios report a healthy broker. Rebuild the simulation collector before collecting 0.5 data.
-The checked-in `artifacts/model.joblib` is the promoted 0.5 source model;
-`artifacts/model.onnx` is its exported serving artifact. Load new candidates explicitly
-for evaluation. After the training and holdout gates pass, copy `$candidate` to
-`artifacts/model.joblib` and `$onnxCandidate` to `artifacts/model.onnx`, record both in
-[Model artifacts and reports](#model-artifacts-and-reports), and restart the AI service with
-the new `MODEL_ARTIFACT_SHA256` (mount the file into the container as shown in the
-quickstart).
+The deployed evaluation sends observations through `POST /v1/observations`;
+it checks the backend/model version and stores `candidate-report.json` alongside
+the CSVs and `simulation-manifest.json`. The validator combines holdout checks
+(unseen seeds, contract, finite features, version, accuracy, recall, detection,
+and recovery) with training, feature availability, ablation, and recovery gates.
+Its `release-validation.json` records every gate. Omitting `--training-dir`
+runs only holdout checks; `--training-seed-range` then defaults to 42–61.
+
+Generated datasets and candidate reports under `data/` stay outside git.
+Obsolete local model candidates are archived under `artifacts/archive/`.
+After all release gates pass, promote explicitly: copy the source candidate to
+`artifacts/model.joblib` and its ONNX export to `artifacts/model.onnx`, record
+the new hashes and validation evidence below, then rebuild/restart with the new
+`MODEL_ARTIFACT_SHA256`. The runtime default is always `artifacts/model.onnx`.
 
 ## Broker versus device diagnosis
 
@@ -415,7 +399,7 @@ probability. A new compatible model version needs no service code change.
 
 Training accepts `--model-version <name>` or generates a UTC timestamp version when
 omitted. The training report records that version; pass it as `--expected-model-version`
-to both holdout commands so evaluating the wrong candidate still fails.
+to the deployed evaluation and release validator so evaluating the wrong candidate still fails.
 
 The approved ONNX artifact was exported directly from the fitted v0.5 tree without
 retraining. It retains model version `lightweight-ml-0.5.0`, feature contract `1.0`,
@@ -435,14 +419,14 @@ git once a candidate is promoted or rejected.
 | Artifact | Status | SHA-256 | Provenance | Validation |
 | --- | --- | --- | --- | --- |
 | `artifacts/model.onnx` | Approved conversion | `3dcef00469e3a1157d21ccaaf3315dee45c06f1a56be6668fec31e5e280cb4e8` | Direct export of the source below; same model version and feature contract; no retraining | `tests/test_onnx.py`: prediction and probability parity; production host validation pending |
-| `artifacts/model.joblib` | Approved | `bfbffdc925185fb308f8c1073adb96b80a3eaea480e8f5caa3bada549ee360f7` | `lightweight-ml-0.5.0`, decision tree (max depth 7), 46 features, dataset schema 2.2, trained 2026-10-11 on 3174 stable rows from seeds 42-61 (run `data/model-v0.5-20261011-221326`); leave-one-seed-out accuracy 0.977 | `data/holdout/deployed-ml-report.json` (seeds 62-71, stable accuracy 0.993); holdout and acceptance gates passed |
+| `artifacts/model.joblib` | Approved | `bfbffdc925185fb308f8c1073adb96b80a3eaea480e8f5caa3bada549ee360f7` | `lightweight-ml-0.5.0`, decision tree (max depth 7), 46 features, dataset schema 2.2, trained 2026-10-11 on 3174 stable rows from seeds 42-61 (run `data/model-v0.5-20261011-221326`); leave-one-seed-out accuracy 0.977 | `docs/model-validation/deployed-ml-report.json` (seeds 62-71, stable accuracy 0.993); holdout and acceptance gates passed |
 
 When promoting a new candidate, replace the rows above with its version, hashes, training run
 directory, seeds, and the holdout/acceptance report that approved it.
 
 Tracked reports are kept as evidence for claims in this README:
-`data/generated/rule-baseline-report.json` (rule baseline) and
-`data/holdout/deployed-ml-report.json` (holdout of the approved v0.5 model). All other
+`docs/model-validation/rule-baseline-report.json` (rule baseline) and
+`docs/model-validation/deployed-ml-report.json` (holdout of the approved v0.5 model). All other
 generated data under `data/` is gitignored.
 
 ## Adding another model
@@ -450,9 +434,9 @@ generated data under `data/` is gitignored.
 Two extension points, depending on what you want:
 
 - **Different estimator, same features:** add it to `CANDIDATE_MODELS` in
-  `scripts/train_model.py` and retrain. The source classifier needs `predict_proba()`,
+  `edgeops_ai.training.train` and retrain. The source classifier needs `predict_proba()`,
   `classes_`, and `n_features_in_`; training evaluation also uses `predict()`. Export
-  it with `scripts.export_onnx` and verify parity before promotion.
+  it with `edgeops-train export-onnx` and verify parity before promotion.
 - **Different prediction method entirely:** implement the `Predictor` protocol,
   add a value to `PredictionBackendName`, and wire it up in the lifespan in
   `main.py`.
@@ -467,7 +451,8 @@ uv run mypy src
 ```
 
 Tests cover the API surface, the rule thresholds, feature vectorization and the
-model artifact validation.
+model artifact validation. An offline pipeline smoke test runs CSV evaluation and real
+training on a tiny fixture dataset in under one minute.
 
 CI (`.github/workflows/ci.yml`) runs on every push to `main`, every pull request and
 every `v*` tag. It installs the locked dependencies (`uv sync --locked`), runs ruff,
