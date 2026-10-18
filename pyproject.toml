@@ -22,6 +22,7 @@ dev = [
     "pytest",
     "ruff",
     "scikit-learn",
+    "scipy",
     "skl2onnx>=1.20.0",
 ]
 
@@ -61,5 +62,5 @@ select = [
 [tool.ruff.format]
 
 [[tool.mypy.overrides]]
-module = ["joblib", "onnxruntime", "sklearn.*", "skl2onnx.*"]
+module = ["joblib", "onnxruntime", "sklearn.*", "skl2onnx.*", "scipy.*"]
 ignore_missing_imports = true

@@ -152,6 +152,7 @@ dev = [
     { name = "pytest" },
     { name = "ruff" },
     { name = "scikit-learn" },
+    { name = "scipy" },
     { name = "skl2onnx" },
 ]
 
@@ -173,6 +174,7 @@ dev = [
     { name = "pytest" },
     { name = "ruff" },
     { name = "scikit-learn" },
+    { name = "scipy" },
     { name = "skl2onnx", specifier = ">=1.20.0" },
 ]
 
