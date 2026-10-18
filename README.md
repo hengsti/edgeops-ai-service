@@ -88,17 +88,17 @@ docker run --rm -p 8080:8080 edgeops-ai-service
 ```
 
 The quickstart uses the default `rules` backend. The image bundles the approved
-`artifacts/model.joblib`; to run the ML backend, pass its SHA-256 (see
+`artifacts/model.onnx`; to run the ML backend, pass its SHA-256 (see
 [Model artifacts](#model-artifacts-and-reports)):
 
 ```powershell
 docker run --rm -p 8080:8080 -e PREDICTION_BACKEND=ml `
-  -e "MODEL_ARTIFACT_SHA256=$((Get-FileHash artifacts/model.joblib -Algorithm SHA256).Hash)" `
+  -e "MODEL_ARTIFACT_SHA256=$((Get-FileHash artifacts/model.onnx -Algorithm SHA256).Hash)" `
   edgeops-ai-service
 ```
 
 To test another artifact, mount it over the bundled one with
-`-v <path>:/app/artifacts/model.joblib:ro` and pass that file's SHA-256.
+`-v <path>:/app/artifacts/model.onnx:ro` and pass that file's SHA-256.
 
 ### Ports
 
@@ -122,7 +122,7 @@ commit it; `COLLECTOR_API_KEY` is a secret):
 | Variable | Default | Purpose |
 | --- | --- | --- |
 | `PREDICTION_BACKEND` | `rules` | `rules` or `ml` |
-| `MODEL_ARTIFACT_PATH` | `artifacts/model.joblib` | trained model, only used by the ml backend |
+| `MODEL_ARTIFACT_PATH` | `artifacts/model.onnx` | trained model, only used by the ml backend |
 | `MODEL_ARTIFACT_SHA256` | *(empty)* | required for the ml backend; the artifact is refused unless its SHA-256 matches |
 | `COLLECTOR_BASE_URL` | `http://localhost:8095` (Compose: `http://edgeops-collector:8095`) | collector metrics API |
 | `COLLECTOR_API_KEY` | `local-dev-key` | sent as `X-EdgeOps-Key` |
@@ -271,6 +271,11 @@ uv run python -m scripts.train_model --input-dir $training `
   --artifact $candidate --report "$training/training-report.json"
 $modelVersion = (Get-Content "$training/training-report.json" -Raw | ConvertFrom-Json).model_version
 
+# Export the fitted candidate for serving; this does not retrain it.
+$onnxCandidate = [System.IO.Path]::ChangeExtension($candidate, '.onnx')
+$sourceHash = (Get-FileHash $candidate -Algorithm SHA256).Hash
+uv run python -m scripts.export_onnx --input $candidate --output $onnxCandidate --sha256 $sourceHash
+
 # contract-v2 evidence and deterministic acceptance gates
 uv run python -m scripts.analyze_features --input-dir $training
 uv run python -m scripts.evaluate_feature_ablation --input-dir $training
@@ -284,7 +289,7 @@ then run:
 ```powershell
 # In a separate terminal, from edgeops-ai-service:
 $env:PREDICTION_BACKEND = 'ml'
-$env:MODEL_ARTIFACT_PATH = '<path printed as $candidate above>'
+$env:MODEL_ARTIFACT_PATH = '<ONNX path printed by export_onnx above>'
 $env:MODEL_ARTIFACT_SHA256 = (Get-FileHash $env:MODEL_ARTIFACT_PATH -Algorithm SHA256).Hash
 $env:COLLECTOR_POLLING_ENABLED = 'false'
 uv run uvicorn edgeops_ai.main:create_app --factory --port 8096
@@ -292,7 +297,7 @@ uv run uvicorn edgeops_ai.main:create_app --factory --port 8096
 # Or the same in Docker, publishing container port 8080 on host port 8096:
 docker run --rm -p 8096:8080 -e PREDICTION_BACKEND=ml -e COLLECTOR_POLLING_ENABLED=false `
   -e MODEL_ARTIFACT_SHA256=$env:MODEL_ARTIFACT_SHA256 `
-  -v "${PWD}/$($env:MODEL_ARTIFACT_PATH):/app/artifacts/model.joblib:ro" edgeops-ai-service
+  -v "${PWD}/$($env:MODEL_ARTIFACT_PATH):/app/artifacts/model.onnx:ro" edgeops-ai-service
 
 # In the training terminal (the script runs on the host, so it uses host ports):
 uv run python -m scripts.evaluate_deployed_model `
@@ -325,7 +330,7 @@ masked optional groups, collector version, and exact CSV run ID. The pipeline pa
 separate simulation read/admin keys to child processes and never relies on the
 production `.env`. Training writes only the explicitly selected experimental path
 together with a training report and refuses to save a model that doesn't pass the
-quality gate. Promote a candidate to `artifacts/model.joblib` only after the full
+quality gate. Promote a candidate's source and ONNX artifacts only after the full
 evaluation passes. `evaluate_deployed_model.py` is the honest check: it uses
 holdout seeds the model has never seen and goes through the real HTTP endpoint
 instead of calling the model directly.
@@ -347,9 +352,10 @@ changing their version string does not fix their learned decisions. Training req
 label; the simulation collector's `mqtt-broker-unavailable` scenario provides it (EMQX unhealthy,
 restarting or exited, stale heartbeats and dropping traffic, then recovery), while the other
 scenarios report a healthy broker. Rebuild the simulation collector before collecting 0.5 data.
-The checked-in `artifacts/model.joblib` is the promoted 0.5 model. Load new candidates
-explicitly for evaluation. After the training and holdout gates pass, promote the selected
-artifact with `Copy-Item $candidate artifacts/model.joblib -Force`, record it in
+The checked-in `artifacts/model.joblib` is the promoted 0.5 source model;
+`artifacts/model.onnx` is its exported serving artifact. Load new candidates explicitly
+for evaluation. After the training and holdout gates pass, copy `$candidate` to
+`artifacts/model.joblib` and `$onnxCandidate` to `artifacts/model.onnx`, record both in
 [Model artifacts and reports](#model-artifacts-and-reports), and restart the AI service with
 the new `MODEL_ARTIFACT_SHA256` (mount the file into the container as shown in the
 quickstart).
@@ -390,10 +396,13 @@ Record the outcome separately from the simulation reports.
 
 ## Model artifacts and reports
 
-joblib files are pickles: loading one can run arbitrary code. The ML backend therefore
-only loads an artifact whose SHA-256 matches `MODEL_ARTIFACT_SHA256`, and the hash is
-checked before `joblib.load`. Only use hashes of artifacts you trained yourself with
-`scripts/train_model.py` and recorded below.
+Production serving uses ONNX Runtime and does not import joblib or scikit-learn.
+The image contains only the approved ONNX artifact. Its SHA-256 must match
+`MODEL_ARTIFACT_SHA256` before an inference session is opened.
+
+The development environment retains joblib loading for trusted source artifacts and
+conversion. Loading a joblib pickle can execute code, so the export command requires
+the recorded source SHA-256 and verifies it before loading.
 
 Settings validate the hash before ML startup: it must contain 64 hexadecimal digits.
 Rules mode accepts an unset or blank hash.
@@ -408,20 +417,27 @@ Training accepts `--model-version <name>` or generates a UTC timestamp version w
 omitted. The training report records that version; pass it as `--expected-model-version`
 to both holdout commands so evaluating the wrong candidate still fails.
 
-The approved artifact below has only been repackaged to add contract version `1.0`;
-its estimator and training metadata are unchanged. Its SHA-256 has changed: update
-`MODEL_ARTIFACT_SHA256` when deploying this artifact. Older artifacts without a contract
-version are rejected; new training runs write the required manifest.
+The approved ONNX artifact was exported directly from the fitted v0.5 tree without
+retraining. It retains model version `lightweight-ml-0.5.0`, feature contract `1.0`,
+and all 46 inputs. Its embedded manifest records labels in probability-column order.
+Tests compare predictions and probabilities against the source model within float32
+tolerance. Conversion does not need training data or change the source file.
 
-`artifacts/model.joblib` is the only tracked artifact. Experimental and candidate
+For the converted deployment, set `MODEL_ARTIFACT_PATH=artifacts/model.onnx` and use the
+ONNX SHA-256 below. Older artifacts without a contract version are rejected; new
+training runs write the required manifest.
+
+The source `artifacts/model.joblib` and serving `artifacts/model.onnx` are tracked.
+Experimental and candidate
 artifacts stay local (`artifacts/*` is gitignored); delete or archive them outside
 git once a candidate is promoted or rejected.
 
 | Artifact | Status | SHA-256 | Provenance | Validation |
 | --- | --- | --- | --- | --- |
+| `artifacts/model.onnx` | Approved conversion | `3dcef00469e3a1157d21ccaaf3315dee45c06f1a56be6668fec31e5e280cb4e8` | Direct export of the source below; same model version and feature contract; no retraining | `tests/test_onnx.py`: prediction and probability parity; production host validation pending |
 | `artifacts/model.joblib` | Approved | `bfbffdc925185fb308f8c1073adb96b80a3eaea480e8f5caa3bada549ee360f7` | `lightweight-ml-0.5.0`, decision tree (max depth 7), 46 features, dataset schema 2.2, trained 2026-10-11 on 3174 stable rows from seeds 42-61 (run `data/model-v0.5-20261011-221326`); leave-one-seed-out accuracy 0.977 | `data/holdout/deployed-ml-report.json` (seeds 62-71, stable accuracy 0.993); holdout and acceptance gates passed |
 
-When promoting a new candidate, replace the row above with its version, hash, training run
+When promoting a new candidate, replace the rows above with its version, hashes, training run
 directory, seeds, and the holdout/acceptance report that approved it.
 
 Tracked reports are kept as evidence for claims in this README:
@@ -434,8 +450,9 @@ generated data under `data/` is gitignored.
 Two extension points, depending on what you want:
 
 - **Different estimator, same features:** add it to `CANDIDATE_MODELS` in
-  `scripts/train_model.py` and retrain. Serving requires `predict_proba()`, `classes_`,
-  and `n_features_in_`; training evaluation also uses `predict()`.
+  `scripts/train_model.py` and retrain. The source classifier needs `predict_proba()`,
+  `classes_`, and `n_features_in_`; training evaluation also uses `predict()`. Export
+  it with `scripts.export_onnx` and verify parity before promotion.
 - **Different prediction method entirely:** implement the `Predictor` protocol,
   add a value to `PredictionBackendName`, and wire it up in the lifespan in
   `main.py`.
