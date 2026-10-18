@@ -54,12 +54,21 @@ The runtime has explicit ownership boundaries:
 | `analysis.py` | One observation window and latest analysis, shared by polling and HTTP submission |
 | `polling.py` | Fetch observations, retain the latest result during errors, and resume on recovery |
 | `collector_client.py` | Authenticated collector requests and conversion into observations |
-| `features.py` | Rates, ratios, missing-data semantics, and stream/counter reset handling |
+| `features.py`, `feature_groups.py` | Observation windows, grouped calculations, and stream/counter reset handling |
+| `schemas.py` | Observation schemas and the metric catalog used by the client and counter reset checks |
 | `rules.py`, `ml.py` | Prediction, with the shared ML feature contract and artifact validation in `ml.py` |
 
 Rules mode loads no ML modules. ML mode loads the same approved artifact and still
 requires its SHA-256 before deserialization. The training scripts reuse the runtime
 feature extractor/vectorizer and share dataset provenance in `scripts/common.py`.
+`MODEL_FEATURES` in `ml.py` defines the ordered model columns and their calculations.
+Training parses scalar feature fields from `FeatureVector` and uses the same vectorizer.
+Availability comes from missing values; unknown telemetry stays distinct from a measured zero.
+
+In both production and simulation, `persistence_ratio` is `1.0` when InfluxDB is healthy
+and the observation window contains no write errors: asynchronous WAL batches can cross
+window boundaries. Otherwise it is the written-line/transform-success ratio, bounded to
+`[0, 1]`. Regenerate older simulation CSVs before future retraining to use this shared rule.
 See the [refactoring record](docs/refactoring-2026-10-12.md) for scope and validation.
 
 ## Quickstart
