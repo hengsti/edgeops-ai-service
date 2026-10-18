@@ -32,6 +32,7 @@ class Metric:
     source_name: str
     kind: Literal["counter", "gauge"] = "counter"
     optional_zero: bool = False
+    absent_zero: bool = False
 
 
 class IngestionMetrics(StrictModel):
@@ -42,10 +43,14 @@ class IngestionMetrics(StrictModel):
     ]
 
     transform_success_total: Annotated[NonNegativeFloat, Metric("ingest_transform_success_total")]
-    transform_failed_total: Annotated[NonNegativeFloat, Metric("ingest_transform_failed_total")]
+    transform_failed_total: Annotated[
+        NonNegativeFloat, Metric("ingest_transform_failed_total", absent_zero=True)
+    ]
 
     influx_lines_written_total: NonNegativeFloat
-    influx_write_failed_total: NonNegativeFloat = 0.0
+    influx_write_failed_total: Annotated[
+        NonNegativeFloat, Metric("influx_write_failed_total", absent_zero=True)
+    ] = 0.0
     influxdb_healthy: Annotated[float, Metric("influxdb_healthy", kind="gauge")] = Field(
         default=1.0, ge=0, le=1
     )
@@ -73,62 +78,71 @@ class IngestionMetrics(StrictModel):
 
     mqtt_messages_received_total: NonNegativeFloat | None = None
     event_queue_full_total: Annotated[
-        NonNegativeFloat | None, Metric("ingest_event_queue_full_total")
+        NonNegativeFloat | None, Metric("ingest_event_queue_full_total", absent_zero=True)
     ] = None
     decode_success_total: Annotated[
         NonNegativeFloat | None, Metric("ingest_decode_success_total")
     ] = None
     incoming_oversized_total: Annotated[
-        NonNegativeFloat | None, Metric("ingest_incoming_oversized_total")
+        NonNegativeFloat | None, Metric("ingest_incoming_oversized_total", absent_zero=True)
     ] = None
     incoming_non_utf8_total: Annotated[
-        NonNegativeFloat | None, Metric("ingest_incoming_non_utf8_total")
+        NonNegativeFloat | None, Metric("ingest_incoming_non_utf8_total", absent_zero=True)
     ] = None
     incoming_invalid_json_total: Annotated[
-        NonNegativeFloat | None, Metric("ingest_incoming_invalid_json_total")
+        NonNegativeFloat | None, Metric("ingest_incoming_invalid_json_total", absent_zero=True)
     ] = None
     raw_validation_success_total: Annotated[
         NonNegativeFloat | None, Metric("ingest_validate_raw_success_total")
     ] = None
     raw_validation_ignored_total: Annotated[
-        NonNegativeFloat | None, Metric("ingest_validate_raw_ignored_total")
+        NonNegativeFloat | None, Metric("ingest_validate_raw_ignored_total", absent_zero=True)
     ] = None
     raw_validation_failed_total: Annotated[
-        NonNegativeFloat | None, Metric("ingest_validate_raw_failed_total")
+        NonNegativeFloat | None, Metric("ingest_validate_raw_failed_total", absent_zero=True)
     ] = None
     transform_attempt_total: Annotated[
         NonNegativeFloat | None, Metric("ingest_transform_attempt_total")
     ] = None
     transform_deserialize_failed_total: Annotated[
-        NonNegativeFloat | None, Metric("ingest_transform_deserialize_failed_total")
+        NonNegativeFloat | None,
+        Metric("ingest_transform_deserialize_failed_total", absent_zero=True),
     ] = None
     transform_ignored_total: Annotated[
-        NonNegativeFloat | None, Metric("ingest_transform_ignored_total")
+        NonNegativeFloat | None, Metric("ingest_transform_ignored_total", absent_zero=True)
     ] = None
     business_validation_success_total: Annotated[
         NonNegativeFloat | None, Metric("ingest_validate_business_success_total")
     ] = None
     business_validation_failed_total: Annotated[
-        NonNegativeFloat | None, Metric("ingest_validate_business_failed_total")
+        NonNegativeFloat | None, Metric("ingest_validate_business_failed_total", absent_zero=True)
     ] = None
     wal_queue_full_total: Annotated[
-        NonNegativeFloat | None, Metric("ingest_wal_queue_full_total")
+        NonNegativeFloat | None, Metric("ingest_wal_queue_full_total", absent_zero=True)
     ] = None
     wal_queue_closed_total: Annotated[
-        NonNegativeFloat | None, Metric("ingest_queue_closed_total")
+        NonNegativeFloat | None, Metric("ingest_queue_closed_total", absent_zero=True)
     ] = None
     durability_ack_failed_total: Annotated[
-        NonNegativeFloat | None, Metric("ingest_durability_ack_failed_total")
+        NonNegativeFloat | None, Metric("ingest_durability_ack_failed_total", absent_zero=True)
     ] = None
-    dlq_messages_published_total: NonNegativeFloat | None = None
-    dlq_publish_errors_total: NonNegativeFloat | None = None
+    dlq_messages_published_total: Annotated[
+        NonNegativeFloat | None, Metric("dlq_messages_published_total", absent_zero=True)
+    ] = None
+    dlq_publish_errors_total: Annotated[
+        NonNegativeFloat | None, Metric("dlq_publish_errors_total", absent_zero=True)
+    ] = None
     wal_committed_total: Annotated[
         NonNegativeFloat | None, Metric("wal_forwarder_committed_total")
     ] = None
-    wal_drop_total: Annotated[NonNegativeFloat | None, Metric("wal_forwarder_drop_total")] = None
-    wal_retry_total: Annotated[NonNegativeFloat | None, Metric("wal_forwarder_retry_total")] = None
+    wal_drop_total: Annotated[
+        NonNegativeFloat | None, Metric("wal_forwarder_drop_total", absent_zero=True)
+    ] = None
+    wal_retry_total: Annotated[
+        NonNegativeFloat | None, Metric("wal_forwarder_retry_total", absent_zero=True)
+    ] = None
     wal_commit_retry_total: Annotated[
-        NonNegativeFloat | None, Metric("wal_forwarder_commit_retry_total")
+        NonNegativeFloat | None, Metric("wal_forwarder_commit_retry_total", absent_zero=True)
     ] = None
     wal_retry_outage_active: Annotated[
         float | None, Metric("wal_forwarder_retry_outage_active", kind="gauge")
