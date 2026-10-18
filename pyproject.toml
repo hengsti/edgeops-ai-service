@@ -5,13 +5,24 @@ description = "Anomaly Detection Service for EdgeOps"
 license = "MIT"
 license-files = ["LICENSE"]
 requires-python = ">=3.13"
-dependencies = ["fastapi", "uvicorn", "pydantic", "pydantic-settings", "httpx", "scikit-learn", "joblib"]
+dependencies = [
+    "fastapi",
+    "uvicorn",
+    "pydantic",
+    "pydantic-settings",
+    "httpx",
+    "onnxruntime>=1.31.0",
+]
 
 [dependency-groups]
 dev = [
+    "joblib",
     "mypy>=2.4.0",
+    "onnx>=1.23.2",
     "pytest",
     "ruff",
+    "scikit-learn",
+    "skl2onnx>=1.20.0",
 ]
 
 
@@ -47,5 +58,5 @@ select = [
 [tool.ruff.format]
 
 [[tool.mypy.overrides]]
-module = ["joblib"]
+module = ["joblib", "onnxruntime"]
 ignore_missing_imports = true
