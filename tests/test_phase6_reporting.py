@@ -7,7 +7,9 @@ from scripts.validate_candidate_holdout import build_holdout_validation
 from scripts.validate_phase6_acceptance import build_acceptance_report
 from sklearn.tree import DecisionTreeClassifier
 
-from edgeops_ai.ml import ML_MODEL_VERSION, MODEL_FEATURE_COLUMNS
+from edgeops_ai.ml import MODEL_FEATURE_COLUMNS
+
+TEST_MODEL_VERSION = "test-model-v1"
 
 
 def test_ablation_slices_include_all_variants_and_empty_missingness_buckets() -> None:
@@ -159,7 +161,8 @@ def test_candidate_holdout_validation_passes_unseen_balanced_evidence() -> None:
     report = build_holdout_validation(
         manifest=manifest,
         evaluation_report=evaluation,
-        model_versions={ML_MODEL_VERSION},
+        expected_model_version=TEST_MODEL_VERSION,
+        model_versions={TEST_MODEL_VERSION},
         stable_matrix_finite=True,
         training_seeds=set(range(42, 62)),
     )
@@ -182,6 +185,7 @@ def test_candidate_holdout_validation_rejects_training_seed_overlap() -> None:
             },
         },
         evaluation_report={},
+        expected_model_version=TEST_MODEL_VERSION,
         model_versions=set(),
         stable_matrix_finite=False,
         training_seeds=set(range(42, 62)),

@@ -8,14 +8,17 @@ from pathlib import Path
 import httpx
 import pytest
 from fastapi.testclient import TestClient
+from pydantic import ValidationError
 
 from edgeops_ai.collector_client import CollectorClient
 from edgeops_ai.features import FeatureExtractor
 from edgeops_ai.main import create_app
-from edgeops_ai.ml import ML_MODEL_VERSION, MlPredictor, ModelArtifactError, load_ml_predictor
+from edgeops_ai.ml import MlPredictor, ModelArtifactError, load_ml_predictor
 from edgeops_ai.prediction import PredictionBackendName
 from edgeops_ai.schemas import FeatureVector, ObservationV1
 from edgeops_ai.settings import Settings
+
+TEST_MODEL_VERSION = "test-model-v1"
 
 
 def make_settings(**overrides: object) -> Settings:
@@ -391,7 +394,7 @@ def test_unknown_fields_are_rejected() -> None:
 def test_ml_health_reports_artifact_version(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(
         "edgeops_ai.ml.load_ml_predictor",
-        lambda *_: MlPredictor(model=object()),
+        lambda *_: MlPredictor(model=object(), model_version=TEST_MODEL_VERSION),
     )
     settings = Settings(
         collector_polling_enabled=False,
@@ -405,7 +408,7 @@ def test_ml_health_reports_artifact_version(monkeypatch: pytest.MonkeyPatch) -> 
 
     assert response.status_code == 200
     assert response.json()["prediction_backend"] == "ml"
-    assert response.json()["model_version"] == ML_MODEL_VERSION
+    assert response.json()["model_version"] == TEST_MODEL_VERSION
 
 
 def test_ml_warming_up_uses_ml_model_version(
@@ -413,7 +416,7 @@ def test_ml_warming_up_uses_ml_model_version(
 ) -> None:
     monkeypatch.setattr(
         "edgeops_ai.ml.load_ml_predictor",
-        lambda *_: MlPredictor(model=object()),
+        lambda *_: MlPredictor(model=object(), model_version=TEST_MODEL_VERSION),
     )
     settings = Settings(
         collector_polling_enabled=False,
@@ -430,7 +433,7 @@ def test_ml_warming_up_uses_ml_model_version(
 
     assert response.status_code == 200
     assert response.json()["status"] == "warming-up"
-    assert response.json()["model_version"] == ML_MODEL_VERSION
+    assert response.json()["model_version"] == TEST_MODEL_VERSION
 
 
 def test_ml_startup_fails_when_artifact_is_missing(
@@ -454,17 +457,8 @@ def test_ml_startup_fails_when_artifact_is_missing(
 
 
 def test_ml_startup_requires_artifact_sha256() -> None:
-    settings = Settings(
-        collector_polling_enabled=False,
-        prediction_backend="ml",
-        model_artifact_path=Path("artifacts/model.joblib"),
-    )
-
-    with (
-        pytest.raises(ModelArtifactError, match="MODEL_ARTIFACT_SHA256 is required"),
-        TestClient(create_app(settings)),
-    ):
-        pass
+    with pytest.raises(ValidationError, match="MODEL_ARTIFACT_SHA256 is required"):
+        Settings(_env_file=None, collector_polling_enabled=False, prediction_backend="ml")
 
 
 def test_rules_application_does_not_import_the_ml_stack() -> None:

@@ -40,11 +40,12 @@ from scripts.train_model import (
 )
 
 from edgeops_ai.ml import (
-    ML_MODEL_VERSION,
     MODEL_FEATURE_COLUMNS,
     load_ml_predictor,
     vectorize_model_features,
 )
+
+TEST_MODEL_VERSION = "test-model-v1"
 
 OPTIONAL_SOURCE_COLUMNS = (
     "queue_utilization_ratio",
@@ -247,7 +248,7 @@ def test_deployed_holdout_row_contains_version_and_every_feature(make_features) 
             "features": features,
             "prediction": "normal",
             "confidence": 0.9,
-            "model_version": ML_MODEL_VERSION,
+            "model_version": TEST_MODEL_VERSION,
         },
         "normal",
     )
@@ -278,7 +279,7 @@ def test_deployed_holdout_rejects_missing_enriched_feature(make_features) -> Non
                 "features": features,
                 "prediction": "ingestion-backpressure",
                 "confidence": 0.9,
-                "model_version": ML_MODEL_VERSION,
+                "model_version": TEST_MODEL_VERSION,
             },
             "ingestion-backpressure",
         )
@@ -428,9 +429,11 @@ def test_valid_release_a_dataset_trains_candidate_artifact(tmp_path: Path) -> No
     assert tuple(artifact["feature_columns"]) == MODEL_FEATURE_COLUMNS
     assert artifact["training_rows"] == 12
     assert artifact["simulation_seeds"] == [42, 43]
+    assert artifact["feature_contract_version"] == "1.0"
 
 
-def test_training_rejects_version_the_runtime_cannot_load(tmp_path: Path) -> None:
+@pytest.mark.parametrize("version", ["", "  "])
+def test_training_rejects_empty_model_version(tmp_path: Path, version: str) -> None:
     artifact_path = tmp_path / "model.joblib"
     artifact_path.write_bytes(b"previous model")
     with pytest.raises(DatasetError, match="model version"):
@@ -438,12 +441,12 @@ def test_training_rejects_version_the_runtime_cannot_load(tmp_path: Path) -> Non
             input_dir=tmp_path,
             artifact_path=artifact_path,
             report_path=tmp_path / "report.json",
-            model_version="lightweight-ml-999.0.0",
+            model_version=version,
         )
     assert artifact_path.read_bytes() == b"previous model"
 
 
-def test_training_defaults_to_loadable_v05_artifact(tmp_path: Path) -> None:
+def test_training_defaults_to_a_generated_loadable_version(tmp_path: Path) -> None:
     write_training_matrix(tmp_path)
     artifact_path = tmp_path / "candidate.joblib"
     train_model(
@@ -453,8 +456,23 @@ def test_training_defaults_to_loadable_v05_artifact(tmp_path: Path) -> None:
         min_accuracy=0,
         min_label_recall=0,
     )
-    assert load_ml_predictor(artifact_path).model_version == "lightweight-ml-0.5.0"
-    assert parse_training_args([]).model_version == ML_MODEL_VERSION
+    assert load_ml_predictor(artifact_path).model_version.startswith("lightweight-ml-")
+    assert parse_training_args([]).model_version is None
+
+
+def test_training_accepts_a_custom_model_version_without_code_changes(tmp_path: Path) -> None:
+    write_training_matrix(tmp_path)
+    artifact_path = tmp_path / "candidate.joblib"
+    report = train_model(
+        input_dir=tmp_path,
+        artifact_path=artifact_path,
+        report_path=tmp_path / "report.json",
+        model_version="my-retrained-model-42",
+        min_accuracy=0,
+        min_label_recall=0,
+    )
+    assert report["model_version"] == "my-retrained-model-42"
+    assert load_ml_predictor(artifact_path).model_version == "my-retrained-model-42"
 
 
 def test_retrained_model_accepts_healthy_production_heartbeat_age(
@@ -721,7 +739,7 @@ def test_training_defaults_to_candidate_artifact() -> None:
 
 
 def test_holdout_defaults_to_independent_simulation_collector() -> None:
-    args = parse_holdout_args([])
+    args = parse_holdout_args(["--expected-model-version", TEST_MODEL_VERSION])
 
     assert args.simulation_base_url == "http://localhost:8097"
     assert args.simulation_read_key == "local-dev-key"

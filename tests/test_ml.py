@@ -8,7 +8,6 @@ import pytest
 
 from edgeops_ai.ml import (
     ARTIFACT_SCHEMA_VERSION,
-    ML_MODEL_VERSION,
     MODEL_FEATURE_COLUMNS,
     MlPredictor,
     ModelArtifactError,
@@ -18,8 +17,12 @@ from edgeops_ai.ml import (
 from edgeops_ai.prediction import PredictionBackendName
 from edgeops_ai.schemas import FeatureVector
 
+TEST_MODEL_VERSION = "test-model-v1"
+
 
 class FakeModel:
+    n_features_in_ = len(MODEL_FEATURE_COLUMNS)
+    probability_calls = 0
     classes_ = (
         "influxdb-write-failure",
         "ingestion-backpressure",
@@ -29,16 +32,18 @@ class FakeModel:
     )
 
     def predict(self, values: Any) -> list[str]:
-        return ["ingestion-backpressure"]
+        raise AssertionError("Inference must use predict_proba only")
 
     def predict_proba(self, values: Any) -> list[list[float]]:
+        self.probability_calls += 1
         return [[0.02, 0.90, 0.03, 0.02, 0.03]]
 
 
 def artifact() -> dict[str, Any]:
     return {
         "schema_version": ARTIFACT_SCHEMA_VERSION,
-        "model_version": ML_MODEL_VERSION,
+        "model_version": TEST_MODEL_VERSION,
+        "feature_contract_version": "1.0",
         "feature_columns": list(MODEL_FEATURE_COLUMNS),
         "labels": list(FakeModel.classes_),
         "model": FakeModel(),
@@ -376,15 +381,17 @@ def test_vectorize_model_features_passes_every_source(make_features) -> None:
 
 
 def test_predictor_uses_probability_of_predicted_class(make_features) -> None:
-    predictor = MlPredictor(model=FakeModel())
+    model = FakeModel()
+    predictor = MlPredictor(model=model, model_version=TEST_MODEL_VERSION)
 
     result = predictor.predict(make_features())
 
     assert predictor.backend_name is PredictionBackendName.ML
     assert result.label == "ingestion-backpressure"
     assert result.confidence == pytest.approx(0.90)
-    assert result.model_version == ML_MODEL_VERSION
+    assert result.model_version == TEST_MODEL_VERSION
     assert "queue pressure" in result.recommendation
+    assert model.probability_calls == 1
 
 
 def test_loads_valid_ml_artifact(tmp_path: Path) -> None:
@@ -393,14 +400,14 @@ def test_loads_valid_ml_artifact(tmp_path: Path) -> None:
     predictor = load_ml_predictor(path)
 
     assert predictor.backend_name is PredictionBackendName.ML
-    assert predictor.model_version == ML_MODEL_VERSION
+    assert predictor.model_version == TEST_MODEL_VERSION
 
 
 def test_loads_artifact_with_matching_sha256(tmp_path: Path) -> None:
     path = save_artifact(tmp_path / "model.joblib")
     sha256 = hashlib.sha256(path.read_bytes()).hexdigest()
 
-    assert load_ml_predictor(path, sha256.upper()).model_version == ML_MODEL_VERSION
+    assert load_ml_predictor(path, sha256.upper()).model_version == TEST_MODEL_VERSION
 
 
 def test_rejects_artifact_with_wrong_sha256(tmp_path: Path, monkeypatch) -> None:
@@ -434,14 +441,89 @@ def test_rejects_old_artifact_schema(tmp_path: Path) -> None:
         load_ml_predictor(path)
 
 
-@pytest.mark.parametrize("version", ["lightweight-ml-0.2.0", "lightweight-ml-0.3.0"])
-def test_rejects_old_model_version(tmp_path: Path, version: str) -> None:
+@pytest.mark.parametrize("version", ["lightweight-ml-0.2.0", "retrained-2026-10-18"])
+def test_model_version_is_independent_of_code_release(tmp_path: Path, version: str) -> None:
     value = artifact()
     value["model_version"] = version
     path = save_artifact(tmp_path / "model.joblib", value)
 
-    with pytest.raises(ModelArtifactError, match="Unsupported ML model version"):
+    assert load_ml_predictor(path).model_version == version
+
+
+def test_rejects_unknown_estimator_label_at_load(tmp_path: Path) -> None:
+    value = artifact()
+    value["model"].classes_ = (*FakeModel.classes_[:-1], "unknown-anomaly")
+    path = save_artifact(tmp_path / "model.joblib", value)
+
+    with pytest.raises(ModelArtifactError, match="classes"):
         load_ml_predictor(path)
+
+
+@pytest.mark.parametrize("feature_count", [None, 6, 47])
+def test_rejects_estimator_feature_count_mismatch(
+    tmp_path: Path, feature_count: int | None
+) -> None:
+    value = artifact()
+    value["model"].n_features_in_ = feature_count
+    path = save_artifact(tmp_path / "model.joblib", value)
+
+    with pytest.raises(ModelArtifactError, match="feature count"):
+        load_ml_predictor(path)
+
+
+def test_rejects_feature_contract_mismatch(tmp_path: Path) -> None:
+    value = artifact()
+    value["feature_contract_version"] = "incompatible-contract"
+    path = save_artifact(tmp_path / "model.joblib", value)
+
+    with pytest.raises(ModelArtifactError, match="feature contract"):
+        load_ml_predictor(path)
+
+
+def test_rejects_missing_feature_contract_version(tmp_path: Path) -> None:
+    value = artifact()
+    del value["feature_contract_version"]
+    path = save_artifact(tmp_path / "model.joblib", value)
+
+    with pytest.raises(ModelArtifactError, match="missing required fields"):
+        load_ml_predictor(path)
+
+
+@pytest.mark.parametrize("classes", [None, (), ("normal", "normal")])
+def test_rejects_invalid_estimator_classes(tmp_path: Path, classes: object) -> None:
+    value = artifact()
+    value["model"].classes_ = classes
+    path = save_artifact(tmp_path / "model.joblib", value)
+
+    with pytest.raises(ModelArtifactError, match="classes"):
+        load_ml_predictor(path)
+
+
+def test_rejects_labels_that_disagree_with_estimator(tmp_path: Path) -> None:
+    value = artifact()
+    value["labels"] = ["normal"]
+    path = save_artifact(tmp_path / "model.joblib", value)
+
+    with pytest.raises(ModelArtifactError, match="labels"):
+        load_ml_predictor(path)
+
+
+@pytest.mark.parametrize("version", [None, 5, "", "  "])
+def test_rejects_invalid_model_version(tmp_path: Path, version: object) -> None:
+    value = artifact()
+    value["model_version"] = version
+    path = save_artifact(tmp_path / "model.joblib", value)
+
+    with pytest.raises(ModelArtifactError, match="model_version"):
+        load_ml_predictor(path)
+
+
+def test_loads_classifier_that_only_exposes_probabilities(tmp_path: Path, make_features) -> None:
+    value = artifact()
+    value["model"].predict = None
+    path = save_artifact(tmp_path / "model.joblib", value)
+
+    assert load_ml_predictor(path).predict(make_features()).label == "ingestion-backpressure"
 
 
 def test_rejects_wrong_feature_order(tmp_path: Path) -> None:
