@@ -39,6 +39,7 @@ from edgeops_ai.training.common import (
     start_simulation,
 )
 from edgeops_ai.training.dataset import collect_dataset, write_dataset
+from edgeops_ai.training.distributions import check_distributions
 from edgeops_ai.training.evaluate import evaluate_dataset, print_report
 from edgeops_ai.training.manifest import (
     SIMULATION_CONTRACT_VERSION,
@@ -537,6 +538,11 @@ def parse_args(
     )
 
     parser.add_argument("--model-version", help="Version for the newly trained candidate.")
+    parser.add_argument(
+        "--production-observations",
+        type=Path,
+        help="Normal production JSONL snapshots for the release distribution check.",
+    )
     args = parser.parse_args(argv)
     args.evaluation_report = args.evaluation_report or args.output_dir / "rule-report.json"
     args.training_report = args.training_report or args.output_dir / "training-report.json"
@@ -630,6 +636,16 @@ def main(
             seeds=seeds,
         )
         print_report(report, args.evaluation_report)
+        if args.production_observations is not None:
+            distribution = check_distributions(
+                input_dir=args.output_dir,
+                production_observations=args.production_observations,
+                output=args.output_dir / "distribution-report.json",
+            )
+            if not distribution["passed"]:
+                raise ScriptError(
+                    "Production feature skew is too large; see distribution-report.json."
+                )
         if args.train:
             report = train_model(
                 input_dir=args.output_dir,
