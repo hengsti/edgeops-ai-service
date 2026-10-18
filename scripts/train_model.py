@@ -11,7 +11,7 @@ from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any
+from typing import Any, get_args
 
 import joblib
 import numpy as np
@@ -31,8 +31,9 @@ from edgeops_ai.ml import (
     ARTIFACT_SCHEMA_VERSION,
     ML_MODEL_VERSION,
     MODEL_FEATURE_COLUMNS,
-    build_model_feature_row,
+    vectorize_model_features,
 )
+from edgeops_ai.schemas import FeatureVector
 from scripts.common import (
     DATASET_SCHEMA_VERSION,
     LABELS,
@@ -46,37 +47,8 @@ from scripts.common import (
 
 FEATURE_COLUMNS = MODEL_FEATURE_COLUMNS
 
-SOURCE_FEATURE_COLUMNS = (
-    "messages_enqueued_rate",
-    "queue_growth_rate",
-    "processing_ratio",
-    "queue_full_rate",
-    "transform_failure_ratio",
-    "persistence_ratio",
-    "heartbeat_missing",
-    "queue_utilization_ratio",
-    "influx_write_failure_ratio",
-    "influxdb_healthy",
-    "pipeline_duration_average_seconds",
-    "heartbeat_age_max_seconds",
-    "missing_device_ratio",
-    "device_metrics_available",
-    "decode_failure_ratio",
-    "raw_validation_failure_ratio",
-    "business_validation_failure_ratio",
-    "transform_deserialize_failure_ratio",
-    "event_queue_drop_ratio",
-    "wal_queue_full_ratio",
-    "durability_ack_failure_rate",
-    "dlq_publish_failure_ratio",
-    "wal_retry_rate",
-    "wal_drop_ratio",
-    "wal_retry_outage_active",
-    "decode_duration_average_seconds",
-    "transform_duration_average_seconds",
-    "persist_duration_average_seconds",
-    "influx_write_duration_average_seconds",
-    "broker_available",
+SOURCE_FEATURE_COLUMNS = tuple(
+    name for name, field in FeatureVector.model_fields.items() if field.annotation != list[str]
 )
 
 METADATA_COLUMNS = (
@@ -117,14 +89,14 @@ def _parse_bool(
     column: str,
     path: Path,
     line_number: int,
-) -> float:
+) -> bool:
     normalized = (value or "").strip().lower()
 
     if normalized in {"true", "1"}:
-        return 1.0
+        return True
 
     if normalized in {"false", "0"}:
-        return 0.0
+        return False
 
     raise DatasetError(
         f"{path}:{line_number}: column {column!r} must be true/false or 1/0, got {value!r}"
@@ -151,24 +123,6 @@ def _parse_float(
     return parsed
 
 
-def _parse_optional_float(
-    value: str | None,
-    *,
-    column: str,
-    path: Path,
-    line_number: int,
-) -> float | None:
-    if value is None or not value.strip():
-        return None
-
-    return _parse_float(
-        value,
-        column=column,
-        path=path,
-        line_number=line_number,
-    )
-
-
 def _parse_seed(
     value: str | None,
     *,
@@ -189,69 +143,18 @@ def _build_model_row(
     path: Path,
     line_number: int,
 ) -> list[float]:
-    def required_float(column: str) -> float:
-        return _parse_float(
-            row.get(column),
-            column=column,
-            path=path,
-            line_number=line_number,
-        )
+    values: dict[str, Any] = {}
+    for column in SOURCE_FEATURE_COLUMNS:
+        annotation = FeatureVector.model_fields[column].annotation
+        types = get_args(annotation) or (annotation,)
+        value = row.get(column)
+        if type(None) in types and not (value or "").strip():
+            values[column] = None
+        else:
+            parse = _parse_bool if bool in types else _parse_float
+            values[column] = parse(value, column=column, path=path, line_number=line_number)
 
-    def optional_float(column: str) -> float | None:
-        return _parse_optional_float(
-            row.get(column),
-            column=column,
-            path=path,
-            line_number=line_number,
-        )
-
-    def required_bool(column: str) -> float:
-        return _parse_bool(
-            row.get(column),
-            column=column,
-            path=path,
-            line_number=line_number,
-        )
-
-    def optional_bool(column: str) -> float | None:
-        if not (row.get(column) or "").strip():
-            return None
-        return required_bool(column)
-
-    return build_model_feature_row(
-        messages_enqueued_rate=required_float("messages_enqueued_rate"),
-        queue_growth_rate=required_float("queue_growth_rate"),
-        processing_ratio=required_float("processing_ratio"),
-        queue_full_rate=required_float("queue_full_rate"),
-        transform_failure_ratio=required_float("transform_failure_ratio"),
-        persistence_ratio=required_float("persistence_ratio"),
-        heartbeat_missing=required_bool("heartbeat_missing"),
-        queue_utilization_ratio=optional_float("queue_utilization_ratio"),
-        influx_write_failure_ratio=optional_float("influx_write_failure_ratio"),
-        influxdb_healthy=required_float("influxdb_healthy"),
-        pipeline_duration_average_seconds=required_float("pipeline_duration_average_seconds"),
-        heartbeat_age_max_seconds=optional_float("heartbeat_age_max_seconds"),
-        missing_device_ratio=required_float("missing_device_ratio"),
-        device_metrics_available=required_bool("device_metrics_available"),
-        decode_failure_ratio=optional_float("decode_failure_ratio"),
-        raw_validation_failure_ratio=optional_float("raw_validation_failure_ratio"),
-        business_validation_failure_ratio=optional_float("business_validation_failure_ratio"),
-        transform_deserialize_failure_ratio=optional_float("transform_deserialize_failure_ratio"),
-        event_queue_drop_ratio=optional_float("event_queue_drop_ratio"),
-        wal_queue_full_ratio=optional_float("wal_queue_full_ratio"),
-        durability_ack_failure_rate=optional_float("durability_ack_failure_rate"),
-        dlq_publish_failure_ratio=optional_float("dlq_publish_failure_ratio"),
-        wal_retry_rate=optional_float("wal_retry_rate"),
-        wal_drop_ratio=optional_float("wal_drop_ratio"),
-        wal_retry_outage_active=optional_float("wal_retry_outage_active"),
-        decode_duration_average_seconds=optional_float("decode_duration_average_seconds"),
-        transform_duration_average_seconds=optional_float("transform_duration_average_seconds"),
-        persist_duration_average_seconds=optional_float("persist_duration_average_seconds"),
-        influx_write_duration_average_seconds=optional_float(
-            "influx_write_duration_average_seconds"
-        ),
-        broker_available=optional_bool("broker_available"),
-    )
+    return vectorize_model_features(FeatureVector.model_construct(**values))
 
 
 def load_training_dataset(input_dir: Path) -> TrainingDataset:
