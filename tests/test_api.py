@@ -207,7 +207,7 @@ def test_documented_quickstart_starts_with_rules_backend(
 
 def test_docker_image_bundles_only_loadable_artifacts() -> None:
     for line in Path("Dockerfile").read_text(encoding="utf-8").splitlines():
-        if line.startswith("COPY") and ".joblib" in line:
+        if line.startswith("COPY") and line.split()[1].endswith((".joblib", ".onnx")):
             load_ml_predictor(Path(line.split()[1]))
 
 
