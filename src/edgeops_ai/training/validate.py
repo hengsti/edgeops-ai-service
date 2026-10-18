@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import csv
+import hashlib
 from collections import Counter
 from collections.abc import Mapping, Sequence
 from pathlib import Path
@@ -13,6 +14,7 @@ import numpy as np
 
 from edgeops_ai.training.common import DATASET_SCHEMA_VERSION, LABELS, SCENARIOS
 from edgeops_ai.training.dataset import load_training_dataset
+from edgeops_ai.training.distributions import distribution_passed, simulation_digest
 from edgeops_ai.training.manifest import (
     SIMULATION_CONTRACT_VERSION,
     SIMULATION_VARIANTS,
@@ -182,6 +184,7 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--input-dir", type=Path, required=True)
     parser.add_argument("--evaluation-report", type=Path)
     parser.add_argument("--output", type=Path)
+    parser.add_argument("--distribution-report", type=Path)
     parser.add_argument("--training-seed-range", nargs=2, type=int, default=(42, 61))
     parser.add_argument(
         "--training-dir",
@@ -206,6 +209,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             expected_model_version=args.expected_model_version,
             training_seeds=set(range(first, last + 1)),
             training_dir=args.training_dir,
+            distribution_report=args.distribution_report,
         )
         write_report(report, args.output)
     except (HoldoutValidationError, OSError, ValueError) as error:
@@ -435,6 +439,7 @@ def validate_release(
     expected_model_version: str,
     training_seeds: set[int],
     training_dir: Path | None = None,
+    distribution_report: Path | None = None,
 ) -> dict[str, Any]:
     """Check holdout gates and, when supplied, the complete training evidence."""
     manifest, _ = validate_manifest_datasets(input_dir)
@@ -464,7 +469,46 @@ def validate_release(
             {**gate, "name": "training-" + gate["name"]} for gate in acceptance["gates"]
         )
         report["passed"] = all(gate["passed"] for gate in report["gates"])
+    distribution_path = (
+        distribution_report or (training_dir or input_dir) / "distribution-report.json"
+    )
+    append_distribution_gate(report, distribution_path, training_dir=training_dir)
     return report
+
+
+def append_distribution_gate(
+    report: dict[str, Any],
+    path: Path,
+    *,
+    training_dir: Path | None = None,
+) -> None:
+    observed = {"report": str(path)}
+    try:
+        drift = read_report(path)
+        if not distribution_passed(drift):
+            raise ValueError("Missing, incompatible or excessive feature distribution skew.")
+        simulation_dir = training_dir or Path(drift["simulation"]["path"])
+        if not simulation_dir.is_dir() or drift["simulation"]["sha256"] != simulation_digest(
+            simulation_dir
+        ):
+            raise ValueError("Simulation datasets changed after the distribution check.")
+        source = drift["production"]
+        source_path = Path(source["path"])
+        if source["sha256"] != hashlib.sha256(source_path.read_bytes()).hexdigest():
+            raise ValueError("Production snapshots changed after the distribution check.")
+        passed = True
+    except (OSError, ValueError, KeyError, TypeError) as error:
+        passed = False
+        observed["error"] = str(error)
+    report["gates"].append(
+        _gate(
+            "production-simulation-distributions",
+            observed,
+            "Current production and simulation evidence within recorded drift limits",
+            passed,
+        )
+    )
+    report["passed"] = all(gate["passed"] for gate in report["gates"])
 
 
 def parse_acceptance_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
@@ -476,6 +520,7 @@ def parse_acceptance_args(argv: Sequence[str] | None = None) -> argparse.Namespa
     parser.add_argument("--feature-audit", type=Path)
     parser.add_argument("--ablation-report", type=Path)
     parser.add_argument("--output", type=Path)
+    parser.add_argument("--distribution-report", type=Path)
     args = parser.parse_args(argv)
     args.rule_report = args.rule_report or args.input_dir / "rule-report.json"
     args.training_report = args.training_report or args.input_dir / "training-report.json"
@@ -495,6 +540,11 @@ def acceptance_main(argv: Sequence[str] | None = None) -> int:
             holdout_report=read_report(args.holdout_report),
             feature_audit=read_report(args.feature_audit),
             ablation_report=read_report(args.ablation_report),
+        )
+        append_distribution_gate(
+            report,
+            args.distribution_report or args.input_dir / "distribution-report.json",
+            training_dir=args.input_dir,
         )
         write_report(report, args.output)
     except (AcceptanceError, OSError, ValueError) as error:
