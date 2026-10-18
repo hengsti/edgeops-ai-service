@@ -1,12 +1,11 @@
 """ML prediction backend: feature vectorization, artifact loading, and inference."""
 
 import hashlib
+import json
 from collections.abc import Callable, Mapping
 from math import isfinite, log1p
 from pathlib import Path
 from typing import Any, cast, get_args
-
-import joblib
 
 from edgeops_ai.prediction import Prediction, PredictionBackendName, recommendation_for
 from edgeops_ai.schemas import FeatureVector, PredictionLabel
@@ -183,7 +182,35 @@ class MlPredictor:
         )
 
 
-def load_ml_predictor(artifact_path: Path, expected_sha256: str | None = None) -> MlPredictor:
+class _OnnxClassifier:
+    def __init__(self, session: Any, labels: Any) -> None:
+        inputs = session.get_inputs()
+        if len(inputs) != 1 or inputs[0].type != "tensor(float)" or len(inputs[0].shape) != 2:
+            raise ModelArtifactError("ONNX input must be a matrix of float32 model features.")
+        outputs = {output.name: output for output in session.get_outputs()}
+        probabilities = outputs.get("probabilities")
+        if (
+            probabilities is None
+            or probabilities.type != "tensor(float)"
+            or len(probabilities.shape) != 2
+            or not isinstance(labels, list)
+            or probabilities.shape[1] != len(labels)
+        ):
+            raise ModelArtifactError("ONNX probability output must match the manifest labels.")
+        self._session = session
+        self._input_name = inputs[0].name
+        self.n_features_in_ = inputs[0].shape[1]
+        self.classes_ = labels
+
+    def predict_proba(self, matrix: list[list[float]]) -> Any:
+        import numpy as np
+
+        return self._session.run(
+            ["probabilities"], {self._input_name: np.asarray(matrix, dtype=np.float32)}
+        )[0]
+
+
+def load_ml_artifact(artifact_path: Path, expected_sha256: str | None = None) -> Mapping[str, Any]:
     if not artifact_path.is_file():
         raise ModelArtifactError(f"Artifact file does not exist: {artifact_path}")
 
@@ -198,7 +225,24 @@ def load_ml_predictor(artifact_path: Path, expected_sha256: str | None = None) -
             )
 
     try:
-        artifact = joblib.load(artifact_path)
+        if artifact_path.suffix.lower() == ".onnx":
+            import onnxruntime as ort
+
+            options = ort.SessionOptions()
+            options.intra_op_num_threads = 1
+            session = ort.InferenceSession(
+                artifact_path.read_bytes(), sess_options=options, providers=["CPUExecutionProvider"]
+            )
+            artifact = json.loads(
+                session.get_modelmeta().custom_metadata_map["edgeops_ai_manifest"]
+            )
+            if not isinstance(artifact, dict):
+                raise ModelArtifactError("ONNX manifest must be a dictionary-like mapping.")
+            artifact["model"] = _OnnxClassifier(session, artifact.get("labels"))
+        else:
+            import joblib
+
+            artifact = joblib.load(artifact_path)
     except Exception as exc:
         raise ModelArtifactError(
             f"Failed to load ML model artifact from {artifact_path}: {exc}"
@@ -259,4 +303,9 @@ def load_ml_predictor(artifact_path: Path, expected_sha256: str | None = None) -
     if labels != classes:
         raise ModelArtifactError("Artifact labels must match the model classes_.")
 
-    return MlPredictor(model=model, model_version=artifact["model_version"])
+    return artifact
+
+
+def load_ml_predictor(artifact_path: Path, expected_sha256: str | None = None) -> MlPredictor:
+    artifact = load_ml_artifact(artifact_path, expected_sha256)
+    return MlPredictor(model=artifact["model"], model_version=artifact["model_version"])
