@@ -5,6 +5,8 @@ from collections.abc import Sequence
 from importlib import import_module
 
 COMMANDS = {
+    "advisor-dataset": "advisor_dataset",
+    "advisor-labels": "advisor_labels",
     "collect": "dataset",
     "train": "train",
     "evaluate": "evaluate",
