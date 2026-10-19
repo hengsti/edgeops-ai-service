@@ -19,6 +19,7 @@ dev = [
     "joblib",
     "mypy>=2.4.0",
     "onnx>=1.23.2",
+    "pyarrow>=26.0.0",
     "pytest",
     "ruff",
     "scikit-learn",
@@ -62,5 +63,5 @@ select = [
 [tool.ruff.format]
 
 [[tool.mypy.overrides]]
-module = ["joblib", "onnxruntime", "sklearn.*", "skl2onnx.*", "scipy.*"]
+module = ["joblib", "onnxruntime", "sklearn.*", "skl2onnx.*", "scipy.*", "pyarrow.*"]
 ignore_missing_imports = true
