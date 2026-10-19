@@ -256,6 +256,8 @@ Relative paths are resolved from the terminal's current directory.
 | Command | Purpose |
 | --- | --- |
 | `collect` | Collect one labelled rules dataset |
+| `advisor-dataset` | Export labelled InfluxDB aggregate history to Parquet with time-based splits |
+| `advisor-labels` | Apply human reviews to an existing Advisor export offline |
 | `pipeline` | Collect missing runs, evaluate the complete matrix, optionally train |
 | `train` | Train and evaluate candidates from existing CSVs |
 | `evaluate` | Evaluate collected predictions, detection delay, and recovery |
@@ -264,6 +266,95 @@ Relative paths are resolved from the terminal's current directory.
 | `validate` | Check holdout gates and, with `--training-dir`, all release gates |
 | `export-onnx` | Convert an existing trusted source artifact without retraining |
 | `check-distributions` | Compare normal simulation inputs with saved production observations |
+
+### Advisor dataset
+
+Use the `sensors_1m` and `metrics_5m` history provisioned by
+[monitoring #8](https://github.com/hengsti/monitoring/issues/8). Sensor/device and
+room tables use one minute; host/container tables preserve five-minute history.
+The exporter only reads InfluxDB and writes a new local directory. It never
+overwrites an existing dataset. PyArrow is a development dependency; production
+inference does not require it.
+
+```powershell
+uv sync --dev --locked
+$env:INFLUX_URL = 'http://influxdb.smarthome.local'
+$env:INFLUX_ORG = 'smarthome'
+$env:INFLUX_TOKEN = [IO.File]::ReadAllText('C:\private\influx-token.txt').Trim()
+uv run edgeops-train advisor-dataset `
+  --start 2026-09-10T00:00:00Z --train-stop 2026-10-01T00:00:00Z `
+  --validation-stop 2026-10-10T00:00:00Z --stop 2026-10-19T00:00:00Z `
+  --output-dir data/advisor-20261019
+```
+
+All boundaries must be explicit UTC and aligned to five minutes. Splits use
+`[start, train-stop)`, `[train-stop, validation-stop)`, and
+`[validation-stop, stop)` across every entity, without shuffling. Queries run
+sequentially in six-hour chunks. The command publishes the directory only after
+all queries and files succeed. Rerunning against unchanged aggregate history
+with identical options produces the same source and Parquet hashes; late source
+writes can change them.
+
+The four long-form tables are `device.parquet`, `host.parquet`,
+`container.parquet`, and `room.parquet`. Each row identifies an entity, UTC
+window-start time, measurement, field/statistic, dimensions, numeric `value` or
+string/boolean `text`, cadence, split, weak labels, and an optional manual label.
+Missing fields/windows remain absent. Room means are sample-weighted across
+devices with the same historical room tag; min/max/count retain their meanings.
+Status rows stay keyed by device ID without assigning a current room to history.
+Test devices and known-invalid Docker memory measurements are excluded.
+Metrics retain their source tag dimensions, including container state/version.
+When a container changes state inside a five-minute window, its partial
+aggregates remain distinct under the same entity ID. Use the corresponding
+counts when combining their means.
+
+`weak-labels.csv` records counter increases without intervening resets/gaps,
+counter resets, unhealthy container status and sensor telemetry gaps of at least
+10 missing minutes. All-device gaps use `entity_id=*`. Gaps have no fabricated
+measurement rows and do not establish their cause. Dates from #18 are candidate
+event references; the unspecified timezone and approximate hours are not ground
+truth. Unlabelled observations are not assumed normal. Grafana alerts are not
+imported automatically.
+
+`data-card.md` and `data-card.json` describe coverage, missing windows, label
+sources, splits and hashes. Review `manual-labels-template.csv` against raw
+observations or incident evidence. Fill `label` and `note`, save your review
+outside the output directory, then rerun the same command to a new directory
+with `--manual-labels <review.csv>`. Blank labels remain unreviewed. Manual labels
+stay separate from weak labels; the imported intervals and review notes are
+retained in `manual-labels.csv`. Keep the small reviewed set inside validation.
+Consumers must build forecast windows and targets inside one split, and fit
+preprocessing on training data only. IAQ and quality flags retain source
+semantics and need task-specific interpretation.
+
+Apply subsequent human reviews to the existing Parquet export without querying
+InfluxDB again:
+
+```powershell
+uv run edgeops-train advisor-labels `
+  --input-dir data/advisor-issue18-20260910-20261019 `
+  --labels data/advisor-reviews-20261019/reviewed-labels.csv `
+  --output-dir data/advisor-issue18-reviewed-20261019
+```
+
+The review CSV uses `entity_type,entity_id,start,stop,label,note`. Unlike the
+exporter's validation-only `--manual-labels`, this explicit review step also
+accepts corrections to weak events in the training period. Keep intervals
+inside one split and aligned to their entity's cadence. `entity_id=*` applies
+to all entities of that type. Contradictory overlapping reviews are rejected;
+reimporting the exact same entity/interval replaces its earlier review.
+
+The new dataset preserves measurements, cadence, split assignments and original
+weak labels. Consumers use a non-null `manual_label` before `weak_labels`.
+Reviews of gaps with no measurement rows remain in `manual-labels.csv`; missing
+data is not filled. Existing reviews are retained when applying another file.
+Source Parquet hashes are checked, new hashes/counts are recorded, and the
+directory is published only after every review matches measurements or a known
+gap. Original exports and edited CSVs remain unchanged. Cause and timing details
+belong in review notes; diagnosis/recovery windows are not precise fault-onset
+measurements. Human reports do not imply independent verification of the cause.
+
+### Incident classifier workflow
 
 Production polling keeps its default `http://localhost:8095`. Training collection
 uses the independent simulation collector at `http://localhost:8097`, with explicit
