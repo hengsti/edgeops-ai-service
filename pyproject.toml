@@ -15,6 +15,10 @@ dependencies = [
 ]
 
 [dependency-groups]
+advisor = [
+    "granite-tsfm==0.3.5 ; python_full_version < '3.14'",
+    "onnxscript>=0.7.2",
+]
 dev = [
     "joblib",
     "mypy>=2.4.0",
@@ -63,5 +67,5 @@ select = [
 [tool.ruff.format]
 
 [[tool.mypy.overrides]]
-module = ["joblib", "onnxruntime", "sklearn.*", "skl2onnx.*", "scipy.*", "pyarrow.*"]
+module = ["joblib", "onnxruntime", "sklearn.*", "skl2onnx.*", "scipy.*", "pyarrow.*", "tsfm_public.*", "torch.*"]
 ignore_missing_imports = true
