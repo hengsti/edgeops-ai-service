@@ -258,6 +258,7 @@ Relative paths are resolved from the terminal's current directory.
 | `collect` | Collect one labelled rules dataset |
 | `advisor-dataset` | Export labelled InfluxDB aggregate history to Parquet with time-based splits |
 | `advisor-labels` | Apply human reviews to an existing Advisor export offline |
+| `advisor-health` | Replay device/pipeline advice and a per-device anomaly baseline |
 | `pipeline` | Collect missing runs, evaluate the complete matrix, optionally train |
 | `train` | Train and evaluate candidates from existing CSVs |
 | `evaluate` | Evaluate collected predictions, detection delay, and recovery |
@@ -353,6 +354,104 @@ directory is published only after every review matches measurements or a known
 gap. Original exports and edited CSVs remain unchanged. Cause and timing details
 belong in review notes; diagnosis/recovery windows are not precise fault-onset
 measurements. Human reports do not imply independent verification of the cause.
+
+### Advisor health replay
+
+Replay the reviewed #18 export locally. This does not change the incident
+classifier, query live services, or deploy an Advisor API (#22).
+
+```powershell
+uv run edgeops-train advisor-health `
+  --input-dir data/advisor-issue18-reviewed-20261019 `
+  --pipeline-csv data/advisor-issue19-pipeline-20261019/pipeline.csv `
+  --output-dir data/advisor-health
+```
+
+The optional pipeline input is an InfluxDB CSV export of **raw counters**, with
+original source tags retained. #18's four Parquet tables do not contain these
+Prometheus fields. Export the following query from InfluxDB for the same UTC
+interval as the dataset; smaller consecutive ranges can be concatenated,
+including their repeated headers. Missing history stays missing.
+
+```flux
+from(bucket: "metrics")
+  |> range(start: 2026-09-10T00:00:00Z, stop: 2026-10-19T00:00:00Z)
+  |> filter(fn: (r) => r._measurement == "prometheus")
+  |> filter(fn: (r) => contains(value: r._field, set: [
+    "dlq_messages_published_total", "ingest_incoming_invalid_json_total",
+    "ingest_validate_raw_failed_total", "emqx_messages_dropped"
+  ]))
+  |> drop(columns: ["_start", "_stop"])
+```
+
+The rules produce evidence and suggested checks, with these initial thresholds:
+
+| Finding | Required evidence |
+| --- | --- |
+| Missing telemetry | At least 10 missing sensor minutes after a device was first observed; all-device silence supersedes overlapping individual gaps |
+| Sensor/delivery errors | Positive counter increases across adjacent minutes, excluding observed resets and uptime decreases; missing counters are not zero |
+| Reconnects | At least two observed MQTT connection-counter increments in a daily window |
+| Weak Wi-Fi | At least 60 observed RSSI minutes, with at least 80% at or below -75 dBm |
+| Suspected memory decline | At least seven distinct days with 60 memory observations each and compatible uptime continuity; daily-minimum trend over at most 30 days is at most -256 bytes/day and falls at least 4,096 fitted bytes |
+| IAQ quality | Reported warm-up, or a minimum score at or below 59.8 with a mean at least 70 or uptime below 60 seconds without a warm-up flag; flag for review rather than infer poor room air |
+| Pressure offset | At least four simultaneous sensors, so each has three independent peers; at least 60 residuals versus the peers' median, median offset at least 0.8 hPa and median absolute deviation at most 0.25 hPa |
+| Pipeline errors | Positive raw-counter differences within two minutes on the same source series; initial totals, negative resets and longer gaps do not count |
+
+Daily summaries stop at train/validation/test boundaries, including intraday
+cuts. The replay does not infer the cause of silence, diagnose a leak, or prove
+that an IAQ aggregate contains exactly one bad raw sample. Pressure advice asks
+for an elevation/placement check before calibration. Gap timestamps indicate
+when a running detector could first notice missing data; they do not prove an
+alert was delivered while the server was unavailable.
+
+IAQ follows the ingestion service's 0–100 score, where 100 is best and scores at
+or below 59.8 map to Very Unhealthy or worse. A poor minimum with a much better
+minute mean is a possible transient, not proof of one bad raw sample. Reported
+warm-up is retained as a quality flag even when ingest correctly omits the IAQ
+score; the replay does not invent a replacement score.
+
+The development-only [IsolationForest baseline](https://scikit-learn.org/stable/modules/generated/sklearn.ensemble.IsolationForest.html)
+uses hourly median RSSI and free memory, requiring at least 45 complete minutes
+per hour and 24 training hours per device. Sparse failure counters remain in the
+rules rather than being filled for ML. Each forest uses 64 trees, at most 256
+samples per tree, seed 42 and one CPU worker. Fitting uses only complete training
+windows and excludes reviewed fault windows. Hours crossing a split are skipped.
+Unlabelled training history is an unsupervised reference, not confirmed normal.
+Scores below `-1e-12` for three consecutive hours produce advice to inspect the
+metrics; near-zero floating-point noise is neutral. Forecast residuals and ONNX
+delivery belong to #26; this command does not create a deployment artifact.
+
+The new output directory contains `advice.json`, `advice-review.csv`, hourly
+`anomaly-scores.csv`, and `report.json` with input hashes, training feature hashes,
+model settings, signal coverage and acceptance results. Existing outputs are
+never overwritten, source files stay unchanged, and publication is atomic.
+
+Review the advice CSV, filling `verdict` with `true-positive` or `false-positive`
+and adding a `note`. Leave uncertain findings blank. Previously reviewed outage
+intervals can confirm matching staleness advice; other weak labels do not count
+as independent truth. Review every validation advice item for the false-positive
+target, and representative historical items for the eight findings in #19.
+The named historical cases include the September 11–14 outage, `ad89` sensor
+errors, `84be`/`57ad` Wi-Fi and the kitchen pressure offset. A warning on another
+subject does not verify those cases.
+
+```powershell
+uv run edgeops-train advisor-health `
+  --input-dir data/advisor-issue18-reviewed-20261019 `
+  --pipeline-csv data/advisor-issue19-pipeline-20261019/pipeline.csv `
+  --reviews data/advisor-health/advice-review.csv `
+  --output-dir data/advisor-health-reviewed
+```
+
+Review IDs bind the full advice evidence and detector to the input file hashes.
+Changed inputs require a fresh review. The false-positive rate is the confirmed
+false-advice count divided by validation calendar days; it remains unknown while
+any validation advice is unreviewed. Signal coverage only means a rule fired.
+Historical reproduction also requires a reviewed true positive for the intended
+case. Acceptance requires all eight historical findings, a fitted baseline for
+each device and fewer than one false advice item per validation day. The command
+returns **1** when acceptance is pending or failed, while retaining its reports;
+it returns **0** only when acceptance passes.
 
 ### Incident classifier workflow
 
