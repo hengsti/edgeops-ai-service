@@ -259,6 +259,7 @@ Relative paths are resolved from the terminal's current directory.
 | `advisor-dataset` | Export labelled InfluxDB aggregate history to Parquet with time-based splits |
 | `advisor-labels` | Apply human reviews to an existing Advisor export offline |
 | `advisor-health` | Replay device/pipeline advice and a per-device anomaly baseline |
+| `advisor-climate` | Replay room humidity and warmed-up air-quality advice |
 | `pipeline` | Collect missing runs, evaluate the complete matrix, optionally train |
 | `train` | Train and evaluate candidates from existing CSVs |
 | `evaluate` | Evaluate collected predictions, detection delay, and recovery |
@@ -447,6 +448,52 @@ Review IDs bind the full advice evidence and detector to the input file hashes.
 Changed inputs require a fresh review. The false-positive rate is the confirmed
 false-advice count divided by validation calendar days; it remains unknown while
 any validation advice is unreviewed. Signal coverage only means a rule fired.
+
+### Advisor indoor climate replay
+
+Replay the existing #18 dataset without querying InfluxDB:
+
+```powershell
+uv run edgeops-train advisor-climate `
+  --input-dir data/advisor-issue18-reviewed-20261019 `
+  --output-dir data/advisor-climate
+```
+
+The new directory contains `advice.json` and `report.json`, with source hashes,
+thresholds, observed rooms and warm-up coverage. Existing outputs are never
+overwritten. Each advice item includes its historical room, source device,
+UTC evidence window, observation time and a concrete action.
+
+- **Humidity/mould risk:** 120 consecutive minute means above 60% RH. Override
+  the duration with `--humidity-minutes N`. Recovery at or below 55% rearms the
+  rule; readings between 55% and 60% cannot trigger a new episode. Advice suggests
+  10 minutes of ventilation if outdoor air is drier, or dehumidification and a
+  damp/cold-surface check. The 60% threshold follows
+  [EPA moisture guidance](https://www.epa.gov/mold/mold-course-chapter-2);
+  duration and hysteresis are initial detector settings, not proof of mould.
+- **Air quality:** 15 consecutive minute means at or below 59.8 on ingest's
+  0–100 IAQ scale, where higher is better. Every minute must explicitly report
+  `warmed_up=true`; false, missing or unknown flags break the window. Recovery at
+  or above 69.8 rearms the rule. Evidence includes IAQ change and, when present
+  throughout the window, gas-resistance start/end/change in ohms. Gas alone does
+  not identify a pollutant or trigger advice. Suggested actions are a source
+  check and extraction or ventilation when outdoor air quality permits. The
+  scale is documented in the
+  [ingest contract](https://github.com/hengsti/ingestion-service/blob/main/docs/messages-and-routing.md#iaq-scale).
+
+Each source device needs its own continuous evidence; readings from multiple
+devices are not stitched together to satisfy a duration. Missing minutes,
+room changes and explicitly invalid clock flags break windows. Windows also
+stop at train/validation/test boundaries. Episode state and a shared room
+cooldown permit at most one advice item per room in any rolling hour, across
+both rules and all devices. A persistent episode is not repeated until recovery;
+gaps do not establish recovery. State lasts for the replay invocation.
+
+This implements the deterministic part of #20. Forecasts, estimated wall
+temperatures and outdoor-weather integration are absent; recommendations do not
+assert that outside conditions are suitable. TTM forecasts require the separate
+forecasting artifact. Live Advisor API delivery belongs to #22. Historical replay
+checks the data and detector behavior; advice usefulness still needs human review.
 Historical reproduction also requires a reviewed true positive for the intended
 case. Acceptance requires all eight historical findings, a fitted baseline for
 each device and fewer than one false advice item per validation day. The command
