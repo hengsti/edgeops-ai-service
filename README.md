@@ -497,8 +497,8 @@ samples per tree, seed 42 and one CPU worker. Fitting uses only complete trainin
 windows and excludes reviewed fault windows. Hours crossing a split are skipped.
 Unlabelled training history is an unsupervised reference, not confirmed normal.
 Scores below `-1e-12` for three consecutive hours produce advice to inspect the
-metrics; near-zero floating-point noise is neutral. Forecast residuals and ONNX
-delivery belong to #26; this command does not create a deployment artifact.
+metrics; near-zero floating-point noise is neutral. The optional TTM residual
+detector below consumes #26's ONNX artifact; this command does not export a model.
 
 The new output directory contains `advice.json`, `advice-review.csv`, hourly
 `anomaly-scores.csv`, and `report.json` with input hashes, training feature hashes,
@@ -526,6 +526,115 @@ Review IDs bind the full advice evidence and detector to the input file hashes.
 Changed inputs require a fresh review. The false-positive rate is the confirmed
 false-advice count divided by validation calendar days; it remains unknown while
 any validation advice is unreviewed. Signal coverage only means a rule fired.
+
+#### TTM forecast-residual health replay (#27)
+
+The intended product is an Advisor that assesses the flat's observed state and
+suggests useful actions. TTM supplies expected temperature/humidity patterns from
+recent room history; its residual detector compares those expectations with
+arriving measurements. Existing climate/device/pipeline rules supply explicit
+conditions and recommendations. TTM itself returns numeric forecasts, not a
+diagnosis, an explanation of causes or natural-language advice.
+
+The user chose to retain the existing #27 candidate
+`advisor-ttm-climate-20261020` without further fine-tuning for this role. Forecast
+MAE remains diagnostic evidence; it does not by itself establish or reject
+usefulness for anomaly advice. Acceptance still requires useful warnings,
+preserved known findings and the reviewed false-positive limit. This choice is
+not a verdict on individual review rows or production approval. The current
+TTM input is temperature/humidity with 512 recent minutes per device/room; the
+live state-report API currently uses deterministic detectors. TTM live wiring
+remains #32, and wider historical/resource coverage remains #31.
+
+Use the validated #26 **climate** candidate with its exact chronological dataset:
+
+```powershell
+uv run edgeops-train advisor-health `
+  --input-dir data/advisor-issue26-climate-20261010-20261019 `
+  --forecast-candidate artifacts/advisor-ttm-climate-20261020 `
+  --output-dir data/advisor-issue27-health
+```
+
+The candidate directory must contain `model.onnx`, `model.onnx.sha256`,
+`manifest.json` and the passing `validation-report.json` from #26. The shared
+forecast loader validates the SHA-256, embedded/JSON manifests, tensor contract,
+parity-report identity and dataset hashes. A different time range or split is
+rejected: a model trained in October cannot evaluate September as held-out data.
+This offline experiment accepts a validated candidate whose deployment approval
+is still false; it does not promote or deploy it. No training framework is used.
+
+The shared #26 window loader provides context, forecast targets and the observed
+values in the same channel order. It rejects malformed inputs and skips windows
+with gaps, warm-up failures, resets, room changes or split crossings, without
+imputation. Every device/room must have complete windows in each split. Forecasts
+are compared only to their future targets, starting one minute after the last
+input. The pinned real model uses 512 context minutes and 96 target minutes;
+successive target blocks do not overlap.
+
+Before evaluating held-out windows, freeze each device/room/horizon/channel scale
+at the **99th percentile of absolute training residuals**, floored at `0.0001`
+in channel units. The score is the absolute observed-minus-forecast residual
+divided by that scale. At least **15 adjacent minutes above 1 in the same channel**
+produce one advice item for that interval. Persistence restarts at gaps, room
+changes and split boundaries. These fixed settings were selected before the
+real replay; validation/test results do not refit them. Unlabelled training data
+is a reference distribution, not confirmed normal data.
+
+The existing deterministic checks and per-device IsolationForest still run.
+`forecast-residuals.csv` records every target timestamp, forecast origin, horizon
+step, channel, observation, forecast, signed residual, frozen scale and score.
+Advice identifies the affected channel/room, sustained interval, score, model
+version/hash and calibration hash, and suggests checking the history, sensor and
+room conditions without inferring a cause. Changed model or calibration evidence
+invalidates previous review IDs.
+
+`report.json` adds the candidate hashes, contract, training residual hashes/scales,
+window counts and TTM/IsolationForest advice-review comparison over the **same
+validation dates and source dataset**. Their feature sets and eligible windows
+differ: TTM uses complete temperature/humidity contexts; the forest uses hourly
+RSSI/free-memory medians. A #26 export without `manual-labels.csv` supplies no
+human labels; new advice remains unreviewed. Fill the generated review CSV and
+rerun the same command with `--reviews <edited-csv>` into a new output directory.
+Missing/incompatible inputs fail; incomplete validation review keeps acceptance
+failed. The original eight historical cases remain a separate required replay
+on the reviewed #19 dataset: the shorter #26 experiment does not contain all of
+them, so its historical-reproduction gate also remains failed.
+
+Local replay on October 20 used four devices, 250 training / 96 validation / 96
+test windows and produced 84,864 channel residuals. TTM produced 12 training,
+zero validation and 14 test advice items. The October 15-17 comparison has eight
+IsolationForest and two deterministic validation items awaiting fresh review;
+the combined false-positive rate is unknown and acceptance is **false**. Zero TTM
+validation alerts do not establish sensitivity or predictive accuracy. The
+retained #19 replay still passes all eight historical findings and has identical
+advice, reviews and scores, with 69 reviewed validation items and zero false
+positives. Its report differs only in the recorded scikit-learn version
+(`1.9.0` previously, `1.7.2` in the #26 laptop environment).
+
+Reviewable artifacts are in `data/advisor-issue27-health-20261020/` (including
+`review.md`, `report.json` and `verification.json`); the retained historical run
+is `data/advisor-issue27-baseline-preserved-20261020/`. These files and the model
+candidate are gitignored and must be retained separately. The independent
+comparison/review-document command is `python data/issue27-verify.py`.
+The final-code replay in `data/advisor-issue27-health-final-20261020/` has identical
+report, advice, reviews, baseline scores and residual CSV. Local verification:
+441 tests passed, Ruff lint/format and mypy passed; hosted CI has not run.
+Runtime/API wiring remains #32; this change adds no runtime settings or dependencies.
+
+An additional five-epoch fine-tuning experiment on October 20 retained the
+original candidate and selected its checkpoint by validation MSE only. The best
+was the first additional epoch (two epochs in total): validation temperature /
+humidity MAE changed from 0.0756 degC / 0.5133 percentage points to 0.0737 /
+0.4787, still behind last-value's 0.0686 / 0.4722. On the already inspected test
+period, temperature MAE worsened from 0.1715 to 0.1757 degC and humidity improved
+from 1.2687 to 1.2491 percentage points; last-value remains better at 0.1445 /
+1.1053. Further epochs did not improve validation loss. Native/ONNX parity and
+source-checkpoint preservation passed. This is not a fresh blind test or an
+approved model, and no review verdicts or detector thresholds were changed.
+Candidate/report: `artifacts/advisor-ttm-climate-continued5-20261020/`, including
+`continuation-comparison.json`; comparison command:
+`python data/issue27-finetune-compare.py`. Numerical forecast quality is measured
+automatically; human review supplies event context and whether advice is useful.
 
 ### Advisor indoor climate replay
 
