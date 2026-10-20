@@ -2,14 +2,33 @@ from datetime import datetime
 from time import time
 from typing import Annotated, cast
 
+import httpx
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from fastapi.responses import PlainTextResponse
 
 from edgeops_ai import __version__
 from edgeops_ai.analysis import Analyzer
 from edgeops_ai.schemas import AnalysisResult, LatestDetection, ObservationV1
+from edgeops_ai.state_report import StateReport, StateReporter
 
 router = APIRouter()
+
+
+@router.get(
+    "/v1/state-report",
+    response_model=StateReport,
+    responses={503: {"description": "Advisor is unavailable"}},
+)
+async def get_state_report(request: Request, response: Response) -> StateReport:
+    reporter = cast(StateReporter | None, request.app.state.state_reporter)
+    if reporter is None:
+        raise HTTPException(status_code=503, detail="Advisor is not configured.")
+    try:
+        report = await reporter.report()
+    except (httpx.HTTPError, ValueError, KeyError, TypeError):
+        raise HTTPException(status_code=503, detail="Advisor report is unavailable.") from None
+    response.headers["Cache-Control"] = "no-store"
+    return report
 
 
 def get_analyzer(request: Request) -> Analyzer:
