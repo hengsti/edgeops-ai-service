@@ -179,6 +179,7 @@ Inside the stack network, consumers such as control-ui use
 | `GET` | `/metrics` | Prometheus text metrics for polling failures and prediction freshness |
 | `POST` | `/v1/observations` | analyze one observation (409 while collector polling is enabled) |
 | `GET` | `/v1/detections/latest` | most recent analysis with freshness (404 before the first one) |
+| `GET` | `/v1/state-report` | versioned Advisor findings and coverage (503 when unconfigured/unavailable) |
 
 `/health` stays HTTP 200 for liveness, but reports `status: degraded` after the
 first failed collector poll. It includes `last_poll_success_at` (UTC, or `null`
@@ -221,6 +222,80 @@ The latest detection response looks like this:
   "features": { "queue_growth_rate": 14.2, "processing_ratio": 0.61, "...": "..." }
 }
 ```
+
+### Advisor state report (schema 1.0)
+
+The Advisor stays in this service, separate from the incident classifier. Enable
+it with `ADVISOR_INFLUX_URL`, `ADVISOR_INFLUX_ORG` (default `smarthome`) and
+`ADVISOR_INFLUX_TOKEN`. Use a read-only token for `sensors_1m` and `metrics`, kept
+in the local environment or `.env`; do not commit it. URL and token must be set
+together. With both omitted, the endpoint returns 503 and existing incident
+endpoints retain their normal behavior.
+
+`GET /v1/state-report` runs existing device-health, raw pipeline-counter and
+indoor-climate rules on the latest bounded 24-hour window. The window ends one
+completed minute behind the current UTC minute to allow aggregate task delay.
+Queries select only required sensor fields and pipeline counters, preserve
+historical device/room and pipeline-series identity, and exclude test devices.
+Each response is limited to 32 MiB and HTTP operations have a 10-second timeout.
+Malformed, conflicting or nonfinite observations fail the refresh.
+
+Reports are cached for `ADVISOR_REFRESH_SECONDS` (default 300, range 60–3600).
+Concurrent requests share one refresh, and parsing/detection runs in worker
+threads. Failed refreshes return 503 with a generic error, retain internal finding
+history, and retry after 60 seconds; expired reports are not served as current.
+The application owns and closes its Influx client. No background training or
+additional runtime dependency is introduced.
+
+The response has these fields; OpenAPI documents the exact `StateReport`,
+`Finding` and `Evidence` schemas at `/openapi.json`:
+
+| Field | Meaning |
+| --- | --- |
+| `schema_version` | `1.0`, independent of service/model versions; breaking changes require a new schema version |
+| `generated_at` | UTC report-generation time, unchanged while the response is cached |
+| `observed_at`, `window_start` | Exclusive observation-window end and inclusive start |
+| `status` | `complete` or `partial`, according to category coverage |
+| `coverage` | Per-category `available`, `no-data` or `deferred`; availability means source observations exist, not that every possible detector was evaluated |
+| `overall` | `critical` for critical findings; `attention` for warnings or incomplete coverage; otherwise `ok` |
+| `findings` | Deduplicated findings, sorted by stable ID |
+
+Each finding includes `id`, `category` (`device`, `pipeline`, `climate`, `host`,
+`maintenance`), `severity` (`info`, `warning`, `critical`), `subject`, `summary`,
+`recommendation`, `detector`, `first_seen`, `last_seen`, `window_start` and
+`window_stop`. Its evidence entries contain `metric`, `window` (duration in
+seconds, for example `7200s`), numeric/string `value`, and optional `baseline`.
+Missing baselines remain null. `confidence` is a nullable number from 0 to 1;
+the rules return null because their confidence is not calibrated.
+
+IDs identify the finding code, source subject and detector version. Repeated
+findings retain `first_seen`; a finding disappears only after two successful
+refreshes without it. Failures do not count as recovery. Climate rules retain
+their existing threshold hysteresis and hourly room cooldown. Findings summarize
+events in the observation window; absence from a later window does not prove
+their physical cause was resolved. Finding history is per process and resets
+on restart; durable notification delivery is outside this API.
+
+`Detector.detect(AdvisorWindow)` returns existing `Advice` facts; `InfluxReader`
+provides the input window. `create_app(advisor_reader=..., advisor_detectors=...)`
+accepts fixture readers and additional detector implementations without a plugin
+registry or changing the incident predictor. Injected readers remain owned by
+their caller. Deterministic detector output is normalized and validated against
+the public schema before publishing it.
+
+The initial live reader does not evaluate multi-day memory decline, offline
+IsolationForest baselines, host/maintenance ETAs or trained forecasts. Host and
+maintenance coverage is explicitly `deferred`, so this initial report is partial
+and never silently reports overall `ok` for those missing checks. Remaining work:
+
+- [#31](https://github.com/hengsti/edgeops-ai-service/issues/31): bounded longer-history and host/maintenance runtime adapters, reusing #19/#21 without importing training tools into request handling.
+- [#32](https://github.com/hengsti/edgeops-ai-service/issues/32): live model-consumer wiring after #27/#28/#30 and their #26 artifact/contract prerequisites.
+- [#29](https://github.com/hengsti/edgeops-ai-service/issues/29): outdoor weather integration.
+
+Grafana JSON consumers can poll this GET endpoint and inspect `status`/`coverage`
+alongside findings. No Grafana provisioning, notifications or LLM execution is
+included. Optional explainers run off the Pi and consume this JSON; the service
+does not call an LLM.
 
 ## Rules first, then ML
 
