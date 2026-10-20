@@ -271,6 +271,7 @@ def replay(
     *,
     pipeline_path: Path | None = None,
     reviews_path: Path | None = None,
+    forecast_candidate: Path | None = None,
 ) -> dict[str, Any]:
     if output.exists():
         raise ValueError("Output already exists; choose a new report directory")
@@ -291,12 +292,13 @@ def replay(
     source_paths = {
         "data_card_sha256": card_path,
         "device_parquet_sha256": device_path,
-        "manual_labels_sha256": labels_path,
     }
+    if labels_path.exists() or forecast_candidate is None:
+        source_paths["manual_labels_sha256"] = labels_path
     if pipeline_path is not None:
         source_paths["pipeline_csv_sha256"] = pipeline_path
     source_hashes = {name: file_hash(path) for name, path in source_paths.items()}
-    labels = load_manual_labels(labels_path, start, stop)
+    labels = load_manual_labels(labels_path if labels_path.exists() else None, start, stop)
     if any(
         label["start"] < cut < label["stop"]
         for label in labels
@@ -310,6 +312,17 @@ def replay(
         samples, start, train_stop, validation_stop, stop, labels
     )
     findings.extend(baseline)
+    residual_scores: list[dict[str, Any]] = []
+    residual_metadata = None
+    if forecast_candidate is not None:
+        from edgeops_ai.training.advisor_residuals import residual_findings
+
+        residuals, residual_scores, residual_metadata = residual_findings(
+            input_dir, forecast_candidate
+        )
+        if {row.device_id for row in samples} != {row["entity_id"] for row in residual_scores}:
+            raise ValueError("Forecast inputs do not cover every replay device")
+        findings.extend(residuals)
     pipeline = load_pipeline(pipeline_path, start, stop) if pipeline_path else []
     findings.extend(
         replace(
@@ -428,6 +441,24 @@ def replay(
             "passed": all(reproduced.values()) and trained and rate is not None and rate < 1
         },
     }
+    if residual_metadata is not None:
+        residual_metadata["comparison"] = {}
+        for name, detector in (
+            ("isolation_forest", "model:isolation-forest@1"),
+            ("ttm", "model:ttm-residual@1"),
+        ):
+            items = [row for row in validation if row["detector"] == detector]
+            unreviewed = sum(not row["verdict"] for row in items)
+            false_positives = sum(row["verdict"] == "false-positive" for row in items)
+            residual_metadata["comparison"][name] = {
+                "validation_start": train_stop.isoformat(),
+                "validation_stop": validation_stop.isoformat(),
+                "advice": len(items),
+                "unreviewed": unreviewed,
+                "confirmed_false_positives": false_positives,
+                "per_day": None if unreviewed else false_positives / days,
+            }
+        report["forecast_residuals"] = residual_metadata
     if any(file_hash(path) != source_hashes[name] for name, path in source_paths.items()):
         raise ValueError("Source files changed during replay")
     output.parent.mkdir(parents=True, exist_ok=True)
@@ -436,6 +467,13 @@ def replay(
         staging.mkdir()
         write_report(report, staging / "report.json")
         write_report({"findings": rows}, staging / "advice.json")
+        if residual_scores:
+            with (staging / "forecast-residuals.csv").open(
+                "w", encoding="utf-8", newline=""
+            ) as handle:
+                writer = csv.DictWriter(handle, fieldnames=list(residual_scores[0]))
+                writer.writeheader()
+                writer.writerows(residual_scores)
         with (staging / "advice-review.csv").open("w", encoding="utf-8", newline="") as handle:
             writer = csv.DictWriter(
                 handle,
@@ -476,6 +514,9 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument("--output-dir", type=Path, required=True)
     parser.add_argument("--pipeline-csv", type=Path)
     parser.add_argument("--reviews", type=Path)
+    parser.add_argument(
+        "--forecast-candidate", type=Path, help="Validated #26 climate candidate directory"
+    )
     args = parser.parse_args(argv)
     try:
         report = replay(
@@ -483,6 +524,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             args.output_dir,
             pipeline_path=args.pipeline_csv,
             reviews_path=args.reviews,
+            forecast_candidate=args.forecast_candidate,
         )
         print(f"Report: {args.output_dir}; acceptance passed: {report['acceptance']['passed']}")
         return 0 if report["acceptance"]["passed"] else 1
