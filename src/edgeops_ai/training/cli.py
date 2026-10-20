@@ -9,6 +9,7 @@ COMMANDS = {
     "advisor-labels": "advisor_labels",
     "advisor-health": "advisor_health",
     "advisor-climate": "advisor_climate",
+    "advisor-maintenance": "advisor_maintenance",
     "collect": "dataset",
     "train": "train",
     "evaluate": "evaluate",
