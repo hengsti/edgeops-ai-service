@@ -8,7 +8,7 @@ import hashlib
 import json
 import math
 from collections import defaultdict
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from dataclasses import asdict, replace
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -69,13 +69,15 @@ EXPECTED = {
 }
 
 
-def load_devices(input_dir: Path) -> list[DeviceSample]:
+def load_devices(
+    input_dir: Path, *, fields: Mapping[tuple[str, str], str] = DEVICE_FIELDS
+) -> list[DeviceSample]:
     parquet = pq.ParquetFile(input_dir / "device.parquet")
     if parquet.schema_arrow != SCHEMA:
         raise ValueError("Expected the advisor-1 Parquet schema")
     samples: dict[tuple[str, datetime], DeviceSample] = {}
     sensor_minutes: set[tuple[str, datetime]] = set()
-    selected = pa.array(sorted({field for _, field in DEVICE_FIELDS}))
+    selected = pa.array(sorted({field for _, field in fields}))
     for batch in parquet.iter_batches(
         columns=[
             "time",
@@ -85,14 +87,17 @@ def load_devices(input_dir: Path) -> list[DeviceSample]:
             "value",
             "text",
             "dimensions",
+            "interval_minutes",
         ]
     ):
         table = pa.Table.from_batches([batch])
         table = table.filter(pc.is_in(table["field"], value_set=selected))
         for row in table.to_pylist():
-            name = DEVICE_FIELDS.get((row["measurement"], row["field"]))
+            name = fields.get((row["measurement"], row["field"]))
             if name is None:
                 continue
+            if row["interval_minutes"] != 1:
+                raise ValueError("Device aggregates must use one-minute windows")
             key = row["entity_id"], row["time"]
             room = json.loads(row["dimensions"]).get("room", "")
             sample = samples.setdefault(key, DeviceSample(row["time"], row["entity_id"], {}))
