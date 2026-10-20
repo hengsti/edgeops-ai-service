@@ -116,12 +116,15 @@ class HttpInfluxReader:
         if not start < stop <= start + DAY:
             raise ValueError("Advisor reads require an increasing window of at most one day")
         fields = {**DEVICE_FIELDS, **CLIMATE_FIELDS}
-        field_names = json.dumps(sorted({field for _, field in fields}))
+        # Static comparisons let InfluxDB filter fields in storage; contains() cannot push down.
+        field_filter = " or ".join(
+            f"r._field == {json.dumps(field)}" for field in sorted({field for _, field in fields})
+        )
         sensor_query = (
             'from(bucket: "sensors_1m") '
             f"|> range(start: {start.isoformat()}, stop: {stop.isoformat()}) "
             '|> filter(fn: (r) => r._measurement == "bme680" or r._measurement == "device_status") '
-            f"|> filter(fn: (r) => contains(value: r._field, set: {field_names})) "
+            f"|> filter(fn: (r) => {field_filter}) "
             '|> filter(fn: (r) => r.device_id != "stresstest" and r.device_id != "livingroom-01") '
             '|> keep(columns: ["_time", "_measurement", "_field", "_value", "device_id", "room"])'
         )
@@ -161,12 +164,14 @@ class HttpInfluxReader:
                 sensor_minutes.add(key)
         for key in sensor_minutes:
             devices[key].values.setdefault("sensor_samples", 1)
-        pipeline_fields = json.dumps(sorted(PIPELINE_FIELDS))
+        pipeline_filter = " or ".join(
+            f"r._field == {json.dumps(field)}" for field in sorted(PIPELINE_FIELDS)
+        )
         pipeline_query = (
             'from(bucket: "metrics") '
             f"|> range(start: {start.isoformat()}, stop: {stop.isoformat()}) "
             '|> filter(fn: (r) => r._measurement == "prometheus") '
-            f"|> filter(fn: (r) => contains(value: r._field, set: {pipeline_fields})) "
+            f"|> filter(fn: (r) => {pipeline_filter}) "
             '|> drop(columns: ["_start", "_stop"])'
         )
         pipeline = []
