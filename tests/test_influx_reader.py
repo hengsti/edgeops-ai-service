@@ -1,12 +1,19 @@
 import asyncio
 import csv
 import io
+import json
+import re
 from datetime import UTC, datetime, timedelta
 
 import httpx
 import pytest
 
-from edgeops_ai.influx_reader import HttpInfluxReader
+from edgeops_ai.influx_reader import (
+    CLIMATE_FIELDS,
+    DEVICE_FIELDS,
+    PIPELINE_FIELDS,
+    HttpInfluxReader,
+)
 
 START = datetime(2026, 10, 1, tzinfo=UTC)
 STOP = START + timedelta(days=1)
@@ -56,7 +63,12 @@ def test_reader_preserves_fields_flags_rooms_and_pipeline_series():
             requests.append(request)
             assert request.headers["authorization"] == "Token private-token"
             assert request.url.params["org"] == "smarthome"
-            if "sensors_1m" in request.content.decode():
+            query = json.loads(request.content)["query"]
+            # contains() prevents InfluxDB 2.7 from pushing field selection into storage.
+            assert "contains(" not in query
+            selected_fields = set(re.findall(r'r\._field == "([^"]+)"', query))
+            if "sensors_1m" in query:
+                assert selected_fields == {field for _, field in DEVICE_FIELDS | CLIMATE_FIELDS}
                 body = annotated(
                     [
                         sensor(),
@@ -65,6 +77,7 @@ def test_reader_preserves_fields_flags_rooms_and_pipeline_series():
                     ]
                 )
             else:
+                assert selected_fields == PIPELINE_FIELDS
                 body = annotated(
                     [
                         {
