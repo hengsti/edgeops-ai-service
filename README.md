@@ -260,6 +260,7 @@ Relative paths are resolved from the terminal's current directory.
 | `advisor-labels` | Apply human reviews to an existing Advisor export offline |
 | `advisor-health` | Replay device/pipeline advice and a per-device anomaly baseline |
 | `advisor-climate` | Replay room humidity and warmed-up air-quality advice |
+| `advisor-maintenance` | Estimate battery, root-disk and device-memory time to thresholds |
 | `pipeline` | Collect missing runs, evaluate the complete matrix, optionally train |
 | `train` | Train and evaluate candidates from existing CSVs |
 | `evaluate` | Evaluate collected predictions, detection delay, and recovery |
@@ -499,6 +500,84 @@ case. Acceptance requires all eight historical findings, a fitted baseline for
 each device and fewer than one false advice item per validation day. The command
 returns **1** when acceptance is pending or failed, while retaining its reports;
 it returns **0** only when acceptance passes.
+
+### Advisor maintenance estimates
+
+Replay #18's root-disk and device-memory history locally:
+
+```powershell
+uv run edgeops-train advisor-maintenance `
+  --input-dir data/advisor-issue18-reviewed-20261019 `
+  --output-dir data/advisor-maintenance
+```
+
+The new directory contains `state-report.json` with each series' current value,
+threshold, daily slope, ETA in days, uncertainty range and status; `advice.json`
+contains only actions due within the horizon. `report.json` records input hashes,
+thresholds and battery backtest cases. Existing reports and source datasets stay
+unchanged, source changes during replay are rejected, and publication is atomic.
+
+The development-only baseline uses the installed
+[SciPy Theil–Sen estimator](https://docs.scipy.org/doc/scipy/reference/generated/scipy.stats.theilslopes.html)
+on up to 30 consecutive completed UTC daily medians, requiring at least seven
+days. Root-disk days need 144 distinct five-minute aggregates, and device-memory
+days need 720 distinct one-minute aggregates with uptime evidence. Disk identity
+retains its host and original mount/device tags. Each source series and dataset
+split stays separate; gaps are not filled. Days crossing split boundaries are
+excluded. An observed uptime reset/discontinuity excludes that device's day,
+breaking its trend. A battery rise of at least 10 percentage points or disk drop
+of at least five versus the preceding three-day median also restarts history.
+These intervention thresholds are initial heuristics.
+
+Defaults are operator thresholds, not learned failure limits:
+
+| Metric | Default threshold | Override |
+| --- | --- | --- |
+| Hue battery level | 10% remaining | `--battery-threshold` |
+| Root disk usage | 90% used | `--disk-threshold` |
+| Device free memory | 65,536 bytes | `--memory-threshold` |
+
+The ETA starts from the last daily median and assumes a constant future trend.
+Its range propagates the 95% confidence limits of the fitted **slope**; it is
+not a calibrated prediction interval for the actual crossing time. An interval
+extending to no crossing has a null upper endpoint and suppresses advice. A
+recovering/flat trend has no ETA, and missing daily history or data at least a
+day old is explicitly insufficient/stale. An already reached threshold has ETA
+zero. Otherwise advice requires the entire finite ETA range to be within
+`--horizon-days` (default 30). Long ETAs remain visible for inspection and should
+not be treated as reliable long-term plans.
+
+The #18 export currently excludes Hue measurements. Supply optional battery
+history with `--battery-csv <file>`, using this format:
+
+```csv
+time,entity_id,battery_percent
+2026-09-10T00:00:00Z,bridge-id/device-id,25
+2026-09-11T00:00:00Z,bridge-id/device-id,25
+```
+
+Use a stable bridge/device identity, explicit UTC timestamps within the dataset
+range, and actual observed percentages from `huebridge_device_power.battery_level`.
+Export a measurement on each observed day; do not forward-fill gaps. Repeated
+raw observations within a day are reduced to a median. At least seven consecutive
+observed days are needed, so the two illustrative CSV lines above cannot produce
+a trend. The battery source is hashed with the Parquet inputs.
+
+Backtesting uses only observations preceding each forecast origin and evaluates
+the first subsequent observed daily threshold crossing within the same split
+and battery episode. A replacement or missing day censors that forecast. Cases
+from validation/test are reported with predicted/actual durations and relative
+error; the ±20% criterion passes only if every evaluated case meets it. With no
+observed crossing it remains unknown, including when no battery input is supplied.
+Daily observations limit timing resolution; test fixtures do not establish real
+battery accuracy. Exit zero means replay succeeded, not that battery acceptance
+passed.
+
+This implements #21's robust baseline and local state report. Seasonal TTM or
+Chronos forecasts remain pending on the selected artifact/contract in #26; live
+state-report API delivery belongs to #22. CPU seasonality and container-health
+events are not extrapolated as battery/disk/memory depletion trends. No new
+dependencies or automatic maintenance actions are introduced.
 
 ### Incident classifier workflow
 
