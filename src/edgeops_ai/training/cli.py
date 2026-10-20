@@ -10,6 +10,8 @@ COMMANDS = {
     "advisor-health": "advisor_health",
     "advisor-climate": "advisor_climate",
     "advisor-maintenance": "advisor_maintenance",
+    "advisor-forecast": "advisor_forecast",
+    "advisor-benchmark": "advisor_benchmark",
     "collect": "dataset",
     "train": "train",
     "evaluate": "evaluate",
