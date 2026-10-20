@@ -23,7 +23,6 @@ from sklearn import __version__ as sklearn_version
 from sklearn.ensemble import IsolationForest
 
 from edgeops_ai.advisor import (
-    COUNTERS,
     DAY,
     Advice,
     DeviceSample,
@@ -32,29 +31,11 @@ from edgeops_ai.advisor import (
     device_findings,
     pipeline_findings,
 )
+from edgeops_ai.influx_reader import DEVICE_FIELDS, PIPELINE_FIELDS
 from edgeops_ai.training.advisor_dataset import SCHEMA, load_manual_labels, timestamp
 from edgeops_ai.training.advisor_labels import file_hash
 from edgeops_ai.training.reports import read_report, write_report
 
-DEVICE_FIELDS = {
-    ("bme680", "temp_c_count"): "sensor_samples",
-    ("bme680", "pressure_hpa_mean"): "pressure_hpa",
-    ("bme680", "iaq_score_mean"): "iaq_mean",
-    ("bme680", "iaq_score_min"): "iaq_min",
-    ("bme680", "warmed_up_last"): "warmed_up",
-    ("device_status", "rssi_last"): "rssi",
-    ("device_status", "free_mem_min"): "free_mem",
-    ("device_status", "uptime_last"): "uptime",
-    ("device_status", "uptime_resets"): "uptime_resets",
-    **{("device_status", f"{name}_last"): name for name in COUNTERS},
-    **{("device_status", f"{name}_resets"): f"{name}_resets" for name in COUNTERS},
-}
-PIPELINE_FIELDS = {
-    "dlq_messages_published_total",
-    "ingest_incoming_invalid_json_total",
-    "ingest_validate_raw_failed_total",
-    "emqx_messages_dropped",
-}
 BASELINE_FEATURES = ("median_rssi_dbm", "median_free_mem_bytes")
 SCORE_EPSILON = 1e-12
 EXPECTED = {
