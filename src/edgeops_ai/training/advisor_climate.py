@@ -15,18 +15,11 @@ import pyarrow.parquet as pq
 
 from edgeops_ai.advisor import MINUTE
 from edgeops_ai.climate import climate_findings
+from edgeops_ai.influx_reader import CLIMATE_FIELDS
 from edgeops_ai.training.advisor_dataset import timestamp
 from edgeops_ai.training.advisor_health import load_devices, split_at
 from edgeops_ai.training.advisor_labels import file_hash
 from edgeops_ai.training.reports import read_report, write_report
-
-CLIMATE_FIELDS = {
-    ("bme680", "rel_hum_perc_mean"): "humidity_mean",
-    ("bme680", "iaq_score_mean"): "iaq_mean",
-    ("bme680", "gas_ohm_mean"): "gas_mean",
-    ("bme680", "warmed_up_last"): "warmed_up",
-    ("bme680", "time_valid_last"): "time_valid",
-}
 
 
 def replay(input_dir: Path, output: Path, *, humidity_minutes: int = 120) -> dict[str, Any]:
