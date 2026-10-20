@@ -8,6 +8,7 @@ COMMANDS = {
     "advisor-dataset": "advisor_dataset",
     "advisor-labels": "advisor_labels",
     "advisor-health": "advisor_health",
+    "advisor-climate": "advisor_climate",
     "collect": "dataset",
     "train": "train",
     "evaluate": "evaluate",
