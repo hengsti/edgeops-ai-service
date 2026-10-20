@@ -7,6 +7,7 @@ from importlib import import_module
 COMMANDS = {
     "advisor-dataset": "advisor_dataset",
     "advisor-labels": "advisor_labels",
+    "advisor-health": "advisor_health",
     "collect": "dataset",
     "train": "train",
     "evaluate": "evaluate",
