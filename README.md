@@ -336,6 +336,8 @@ Relative paths are resolved from the terminal's current directory.
 | `advisor-health` | Replay device/pipeline advice and a per-device anomaly baseline |
 | `advisor-climate` | Replay room humidity and warmed-up air-quality advice |
 | `advisor-maintenance` | Estimate battery, root-disk and device-memory time to thresholds |
+| `advisor-forecast` | Fine-tune TTM on CPU, export ONNX and validate native/ONNX parity |
+| `advisor-benchmark` | Measure ONNX latency/process memory on native-reference held-out inputs |
 | `pipeline` | Collect missing runs, evaluate the complete matrix, optionally train |
 | `train` | Train and evaluate candidates from existing CSVs |
 | `evaluate` | Evaluate collected predictions, detection delay, and recovery |
@@ -653,6 +655,219 @@ Chronos forecasts remain pending on the selected artifact/contract in #26; live
 state-report API delivery belongs to #22. CPU seasonality and container-health
 events are not extrapolated as battery/disk/memory depletion trends. No new
 dependencies or automatic maintenance actions are introduced.
+
+### Advisor native training and ONNX export
+
+Issue #26 uses IBM Granite TTM-r2, the first candidate recommended in
+[#17](https://github.com/hengsti/edgeops-ai-service/issues/17). This workflow
+produces candidates; model selection and forecast-quality approval remain separate.
+Pi latency/process-memory measurements for the current candidates are recorded below.
+The incident classifier keeps its separate 46-feature contract and exporter.
+
+On the Windows laptop, use Python 3.13 and install the optional training group:
+
+```powershell
+uv sync --locked --group advisor
+uv run --no-sync hf download ibm-granite/granite-timeseries-ttm-r2 `
+  config.json model.safetensors `
+  --revision d6a79570cac0f33d526601cd3a0fc7c80a8f9a2f `
+  --local-dir artifacts/ttm-r2-source
+
+uv run --no-sync edgeops-train advisor-forecast `
+  --input-dir data/advisor-issue18-reviewed-20261019 `
+  --checkpoint artifacts/ttm-r2-source `
+  --sha256 a706726a7eb01bbcb42994b7dcb3c06ea9557898dbae8d480eb04fe8ccb89710 `
+  --profile host-cpu --model-version advisor-ttm-host-cpu-20261020 `
+  --epochs 1 --output-dir artifacts/advisor-ttm-host-cpu-20261020
+```
+
+The immutable revision above is the 512-context/96-target TTM-r2 checkpoint.
+Only trusted local `save_pretrained` directories with `config.json` and
+`model.safetensors` are loaded, with the recorded weights SHA-256 checked first.
+No joblib intermediate is used. The command does not fetch model code or weights.
+PyTorch, Granite TSFM, ONNX and ONNX Script stay in the laptop environment;
+`uv sync --locked --no-dev` and the production image exclude the training group.
+Granite TSFM 0.3.5 caps scikit-learn below 1.8, so the laptop environment can warn
+when reading the older incident joblib artifact trained with 1.9. Keep the
+approved incident ONNX artifact for inference; do not resave the source joblib.
+
+The new output directory contains `model.onnx`, `model.onnx.sha256`,
+`manifest.json`, `validation-report.json` and the selected native `checkpoint/`
+(`config.json`, `model.safetensors`, `forecast-contract.json`). Existing outputs
+and source directories cannot be overwritten. Native fine-tuning uses AdamW
+(learning rate 0.0001, batch size 1), seed 7 and one CPU thread. `--epochs`
+defaults to one; the lowest validation-loss epoch is retained. Test windows
+are evaluated only after epoch selection. The retained checkpoint supports
+later fine-tuning through the same command with its weights hash and profile;
+each run starts a new optimizer. Source-file and dataset hashes, library versions,
+training time and chronological forecast origins are recorded.
+
+For conversion without training, use the same command with `--export-only` and
+a new output directory. It validates against the same historical inputs and
+checks every source checkpoint file remains byte-for-byte unchanged. It writes
+no checkpoint copy. Hash the retained `checkpoint/model.safetensors` when
+exporting a fine-tuned candidate instead of using the pretrained hash above.
+
+The embedded `edgeops_advisor_manifest` and JSON manifest define
+`advisor-forecast-1`. Each artifact supports exactly one of these two profiles:
+
+| Profile | Identity and channel order | Cadence | Context / horizon with the checkpoint above |
+| --- | --- | --- | --- |
+| `climate` | One device in one unchanged room: `temp_c_mean` (degC), `rel_hum_perc_mean` (%) | 1 minute | 512 minutes / 96 minutes, including the 30- and 60-minute targets |
+| `host-cpu` | One host, `cpu-total`: `usage_active_mean` (%) | 5 minutes | 512 samples (42h40m) / 96 samples (8 hours) |
+
+Inputs are `past_values`, float32 `[1, context_length, channels]`; outputs are
+`forecast`, float32 `[1, prediction_length, channels]` in the same physical units.
+The first target follows the last input by one cadence. TTM performs its own
+per-channel standard scaling from that input context inside both native and ONNX
+graphs. There is no globally fitted scaler or future-data normalization.
+Only regular, complete UTC aggregates are accepted. Windows never cross
+identities, room changes, gaps, device uptime resets or chronological splits.
+Climate windows also require an explicit true `warmed_up_last` throughout.
+Missing channels/metadata produce unavailable windows; nothing is filled in.
+Windows advance by one prediction horizon within each uninterrupted segment.
+
+`edgeops_ai.forecasting.ForecastModel(path, expected_sha256)` is the shared
+inference entry point for #22/#32 and consumers #27/#28/#30. It validates the
+artifact hash, embedded manifest and exact graph tensor names/types/shapes.
+`predict(values, utc_timestamps)` uses the same `prepare_input` function as
+training. Callers supply the manifest channel order and enforce the identity,
+room, reset, completed-window and data-quality checks above. The climate
+artifact forecasts devices; #28 remains responsible for per-room delivery.
+The resource artifact supports host CPU point forecasts over eight hours;
+it does not support battery/disk/device-memory ETAs or extrapolation beyond
+its horizon. These outputs carry no calibrated confidence or incident category.
+
+Export uses PyTorch's current exporter with ONNX opset 18, then full ONNX graph
+checking and ONNX Runtime CPU execution. Validation and test forecasts must
+match native outputs elementwise within `abs(error) <= 0.0001 + 0.0001 * abs(native)`.
+The report includes maximum output drift, MAE/RMSE for every horizon/channel
+and a last-value baseline on the identical held-out windows. Conversion,
+contract, data-integrity or parity failures exit nonzero and publish no
+candidate directory. Exit zero validates conversion, not predictive quality or
+Pi deployment readiness; `deployment_approved` remains false.
+
+An offline smoke test creates a tiny chronological Parquet dataset and native
+TTM fixture, then runs training/export/validation, export-only and later native
+fine-tuning without downloading a checkpoint:
+
+```powershell
+uv run --group advisor pytest tests/test_advisor_forecast.py -q
+```
+
+CI runs this check on Windows. Production installation requires only the normal
+runtime dependencies, including NumPy via ONNX Runtime; it does not import
+PyTorch, Granite TSFM, PyArrow or ONNX conversion libraries.
+
+The reviewed September 10–October 19 dataset lacks `warmed_up_last` in its original
+training period. A separate climate evaluation view uses existing October 10–19
+observations, training before October 15, validation before October 17 and test
+afterward. `data/advisor-issue26-climate-20261010-20261019/` records the parent hashes
+and split provenance. Only the selected time range and split column changed;
+measurements, labels and the original reviewed export were verified unchanged.
+This is a new chronological forecast experiment using the original export's
+test period; it does not replace that export or its earlier evaluation results.
+The reproducible local derivation is `data/issue26-climate-resplit.py`.
+No candidate is promoted by this CLI.
+
+Local Windows validation on 2026-10-20 produced
+`artifacts/advisor-ttm-host-cpu-20261020/`: 42 training, 21 validation and 12 test
+windows, one native training epoch (0.97 seconds), and maximum native/ONNX drift
+0.0000344. Test MAE averaged across the 96 horizons was **2.46 percentage points**,
+versus **1.63** for last-value; validation MAE was 1.68 versus 1.53. This candidate
+does not improve that baseline. Its ONNX SHA-256 is
+`d0caefe7d0d7d70709f74421ea3413fd4614fa9e1d21242a2a808a0ca802a107`.
+The retained checkpoint was also exported without training to
+`artifacts/advisor-ttm-host-cpu-export-20261020/`, with source hashes unchanged.
+Both directories contain their own validation reports. Generated candidates
+remain local and ignored by git; they are not approved release artifacts.
+
+The real climate run at `artifacts/advisor-ttm-climate-20261020/` used 250 training,
+96 validation and 96 test windows, one CPU epoch (3.88 seconds), and maximum
+native/ONNX drift 0.000153 within the documented elementwise tolerances. Test MAE
+averaged across horizons was 0.171 degC / 1.269 humidity percentage points,
+versus last-value 0.144 / 1.105. This candidate also remains unapproved. Its ONNX
+SHA-256 is `7ae6ad6b85bc9bd047fc23df804d31704a66dcfcb000c1188039506a4953cef4`.
+
+Inference was verified on Windows x86_64 in a clean environment containing only
+the locked production dependencies. Reproduce that dependency check without
+installing any training packages into it:
+
+```powershell
+uv export --locked --no-dev --no-emit-project --quiet `
+  --output-file data/advisor-runtime-requirements.txt
+uv venv data/advisor-runtime
+uv pip sync --python data/advisor-runtime/Scripts/python.exe `
+  data/advisor-runtime-requirements.txt
+$env:PYTHONPATH = 'src'
+@'
+import importlib.util, json
+from datetime import UTC, datetime, timedelta
+from pathlib import Path
+import numpy as np
+from edgeops_ai.forecasting import ForecastModel
+assert all(importlib.util.find_spec(p) is None for p in
+           ("torch", "tsfm_public", "sklearn", "pyarrow", "onnx", "onnxscript"))
+root = Path("artifacts/advisor-ttm-host-cpu-20261020")
+manifest = json.loads((root / "manifest.json").read_text())
+model = ForecastModel(root / "model.onnx", manifest["sha256"])
+times = [datetime(2026, 1, 1, tzinfo=UTC) + timedelta(minutes=5*i) for i in range(512)]
+assert model.predict(np.full((512, 1), 30), times).shape == (1, 96, 1)
+print("Runtime-only inference passed")
+'@ | .\data\advisor-runtime\Scripts\python.exe -
+```
+
+This proves dependency separation on the laptop; hosted CI remains unverified.
+
+Pi validation on 2026-10-20 used the actual Raspberry Pi 4 Model B Rev 1.4,
+ARM64, Python 3.13.16 and ONNX Runtime 1.31.0 from the running service's image
+`sha256:0931edb24210d5724437adf030ee5bf54a25d15f2b158af13fc27bea2580d82d`.
+Each candidate ran in a temporary, read-only, network-disabled container with
+one CPU and one inference thread. Native references came from the first,
+middle and last real held-out windows. No training packages were present.
+After five warm-up calls, 50 calls measured the complete `ForecastModel.predict`
+path, including shared input validation. Linux `ru_maxrss` measured peak total
+process memory, including Python/NumPy/ONNX Runtime, rather than weights size.
+
+| Candidate | Median / p95 / maximum latency | Peak process memory (decimal MB) |
+| --- | --- | --- |
+| Host CPU | 12.51 / 24.49 / 44.14 ms | 77.72 |
+| Climate | 10.95 / 11.99 / 12.74 ms | 77.54 |
+
+Both met the measured p95 <50 ms / peak RSS <100 MB targets; Pi output drift
+from native references was at most 0.0000344. Raw reports and input/model hashes
+are at `data/issue26-pi-validation-20261020/`. The exact candidates also contain
+`pi-benchmark.json`, linked by hash from `validation-report.json`.
+
+The 27-sample host/health observation recorded unchanged production container
+states/restart counts and HTTP 200 for AI and collector health throughout.
+Median host CPU usage was 53.5% before, 88.7% during the burst and 44.2% afterward.
+AI health p95 rose from 16.9 to 145.3 ms during the burst, then returned to 21.8 ms;
+collector health p95 was 7.8 / 31.0 / 14.8 ms. This short observation includes
+background workload and container startup; it does not establish causal,
+long-term or MQTT-delivery impact. Docker memory cgroups are unavailable on
+this host, so Docker's zero-byte memory display was not used. No host settings,
+production files, running services or deployment were changed.
+
+Re-run the inference-only command inside an environment with the normal runtime
+dependencies and the exported candidate/reference inputs:
+
+```sh
+python -m edgeops_ai.training.advisor_benchmark \
+  --model host-cpu/model.onnx \
+  --sha256 d0caefe7d0d7d70709f74421ea3413fd4614fa9e1d21242a2a808a0ca802a107 \
+  --inputs host-cpu/samples.npz --iterations 50
+```
+
+`data/issue26-pi-bundle/` contains the tested source, both candidates, NPZ inputs
+and a provenance manifest; `data/issue26-prepare-pi.py` reproduces it on the laptop
+using native checkpoints and actual held-out windows. The NPZ contains float32
+`values`, UTC `times` and native `expected` outputs; pickle loading is disabled.
+Benchmark exit zero means measurement/parity succeeded. Check
+`resource_targets_met` separately; non-Linux runs cannot establish peak RSS.
+The CLI does not approve deployment. Both current candidates still lose to
+last-value forecasts, so further model selection stays separate from #26's
+completed training/export integration. No forecast consumer was deployed.
 
 ### Incident classifier workflow
 
