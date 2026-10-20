@@ -600,11 +600,12 @@ failed. The original eight historical cases remain a separate required replay
 on the reviewed #19 dataset: the shorter #26 experiment does not contain all of
 them, so its historical-reproduction gate also remains failed.
 
-Local replay on October 20 used four devices, 250 training / 96 validation / 96
+The initial unreviewed replay on October 20 used four devices, 250 training / 96 validation / 96
 test windows and produced 84,864 channel residuals. TTM produced 12 training,
-zero validation and 14 test advice items. The October 15-17 comparison has eight
+zero validation and 14 test advice items. That October 15-17 comparison had eight
 IsolationForest and two deterministic validation items awaiting fresh review;
-the combined false-positive rate is unknown and acceptance is **false**. Zero TTM
+its false-positive rate was unknown and its acceptance remains **false** in the
+retained original artifacts. The subsequent reviewed result is below. Zero TTM
 validation alerts do not establish sensitivity or predictive accuracy. The
 retained #19 replay still passes all eight historical findings and has identical
 advice, reviews and scores, with 69 reviewed validation items and zero false
@@ -635,6 +636,37 @@ Candidate/report: `artifacts/advisor-ttm-climate-continued5-20261020/`, includin
 `continuation-comparison.json`; comparison command:
 `python data/issue27-finetune-compare.py`. Numerical forecast quality is measured
 automatically; human review supplies event context and whether advice is useful.
+
+On October 20 the user confirmed, **"The warnings are useful"**, in response to
+the pending numbered review. This was recorded as `true-positive` usefulness
+verdicts for all 36 displayed rows: 10 validation items and 26 new TTM
+training/test items. The notes quote that statement and do not confirm suggested
+causes. Review CSV and exact-ID/chat provenance:
+`data/advisor-issue27-review-20261020/reviewed.csv` and `provenance.json`.
+
+The fresh reviewed replay in `data/advisor-issue27-health-reviewed-20261020/`
+has **10 reviewed validation items, zero unreviewed and zero false positives**
+over two calendar days: **0.0/day**, below the required 1/day. The separate fresh
+historical replay in `data/advisor-issue27-historical-reviewed-20261020/` passes
+all eight named cases, with the original 69 reviewed validation items and zero
+false positives over nine days. Its advice/review/score files remain identical.
+
+The verified combined offline #27 acceptance result is **passed** in
+`data/advisor-issue27-health-reviewed-20261020/acceptance-verification.json`.
+`python data/issue27-verify-reviewed.py` asserts that only the 36 approved verdicts
+and notes changed, both score CSVs and calibration/model/source hashes stayed
+identical, and the historical cases and reviewed false-positive limits pass.
+The short replay's original all-history CLI gate still returns false/exit 1
+because its date range lacks the historical cases; the paired acceptance report
+links both runs by SHA-256 instead of altering that gate. Models, thresholds,
+original reports and dataset labels were not changed. All 28 focused
+detector/review tests passed after recording the review.
+
+This completes the offline #27 acceptance scope for these user-reviewed samples.
+No TTM validation advice fired, so the review does not establish its sensitivity
+to future events or independent root-cause accuracy. Test verdicts did not tune
+the model. Deployment approval remains false and live TTM integration remains
+#32. Keep these gitignored evidence artifacts separately from the code checkout.
 
 ### Advisor indoor climate replay
 
