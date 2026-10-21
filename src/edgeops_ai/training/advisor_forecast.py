@@ -6,6 +6,7 @@ import argparse
 import json
 import math
 from collections.abc import Sequence
+from datetime import datetime
 from importlib.metadata import version
 from pathlib import Path
 from tempfile import TemporaryDirectory
@@ -35,7 +36,11 @@ from edgeops_ai.training.reports import read_report, write_report
 
 
 def load_windows(
-    input_dir: Path, contract: dict[str, Any]
+    input_dir: Path,
+    contract: dict[str, Any],
+    *,
+    one_step: bool = False,
+    boundaries: set[tuple[str, datetime]] | None = None,
 ) -> tuple[dict[str, list], dict[str, str]]:
     validate_contract(contract)
     kind = contract["entity_type"]
@@ -83,7 +88,8 @@ def load_windows(
             at = row["time"]
             cadence = contract["cadence_minutes"]
             if (
-                not start <= at < stop
+                not row["entity_id"]
+                or not start <= at < stop
                 or at.second
                 or at.microsecond
                 or at.minute % cadence
@@ -106,12 +112,15 @@ def load_windows(
                 raise ValueError("Duplicate aggregate or value outside the finite float32 range")
             point[name] = value
     windows: dict[str, list] = {key: [] for key in ("train", "validation", "test")}
-    context, horizon = contract["context_length"], contract["prediction_length"]
+    context = contract["context_length"]
+    horizon = 1 if one_step else contract["prediction_length"]
     segment: list = []
     previous = None
     for (entity, at), point in sorted(points.items()):
         split = split_at(at, train_stop, val_stop)
         valid = all(isinstance(point.get(c), (float, int)) for c in channels)
+        if one_step and kind == "host":
+            valid = valid and all(0 <= point[c] <= 100 for c in channels)
         if kind == "device":
             valid = (
                 valid
@@ -120,9 +129,13 @@ def load_windows(
                 and bool(point["room"])
             )
         identity = (entity, point["room"], split)
-        reset = point.get("uptime_resets", 0) or (
-            previous is not None
-            and point.get("uptime_last", math.inf) < previous[2].get("uptime_last", -math.inf)
+        reset = (
+            (boundaries is not None and (entity, at) in boundaries)
+            or point.get("uptime_resets", 0)
+            or (
+                previous is not None
+                and point.get("uptime_last", math.inf) < previous[2].get("uptime_last", -math.inf)
+            )
         )
         if (
             not valid
@@ -153,7 +166,7 @@ def load_windows(
             )
     if any(file_hash(path) != hashes[name] for name, path in paths.items()):
         raise ValueError("Advisor source changed while building windows")
-    if any(not windows[split] for split in windows):
+    if not one_step and any(not windows[split] for split in windows):
         counts = {split: len(items) for split, items in windows.items()}
         raise ValueError(f"Every split needs a complete forecast window; counts: {counts}")
     return windows, hashes
@@ -164,7 +177,11 @@ def checkpoint_hashes(checkpoint: Path) -> dict[str, str]:
 
 
 def load_candidate(
-    input_dir: Path, candidate: Path
+    input_dir: Path,
+    candidate: Path,
+    *,
+    one_step: bool = False,
+    boundaries: set[tuple[str, datetime]] | None = None,
 ) -> tuple[ForecastModel, dict[str, list], dict[str, str]]:
     paths = {
         name: candidate / name
@@ -183,7 +200,9 @@ def load_candidate(
         or validation.get("tolerances") != {"atol": ATOL, "rtol": RTOL}
     ):
         raise ValueError("Expected a compatible validated #26 candidate and parity report")
-    windows, sources = load_windows(input_dir, model.contract)
+    windows, sources = load_windows(
+        input_dir, model.contract, one_step=one_step, boundaries=boundaries
+    )
     if sources != model.manifest["dataset"]:
         raise ValueError("Forecast dataset must match the candidate's chronological dataset")
     if any(file_hash(path) != hashes[name] for name, path in paths.items()):
