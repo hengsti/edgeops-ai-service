@@ -2,6 +2,7 @@
 
 import math
 from collections import defaultdict, deque
+from collections.abc import Sequence
 from datetime import datetime, timedelta
 
 from edgeops_ai.advisor import MINUTE, Advice, DeviceSample, check_time
@@ -14,6 +15,7 @@ def climate_findings(
     split_boundaries: tuple[datetime, ...] = (),
     *,
     humidity_minutes: int = 120,
+    forecast_advice: Sequence[Advice] = (),
 ) -> list[Advice]:
     for at in (start, stop, *split_boundaries):
         check_time(at)
@@ -52,6 +54,7 @@ def climate_findings(
     previous: dict[tuple[str, str], datetime] = {}
     latched: set[tuple[str, str, str]] = set()
     last_advice: dict[str, datetime] = {}
+    forecasts = {(item.evidence["device_id"], item.observed_at): item for item in forecast_advice}
     findings = []
     for row in sorted(samples, key=lambda row: (row.at, row.device_id)):
         if not row.room:
@@ -74,6 +77,7 @@ def climate_findings(
         rh = row.values.get("humidity_mean")
         if rh is not None and float(rh) <= 55:
             latched.discard((*key, "climate.mould-risk"))
+            latched.discard((*key, "climate.humidity-forecast"))
         if rh is not None and float(rh) > 60:
             humidity[key].append(row)
         else:
@@ -149,5 +153,18 @@ def climate_findings(
                 )
             )
             latched.add((*key, code))
+            last_advice[row.room] = observed_at
+        forecast = forecasts.get((row.device_id, observed_at))
+        if (
+            forecast is not None
+            and forecast.entity_id == row.room
+            and (*key, forecast.code) not in latched
+            and (
+                row.room not in last_advice
+                or observed_at - last_advice[row.room] >= timedelta(hours=1)
+            )
+        ):
+            findings.append(forecast)
+            latched.add((*key, forecast.code))
             last_advice[row.room] = observed_at
     return findings
