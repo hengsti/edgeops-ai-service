@@ -4,7 +4,7 @@ from itertools import pairwise
 
 import pytest
 
-from edgeops_ai.advisor import DeviceSample
+from edgeops_ai.advisor import Advice, DeviceSample
 from edgeops_ai.climate import climate_findings
 
 START = datetime(2026, 9, 1, tzinfo=UTC)
@@ -154,3 +154,45 @@ def test_bounds_duplicates_unknown_rooms_and_duration_are_validated():
     with pytest.raises(ValueError):
         findings([replace(samples(1)[0], at=START.replace(tzinfo=None))])
     assert findings(samples(room="")) == []
+
+
+def forecast_advice(minute, device="a", room="kitchen"):
+    at = START + minute * MINUTE
+    return Advice(
+        "climate.humidity-forecast",
+        room,
+        START,
+        at,
+        at,
+        "Humidity is forecast to exceed 60% in 20 minutes.",
+        "Check ventilation.",
+        {"device_id": device, "minutes_to_crossing": 20},
+        detector="model:ttm-climate@1",
+    )
+
+
+@pytest.mark.parametrize("forecast_first", [True, False])
+def test_forecast_and_observed_advice_share_the_room_cooldown(forecast_first):
+    rows = samples(180, humidity_mean=58, iaq_mean=40)
+    forecasts = [forecast_advice(10 if forecast_first else 20, device="b")]
+    rows += samples(180, device="b", humidity_mean=58)
+    advice = findings(rows, 180, forecast_advice=forecasts)
+    assert [item.code for item in advice] == (
+        ["climate.humidity-forecast", "climate.air-quality"]
+        if forecast_first
+        else ["climate.air-quality"]
+    )
+    assert all(b.observed_at - a.observed_at >= 60 * MINUTE for a, b in pairwise(advice))
+
+
+def test_forecast_hysteresis_rearms_only_after_humidity_recovery():
+    rows = samples(180, humidity_mean=58)
+    forecasts = [forecast_advice(minute) for minute in (10, 70, 140)]
+    assert [item.observed_at for item in findings(rows, 180, forecast_advice=forecasts)] == [
+        START + 10 * MINUTE
+    ]
+    rows[99].values["humidity_mean"] = 55
+    assert [item.observed_at for item in findings(rows, 180, forecast_advice=forecasts)] == [
+        START + 10 * MINUTE,
+        START + 140 * MINUTE,
+    ]
