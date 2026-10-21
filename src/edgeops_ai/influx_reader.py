@@ -29,6 +29,7 @@ DEVICE_FIELDS = {
     **{("device_status", f"{name}_resets"): f"{name}_resets" for name in COUNTERS},
 }
 CLIMATE_FIELDS = {
+    ("bme680", "temp_c_mean"): "temperature_mean",
     ("bme680", "rel_hum_perc_mean"): "humidity_mean",
     ("bme680", "iaq_score_mean"): "iaq_mean",
     ("bme680", "gas_ohm_mean"): "gas_mean",
