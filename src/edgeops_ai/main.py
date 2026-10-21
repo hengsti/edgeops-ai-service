@@ -14,6 +14,7 @@ from edgeops_ai.prediction import PredictionBackendName, Predictor
 from edgeops_ai.rules import RuleBasedPredictor
 from edgeops_ai.settings import Settings
 from edgeops_ai.state_report import DEFAULT_DETECTORS, Detector, InfluxReader, StateReporter
+from edgeops_ai.weather import WeatherClient
 
 
 def create_app(
@@ -21,6 +22,7 @@ def create_app(
     collector_transport: httpx.AsyncBaseTransport | None = None,
     advisor_reader: InfluxReader | None = None,
     advisor_detectors: tuple[Detector, ...] = DEFAULT_DETECTORS,
+    weather_transport: httpx.AsyncBaseTransport | None = None,
 ) -> FastAPI:
     runtime_settings = settings or Settings()
 
@@ -50,11 +52,26 @@ def create_app(
                     runtime_settings.advisor_influx_token.get_secret_value(),
                 )
                 resources.push_async_callback(reader.close)
+            weather_client = None
+            weather_key = runtime_settings.advisor_weather_api_key
+            if (
+                reader is not None
+                and runtime_settings.advisor_weather_postcode
+                and weather_key is not None
+                and weather_key.get_secret_value().strip()
+            ):
+                weather_client = WeatherClient(
+                    runtime_settings.advisor_weather_postcode,
+                    weather_key.get_secret_value(),
+                    transport=weather_transport,
+                )
+                resources.push_async_callback(weather_client.close)
             app.state.state_reporter = (
                 StateReporter(
                     reader,
                     advisor_detectors,
                     refresh_seconds=runtime_settings.advisor_refresh_seconds,
+                    weather_client=weather_client,
                 )
                 if reader is not None
                 else None
