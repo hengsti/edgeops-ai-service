@@ -286,9 +286,16 @@ def replay(
     battery_threshold: float = 10,
     disk_threshold: float = 90,
     memory_threshold: float = 65536,
+    forecast_candidate: Path | None = None,
+    workload_events: Path | None = None,
+    cpu_threshold: float = 90,
+    workload_minutes: int = 15,
+    resource_reviews: Path | None = None,
 ) -> dict[str, Any]:
     if output.exists():
         raise ValueError("Output already exists; choose a new report directory")
+    if (workload_events is not None or resource_reviews is not None) and forecast_candidate is None:
+        raise ValueError("Workload events require a validated CPU forecast candidate")
     paths = {
         "data_card_sha256": input_dir / "data-card.json",
         "device_parquet_sha256": input_dir / "device.parquet",
@@ -368,6 +375,19 @@ def replay(
                     "observed_at": finding.observed_at.isoformat(),
                 }
             )
+    resources = None
+    if forecast_candidate is not None:
+        from edgeops_ai.training.advisor_resources import assess_resources
+
+        resources = assess_resources(
+            input_dir,
+            forecast_candidate,
+            workload_events=workload_events,
+            cpu_threshold=cpu_threshold,
+            workload_minutes=workload_minutes,
+            resource_reviews=resource_reviews,
+        )
+        advice.extend(resources["findings"])
     report = {
         "schema_version": "advisor-maintenance-1",
         "start": start.isoformat(),
@@ -387,6 +407,8 @@ def replay(
             "not a calibrated crossing-time prediction interval"
         ),
     }
+    if resources is not None:
+        report["resources"] = resources["report"]
     if any(file_hash(path) != hashes[name] for name, path in paths.items()):
         raise ValueError("Source files changed during replay")
     output.parent.mkdir(parents=True, exist_ok=True)
@@ -394,9 +416,37 @@ def replay(
         staging = Path(temporary) / "report"
         staging.mkdir()
         write_report(report, staging / "report.json")
-        write_report(
-            {"as_of": stop.isoformat(), "forecasts": forecasts}, staging / "state-report.json"
-        )
+        state = {"as_of": stop.isoformat(), "forecasts": forecasts}
+        if resources is not None:
+            state["resources"] = resources["states"]
+            observations = resources["observations"]
+            with (staging / "resource-observations.csv").open(
+                "w", encoding="utf-8", newline=""
+            ) as handle:
+                writer = csv.DictWriter(
+                    handle,
+                    fieldnames=list(observations[0])
+                    if observations
+                    else ["entity_id", "time", "state", "model_status"],
+                )
+                writer.writeheader()
+                writer.writerows(observations)
+            reviews = resources["reviews"]
+            with (staging / "resource-advice-review.csv").open(
+                "w", encoding="utf-8", newline=""
+            ) as handle:
+                writer = csv.DictWriter(
+                    handle,
+                    fieldnames=list(reviews[0])
+                    if reviews
+                    else ["id", "method", "split", "verdict", "note"],
+                )
+                writer.writeheader()
+                writer.writerows(
+                    {**row, "evidence": json.dumps(row["evidence"], sort_keys=True)}
+                    for row in reviews
+                )
+        write_report(state, staging / "state-report.json")
         write_report({"findings": advice}, staging / "advice.json")
         staging.rename(output)
     return report
@@ -411,6 +461,11 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument("--battery-threshold", type=float, default=10)
     parser.add_argument("--disk-threshold", type=float, default=90)
     parser.add_argument("--memory-threshold", type=float, default=65536)
+    parser.add_argument("--forecast-candidate", type=Path, help="Validated #26 host-CPU artifact")
+    parser.add_argument("--workload-events", type=Path, help="Reviewed host activity/incident CSV")
+    parser.add_argument("--cpu-threshold", type=float, default=90)
+    parser.add_argument("--workload-minutes", type=int, default=15)
+    parser.add_argument("--resource-reviews", type=Path)
     args = parser.parse_args(argv)
     try:
         report = replay(
@@ -421,6 +476,11 @@ def main(argv: Sequence[str] | None = None) -> int:
             battery_threshold=args.battery_threshold,
             disk_threshold=args.disk_threshold,
             memory_threshold=args.memory_threshold,
+            forecast_candidate=args.forecast_candidate,
+            workload_events=args.workload_events,
+            cpu_threshold=args.cpu_threshold,
+            workload_minutes=args.workload_minutes,
+            resource_reviews=args.resource_reviews,
         )
         print(
             f"Report: {args.output_dir}; forecasts: {report['forecast_count']}; "
