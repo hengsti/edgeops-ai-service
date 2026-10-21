@@ -3,6 +3,7 @@ from datetime import timedelta
 
 import httpx
 import pytest
+from pydantic import ValidationError
 
 from edgeops_ai.collector_client import CollectorClient
 from edgeops_ai.features import FeatureExtractor
@@ -304,6 +305,121 @@ def test_maps_populated_and_null_device_age(
     assert observation.devices[0].heartbeat_missing is (heartbeat_age_seconds is None)
 
 
+@pytest.mark.parametrize("device_ids", [(), ("sensor-a",), ("sensor-a", "sensor-b", "sensor-c")])
+def test_device_reads_overlap_and_preserve_configured_order(device_ids: tuple[str, ...]) -> None:
+    async def run() -> None:
+        started = {device_id: asyncio.Event() for device_id in device_ids}
+        release = {device_id: asyncio.Event() for device_id in device_ids}
+        finished = {device_id: asyncio.Event() for device_id in device_ids}
+        completion_order: list[str] = []
+        fallback = transport_for(collector_metrics())
+
+        async def handler(request: httpx.Request) -> httpx.Response:
+            if not request.url.path.startswith("/v1/devices/"):
+                return await fallback.handle_async_request(request)
+            device_id = request.url.path.removeprefix("/v1/devices/")
+            started[device_id].set()
+            await release[device_id].wait()
+            completion_order.append(device_id)
+            finished[device_id].set()
+            return httpx.Response(200, json=envelope({"available": True}))
+
+        client = CollectorClient(
+            base_url="http://collector.test",
+            api_key="test-key",
+            timeout_seconds=1,
+            device_ids=device_ids,
+            transport=httpx.MockTransport(handler),
+        )
+        task = asyncio.create_task(client.fetch_observation())
+        try:
+            # Timeout guards deadlocks; events establish overlap and completion order.
+            async with asyncio.timeout(5):
+                for event in started.values():
+                    await event.wait()
+                for device_id in reversed(device_ids):
+                    release[device_id].set()
+                    await finished[device_id].wait()
+                observation = await task
+            assert completion_order == list(reversed(device_ids))
+            assert [device.device_id for device in observation.devices] == list(device_ids)
+            assert all(device.heartbeat_missing is False for device in observation.devices)
+        finally:
+            task.cancel()
+            await asyncio.gather(task, return_exceptions=True)
+            await client.close()
+
+    asyncio.run(run())
+
+
+@pytest.mark.parametrize(
+    ("failure", "expected_error"),
+    [
+        (httpx.Response(503), httpx.HTTPStatusError),
+        (httpx.ReadTimeout("device timed out"), httpx.ReadTimeout),
+        (httpx.Response(200, json=[]), ValueError),
+        (httpx.Response(200, json=envelope({})), KeyError),
+        (
+            httpx.Response(200, json=envelope({"available": True, "heartbeat_age_seconds": -1})),
+            ValidationError,
+        ),
+        (None, asyncio.CancelledError),
+    ],
+    ids=["http-error", "timeout", "invalid-json-shape", "missing-field", "validation", "cancel"],
+)
+def test_device_failure_or_cancellation_drains_requests(
+    failure: httpx.Response | httpx.HTTPError | None,
+    expected_error: type[BaseException],
+) -> None:
+    async def run() -> None:
+        sibling_started = asyncio.Event()
+        blocked = asyncio.Event()
+        active: set[str] = set()
+        fallback = transport_for(collector_metrics())
+
+        async def handler(request: httpx.Request) -> httpx.Response:
+            if not request.url.path.startswith("/v1/devices/"):
+                return await fallback.handle_async_request(request)
+            device_id = request.url.path.removeprefix("/v1/devices/")
+            active.add(device_id)
+            try:
+                if device_id == "sensor-a":
+                    await sibling_started.wait()
+                    if isinstance(failure, httpx.HTTPError):
+                        raise failure
+                    if failure is not None:
+                        return failure
+                else:
+                    sibling_started.set()
+                await blocked.wait()
+                raise AssertionError("Device request should have been cancelled.")
+            finally:
+                active.remove(device_id)
+
+        client = CollectorClient(
+            base_url="http://collector.test",
+            api_key="test-key",
+            timeout_seconds=1,
+            device_ids=("sensor-a", "sensor-b"),
+            transport=httpx.MockTransport(handler),
+        )
+        task = asyncio.create_task(client.fetch_observation())
+        try:
+            async with asyncio.timeout(5):
+                await sibling_started.wait()
+                if failure is None:
+                    task.cancel()
+                with pytest.raises(expected_error):
+                    await task
+            assert active == set()
+        finally:
+            task.cancel()
+            await asyncio.gather(task, return_exceptions=True)
+            await client.close()
+
+    asyncio.run(run())
+
+
 def emqx_state(status: str, health: str | None) -> dict[str, object]:
     return {"service": "emqx", "status": status, "health": health, "restart_count": 0}
 
@@ -324,7 +440,14 @@ def emqx_state(status: str, health: str | None) -> dict[str, object]:
     ],
 )
 def test_maps_emqx_service_to_broker_evidence(emqx: object, expected: bool | None) -> None:
-    observation = asyncio.run(fetch_observation(collector_metrics(), emqx=emqx))
+    observation = asyncio.run(
+        fetch_observation(
+            collector_metrics(),
+            devices={"sensor-a": {"available": True}, "sensor-b": {"available": False}},
+            device_ids=("sensor-a", "sensor-b"),
+            emqx=emqx,
+        )
+    )
 
     assert observation.broker_available is expected
 
