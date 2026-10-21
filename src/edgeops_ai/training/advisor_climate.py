@@ -13,7 +13,7 @@ from typing import Any
 import pyarrow as pa
 import pyarrow.parquet as pq
 
-from edgeops_ai.advisor import MINUTE
+from edgeops_ai.advisor import MINUTE, Advice
 from edgeops_ai.climate import climate_findings
 from edgeops_ai.influx_reader import CLIMATE_FIELDS
 from edgeops_ai.training.advisor_dataset import timestamp
@@ -22,7 +22,13 @@ from edgeops_ai.training.advisor_labels import file_hash
 from edgeops_ai.training.reports import read_report, write_report
 
 
-def replay(input_dir: Path, output: Path, *, humidity_minutes: int = 120) -> dict[str, Any]:
+def replay(
+    input_dir: Path,
+    output: Path,
+    *,
+    humidity_minutes: int = 120,
+    forecast_candidate: Path | None = None,
+) -> dict[str, Any]:
     if output.exists():
         raise ValueError("Output already exists; choose a new report directory")
     source_paths = {
@@ -44,8 +50,22 @@ def replay(input_dir: Path, output: Path, *, humidity_minutes: int = 120) -> dic
     if parquet_rows != card["tables"]["device"]["rows"]:
         raise ValueError("Source device Parquet row count mismatch")
     samples = load_devices(input_dir, fields=CLIMATE_FIELDS)
+    forecasts: list[dict[str, Any]] = []
+    forecast_advice: list[Advice] = []
+    forecast_metadata: dict[str, Any] | None = None
+    if forecast_candidate is not None:
+        from edgeops_ai.training.advisor_climate_forecast import forecast_findings
+
+        forecast_advice, forecasts, forecast_metadata = forecast_findings(
+            input_dir, forecast_candidate
+        )
     findings = climate_findings(
-        samples, start, stop, (train_stop, validation_stop), humidity_minutes=humidity_minutes
+        samples,
+        start,
+        stop,
+        (train_stop, validation_stop),
+        humidity_minutes=humidity_minutes,
+        forecast_advice=forecast_advice,
     )
     rows = [
         {
@@ -76,9 +96,11 @@ def replay(input_dir: Path, output: Path, *, humidity_minutes: int = 120) -> dic
             "room_cooldown_minutes": 60,
         },
         "advice_counts": dict(Counter(item.code for item in findings)),
-        "forecast_available": False,
+        "forecast_available": bool(forecasts),
         "outdoor_weather_available": False,
     }
+    if forecast_metadata is not None:
+        report["forecast"] = forecast_metadata
     if any(file_hash(path) != hashes[name] for name, path in source_paths.items()):
         raise ValueError("Source files changed during replay")
     output.parent.mkdir(parents=True, exist_ok=True)
@@ -87,6 +109,8 @@ def replay(input_dir: Path, output: Path, *, humidity_minutes: int = 120) -> dic
         staging.mkdir()
         write_report(report, staging / "report.json")
         write_report({"findings": rows}, staging / "advice.json")
+        if forecast_metadata is not None:
+            write_report({"forecasts": forecasts}, staging / "forecasts.json")
         staging.rename(output)
     return report
 
@@ -96,9 +120,15 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument("--input-dir", type=Path, required=True)
     parser.add_argument("--output-dir", type=Path, required=True)
     parser.add_argument("--humidity-minutes", type=int, default=120)
+    parser.add_argument("--forecast-candidate", type=Path)
     args = parser.parse_args(argv)
     try:
-        report = replay(args.input_dir, args.output_dir, humidity_minutes=args.humidity_minutes)
+        report = replay(
+            args.input_dir,
+            args.output_dir,
+            humidity_minutes=args.humidity_minutes,
+            forecast_candidate=args.forecast_candidate,
+        )
         print(f"Report: {args.output_dir}; advice: {sum(report['advice_counts'].values())}")
         return 0
     except (OSError, ValueError, KeyError, TypeError, pa.ArrowException) as error:
