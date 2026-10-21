@@ -26,6 +26,8 @@ class Settings(BaseSettings):
     advisor_influx_org: str = Field(default="smarthome", min_length=1)
     advisor_influx_token: SecretStr | None = None
     advisor_refresh_seconds: float = Field(default=300, ge=60, le=3600)
+    advisor_weather_postcode: str = Field(default="", pattern=r"^$|^[^,\s]+,[A-Z]{2}$")
+    advisor_weather_api_key: SecretStr | None = None
 
     @model_validator(mode="after")
     def validate_advisor(self) -> Self:
