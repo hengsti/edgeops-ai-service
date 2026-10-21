@@ -361,7 +361,7 @@ Relative paths are resolved from the terminal's current directory.
 | `advisor-labels` | Apply human reviews to an existing Advisor export offline |
 | `advisor-health` | Replay device/pipeline advice and a per-device anomaly baseline |
 | `advisor-climate` | Replay room climate advice and optional TTM humidity/temperature forecasts |
-| `advisor-maintenance` | Estimate battery, root-disk and device-memory time to thresholds |
+| `advisor-maintenance` | Estimate maintenance thresholds; optionally assess observed host workloads |
 | `advisor-forecast` | Fine-tune TTM on CPU, export ONNX and validate native/ONNX parity |
 | `advisor-benchmark` | Measure ONNX latency/process memory on native-reference held-out inputs |
 | `pipeline` | Collect missing runs, evaluate the complete matrix, optionally train |
@@ -978,11 +978,90 @@ Daily observations limit timing resolution; test fixtures do not establish real
 battery accuracy. Exit zero means replay succeeded, not that battery acceptance
 passed.
 
-This implements #21's robust baseline and local state report. Seasonal TTM or
-Chronos forecasts remain pending on the selected artifact/contract in #26; live
-state-report API delivery belongs to #22. CPU seasonality and container-health
-events are not extrapolated as battery/disk/memory depletion trends. No new
-dependencies or automatic maintenance actions are introduced.
+This implements #21's robust baseline and local state report. CPU activity and
+container-health events are assessed separately from battery/disk/memory depletion
+trends. No new dependencies or automatic maintenance actions are introduced.
+
+### Advisor host workload replay
+
+Issue #30 adds optional offline assessment of observed workload conditions:
+
+```powershell
+uv run edgeops-train advisor-maintenance `
+  --input-dir data/advisor-issue18-reviewed-20261019 `
+  --forecast-candidate artifacts/advisor-ttm-host-cpu-20261020 `
+  --output-dir data/advisor-workload
+```
+
+The validated CPU artifact retains its 512-input / 96-output contract. This
+consumer uses only its first five-minute expectation, then compares it with the
+arriving completed `cpu-total` / `usage_active_mean` aggregate. Every expectation
+uses 42h40m of prior observations. Identities, chronological splits, gaps, missing
+or invalid CPU and supplied host reset/deploy events break context; nothing is
+imputed. Unsupported artifacts, changed source hashes or failed integrity/parity
+checks reject publication. Incomplete history produces explicit unavailable
+evidence. A fresh context must accumulate after each split or interruption.
+
+The Advisor distinguishes `expected-workload`, `unusual-activity`,
+`resource-pressure` and `insufficient-evidence`. A CPU aggregate at or above
+90% (`--cpu-threshold`) or an absolute residual above the host's frozen training
+99th percentile is unusual evidence. Scores divide that residual by the training
+scale, with the existing numeric tolerance as a floor. Calibration uses training
+windows only, separately for TTM and last-value; held-out data never fits it.
+Scores are not probabilities, and confidence remains null.
+
+Advice requires three consecutive completed five-minute samples
+(`--workload-minutes 15`). High CPU or a deviation alone produces informational
+advice. A warning additionally needs observed unhealthy/OOM service evidence at
+each sample. Memory usage is supporting context; no unapproved memory-pressure
+threshold is inferred. Missing health is explicitly unavailable. Observed container
+identity, version, restart or uptime changes break health persistence without
+erasing unrelated host CPU history. Recovery ends an episode. Host reset/deploy
+markers are absent from the retained dataset, so hidden boundaries remain unknown.
+An activity is called a build only when supplied activity evidence identifies it;
+otherwise its cause stays unknown. Expected workload does not certify service health.
+
+Existing maintenance outputs remain present. `state-report.json` gains latest
+resource states; a last sample older than the dataset end is marked stale.
+`advice.json` gains TTM workload findings, with observed/expected values aligned
+to the same target, first detection time, duration, health context and model and
+calibration hashes. `resource-observations.csv` exposes every observation and
+availability status. `resource-advice-review.csv` compares TTM, CPU rules alone
+and last-value on identical periods; `report.json.resources` records calibration,
+coverage, comparisons, sources and acceptance. Publication uses a new directory
+and preserves the original datasets, models and reports.
+
+Optional reviewed context uses `--workload-events events.csv` and the existing
+manual-label format:
+
+```csv
+entity_type,entity_id,start,stop,label,note
+host,my-pi,2026-10-02T10:00:00Z,2026-10-02T10:30:00Z,build,Operator confirmed application build
+```
+
+Use aligned UTC timestamps and a host identity present in the dataset. Supported
+labels are `build`, `normal-activity`, `deploy`, `reset` and `resource-pressure`.
+The last label is evaluation truth only and never informs detection. Deploy/reset
+intervals exclude CPU context through their end boundary. Manual context stays
+separate from weak labels and does not prove a cause.
+
+Review a copy of `resource-advice-review.csv`, setting `verdict` to
+`true-positive` or `false-positive` and adding a reason in `note`. Rerun into a new
+directory with the same inputs plus `--resource-reviews <reviewed.csv>`. Review
+IDs bind source, model, calibration, policy and finding evidence; changed evidence
+cannot inherit old verdicts. Acceptance needs reviewed normal and incident cases,
+all validation findings reviewed for all three methods, fewer than one false
+positive warning per day and known incidents detected within 15 minutes. With no
+known incident, detection delay and acceptance remain unverified. Synthetic tests
+check implementation behavior; they do not establish historical usefulness.
+
+The first retained October 1–9 replay produced 58 TTM informational findings and
+zero warnings; rules and last-value produced 3 and 7 informational findings,
+respectively. All need review. The operator reported no known incident in that
+period, so these counts do not establish warning quality or incident detection.
+The candidate and `deployment_approved=false` are unchanged. Its exact existing
+Pi evidence is reused (p95 24.49 ms; peak RSS 77.72 MB), with no new Pi run. Live
+host/history inputs belong to #31 and runtime model wiring to #32.
 
 ### Advisor native training and ONNX export
 
