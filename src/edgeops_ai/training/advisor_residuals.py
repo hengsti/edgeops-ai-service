@@ -13,10 +13,9 @@ from typing import Any
 import numpy as np
 
 from edgeops_ai.advisor import Advice
-from edgeops_ai.forecasting import ATOL, RTOL, ForecastModel
-from edgeops_ai.training.advisor_forecast import load_windows
+from edgeops_ai.forecasting import ATOL, ForecastModel
+from edgeops_ai.training.advisor_forecast import load_candidate
 from edgeops_ai.training.advisor_labels import file_hash
-from edgeops_ai.training.reports import read_report
 
 SUSTAINED_MINUTES = 15
 
@@ -135,32 +134,14 @@ def score_windows(
 def residual_findings(
     input_dir: Path, candidate: Path
 ) -> tuple[list[Advice], list[dict[str, Any]], dict[str, Any]]:
-    paths = {
-        name: candidate / name
-        for name in ("model.onnx", "model.onnx.sha256", "manifest.json", "validation-report.json")
-    }
-    hashes = {name: file_hash(path) for name, path in paths.items()}
-    digest = paths["model.onnx.sha256"].read_text(encoding="ascii").strip()
-    model = ForecastModel(paths["model.onnx"], digest)
-    manifest = read_report(paths["manifest.json"])
-    validation = read_report(paths["validation-report.json"])
-    if manifest != {**model.manifest, "sha256": digest} or (
-        validation.get("schema_version") != "advisor-validation-1"
-        or validation.get("passed") is not True
-        or validation.get("model_version") != model.manifest["model_version"]
-        or validation.get("sources") != model.manifest["dataset"]
-        or validation.get("tolerances") != {"atol": ATOL, "rtol": RTOL}
-    ):
-        raise ValueError("Expected a compatible validated #26 candidate and parity report")
-    windows, sources = load_windows(input_dir, model.contract)
-    if sources != model.manifest["dataset"]:
-        raise ValueError("Forecast dataset must match the candidate's chronological dataset")
+    model, windows, hashes = load_candidate(input_dir, candidate)
+    digest = hashes["model.onnx"]
     findings, scores, metadata = score_windows(model, windows)
     for finding in findings:
         finding.evidence["model_sha256"] = digest
     metadata["candidate_sha256"] = hashes
-    metadata["dataset"] = sources
+    metadata["dataset"] = model.manifest["dataset"]
     metadata["deployment_approved"] = False
-    if any(file_hash(path) != hashes[name] for name, path in paths.items()):
+    if any(file_hash(candidate / name) != digest for name, digest in hashes.items()):
         raise ValueError("Forecast candidate changed during replay")
     return findings, scores, metadata
