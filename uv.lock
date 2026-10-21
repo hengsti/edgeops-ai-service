@@ -494,10 +494,14 @@ source = { editable = "." }
 dependencies = [
     { name = "fastapi" },
     { name = "httpx" },
-    { name = "onnxruntime" },
     { name = "pydantic" },
     { name = "pydantic-settings" },
     { name = "uvicorn" },
+]
+
+[package.optional-dependencies]
+ml = [
+    { name = "onnxruntime" },
 ]
 
 [package.dev-dependencies]
@@ -509,6 +513,7 @@ dev = [
     { name = "joblib" },
     { name = "mypy" },
     { name = "onnx" },
+    { name = "onnxruntime" },
     { name = "pyarrow" },
     { name = "pytest" },
     { name = "ruff" },
@@ -522,11 +527,12 @@ dev = [
 requires-dist = [
     { name = "fastapi" },
     { name = "httpx" },
-    { name = "onnxruntime", specifier = ">=1.31.0" },
+    { name = "onnxruntime", marker = "extra == 'ml'", specifier = ">=1.31.0" },
     { name = "pydantic" },
     { name = "pydantic-settings" },
     { name = "uvicorn" },
 ]
+provides-extras = ["ml"]
 
 [package.metadata.requires-dev]
 advisor = [
@@ -537,6 +543,7 @@ dev = [
     { name = "joblib" },
     { name = "mypy", specifier = ">=2.4.0" },
     { name = "onnx", specifier = ">=1.23.2" },
+    { name = "onnxruntime", specifier = ">=1.31.0" },
     { name = "pyarrow", specifier = ">=26.0.0" },
     { name = "pytest" },
     { name = "ruff" },

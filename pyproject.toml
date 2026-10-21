@@ -11,6 +11,10 @@ dependencies = [
     "pydantic",
     "pydantic-settings",
     "httpx",
+]
+
+[project.optional-dependencies]
+ml = [
     "onnxruntime>=1.31.0",
 ]
 
@@ -23,6 +27,7 @@ dev = [
     "joblib",
     "mypy>=2.4.0",
     "onnx>=1.23.2",
+    "onnxruntime>=1.31.0",
     "pyarrow>=26.0.0",
     "pytest",
     "ruff",
