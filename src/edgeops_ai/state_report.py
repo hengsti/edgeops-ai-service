@@ -23,6 +23,7 @@ from edgeops_ai.advisor import (
 )
 from edgeops_ai.climate import climate_findings
 from edgeops_ai.schemas import StrictModel
+from edgeops_ai.weather import WeatherClient, WeatherObservation
 
 Category = Literal["device", "pipeline", "climate", "host", "maintenance"]
 Coverage = Literal["available", "no-data", "deferred"]
@@ -71,6 +72,7 @@ class AdvisorWindow:
     stop: datetime
     devices: list[DeviceSample]
     pipeline: list[PipelineSample]
+    outdoor_weather: tuple[WeatherObservation, ...] = ()
 
 
 class InfluxReader(Protocol):
@@ -95,7 +97,9 @@ class ClimateDetector:
     category: Category = "climate"
 
     def detect(self, window: AdvisorWindow) -> list[Advice]:
-        return climate_findings(window.devices, window.start, window.stop)
+        return climate_findings(
+            window.devices, window.start, window.stop, outdoor_weather=window.outdoor_weather
+        )
 
 
 class PipelineHealthDetector:
@@ -127,10 +131,12 @@ class StateReporter:
         detectors: tuple[Detector, ...] = DEFAULT_DETECTORS,
         *,
         refresh_seconds: float = 300,
+        weather_client: WeatherClient | None = None,
     ):
         self.reader = reader
         self.detectors = detectors
         self.refresh_seconds = refresh_seconds
+        self.weather_client = weather_client
         # shortcut: state is per process; persist it before adding durable notifications.
         self._lock = asyncio.Lock()
         self._cached: StateReport | None = None
@@ -206,6 +212,11 @@ class StateReporter:
                 window = await self.reader.read(start, stop)
                 if window.start != start or window.stop != stop:
                     raise ValueError("Reader returned a different Advisor window")
+                if self.weather_client is not None:
+                    observation = await self.weather_client.get(now)
+                    window = replace(
+                        window, outdoor_weather=(observation,) if observation is not None else ()
+                    )
                 findings, coverage = await asyncio.to_thread(self._findings, window)
             except (httpx.HTTPError, ValueError, KeyError, TypeError) as error:
                 self._retry_after = monotonic() + min(60, self.refresh_seconds)
