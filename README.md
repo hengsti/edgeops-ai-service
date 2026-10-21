@@ -735,8 +735,8 @@ both rules and all devices. A persistent episode is not repeated until recovery;
 gaps do not establish recovery. State lasts for the replay invocation.
 
 Without a forecast candidate this implements the deterministic part of #20.
-Estimated wall temperatures and outdoor-weather integration are absent;
-recommendations do not assert that outside conditions are suitable. The optional
+Estimated wall temperatures are absent. Outdoor moisture suitability remains
+unknown unless matching weather observations are supplied as described below. The optional
 offline TTM consumer below implements #28; live forecast integration belongs to
 #32. Historical replay
 checks the data and detector behavior; advice usefulness still needs human review.
@@ -745,6 +745,71 @@ for each intended case, all eight historical findings, a fitted baseline for
 each device and fewer than one false advice item per validation day. That command
 returns **1** when acceptance is pending or failed, while retaining its reports;
 it returns **0** only when acceptance passes.
+
+#### Outdoor weather for ventilation (#29)
+
+The optional integration uses only OpenWeatherMap's
+[Current Weather API](https://openweathermap.org/api/current). Configure the home
+postcode and API key in `.env`; both are required to enable live weather:
+
+```dotenv
+ADVISOR_WEATHER_POSTCODE=1030,AT
+ADVISOR_WEATHER_API_KEY=your-openweathermap-api-key
+```
+
+The postcode includes the two-letter country code (`1030,AT` for the requested
+Austrian location). Obtain a key with Current Weather access from OpenWeatherMap
+and restart the service after editing `.env`. Compose already loads this file.
+The key is kept out of reports and request logs. No key or no postcode leaves
+deterministic indoor advice enabled with unknown outdoor suitability.
+
+The live state report shares one observation across all rooms, fetching at most
+once every 10 minutes per service process, including failed attempts. Requests
+have a three-second timeout. Missing/malformed responses, API errors and weather
+older than 30 minutes are unavailable; a failed refresh discards the old cache.
+Weather must be at or before the advice observation time and at most 30 minutes
+old at that time. The live report replays a day of history, so its older findings
+can remain conditional even when current weather is available.
+
+Ventilation advice compares absolute humidity in g/m³ using indoor and outdoor
+temperature and relative humidity. Lower outdoor absolute humidity supports
+ventilation for moisture reduction; equal or higher values suggest dehumidification.
+Missing indoor temperature also leaves the comparison unknown. Evidence records
+the provider, location, UTC weather timestamp, temperatures, relative humidities,
+absolute humidities and their indoor-minus-outdoor difference. Humidity/IAQ
+thresholds, recovery and the shared one-hour room cooldown are unchanged.
+**Weather does not establish outdoor pollutant safety:** ventilation remains
+conditional on outdoor air quality, including when outdoor air is drier.
+
+Offline replay never calls the weather API or loads the weather key. To use
+recorded observations, supply a JSON file with the following shape:
+
+```json
+{
+  "observations": [
+    {
+      "provider": "openweathermap",
+      "location": "1030,AT",
+      "observed_at": "2026-10-19T10:00:00+00:00",
+      "temperature_c": 8.0,
+      "humidity_percent": 85.0
+    }
+  ]
+}
+```
+
+```powershell
+uv run edgeops-train advisor-climate `
+  --input-dir data/advisor-issue18-reviewed-20261019 `
+  --weather-observations data/outdoor-weather.json `
+  --output-dir data/advisor-climate-weather
+```
+
+Each finding uses the most recent observation at or before its own timestamp,
+subject to the same freshness check. Present-day observations cannot enrich past
+findings. The report records the input weather file's SHA-256 alongside dataset
+hashes. This option also works with `--forecast-candidate` and adapts its existing
+humidity ventilation action without changing model predictions.
 
 #### Proactive climate forecasts (#28)
 
