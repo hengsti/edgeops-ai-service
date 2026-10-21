@@ -26,6 +26,23 @@ def test_rules_settings_do_not_require_an_artifact_digest() -> None:
     assert Settings(_env_file=None, prediction_backend="rules").model_artifact_sha256 is None
 
 
+def test_weather_is_optional_and_key_is_secret():
+    settings = Settings(_env_file=None, advisor_weather_postcode="1030,AT")
+    assert settings.advisor_weather_api_key is None
+    settings = Settings(_env_file=None, advisor_weather_api_key="private-weather-key")
+    assert "private-weather-key" not in repr(settings)
+
+
+def test_weather_postcode_and_key_load_from_env_file(tmp_path):
+    path = tmp_path / ".env"
+    path.write_text(
+        "ADVISOR_WEATHER_POSTCODE=1030,AT\nADVISOR_WEATHER_API_KEY=private-weather-key\n"
+    )
+    settings = Settings(_env_file=path)
+    assert settings.advisor_weather_postcode == "1030,AT"
+    assert settings.advisor_weather_api_key.get_secret_value() == "private-weather-key"
+
+
 @pytest.mark.parametrize("digest", ["", "  "])
 def test_blank_digest_keeps_documented_rules_configuration_working(digest: str) -> None:
     assert (

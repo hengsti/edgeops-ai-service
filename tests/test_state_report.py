@@ -29,6 +29,7 @@ class FixtureReader:
                 {
                     "sensor_samples": 30,
                     "humidity_mean": 65,
+                    "temperature_mean": 20,
                     "iaq_mean": 90,
                     "warmed_up": "true",
                     "sensor_read_failures_total": index,
@@ -80,6 +81,58 @@ def test_state_report_contract_uses_real_rules_and_cache():
         schema = client.get("/openapi.json").json()
         assert "StateReport" in schema["components"]["schemas"]
         assert "503" in schema["paths"]["/v1/state-report"]["get"]["responses"]
+
+
+@pytest.mark.parametrize("failure", [False, True])
+def test_live_weather_is_shared_and_outage_does_not_stop_indoor_advice(failure):
+    from datetime import UTC
+
+    requests = []
+
+    def handler(request):
+        requests.append(str(request.url))
+        if failure:
+            return httpx.Response(500, text="private-weather-key")
+        at = datetime.now(UTC).replace(second=0, microsecond=0) - 2 * MINUTE
+        return httpx.Response(
+            200,
+            json={
+                "dt": at.timestamp(),
+                "main": {"temp": 5, "humidity": 90},
+            },
+        )
+
+    class RoomsReader(FixtureReader):
+        async def read(self, start, stop):
+            window = await super().read(start, stop)
+            return replace(
+                window,
+                devices=[
+                    *window.devices,
+                    *(
+                        replace(row, device_id="office-sensor", room="office")
+                        for row in window.devices
+                    ),
+                ],
+            )
+
+    app = create_app(
+        settings(advisor_weather_postcode="1030,AT", advisor_weather_api_key="private-weather-key"),
+        advisor_reader=RoomsReader(),
+        weather_transport=httpx.MockTransport(handler),
+    )
+    with TestClient(app) as client:
+        response = client.get("/v1/state-report")
+        assert response.status_code == 200
+        assert "private-weather-key" not in response.text
+        climate = [item for item in response.json()["findings"] if item["category"] == "climate"]
+        assert len(climate) == 2
+        for item in climate:
+            evidence = {entry["metric"]: entry["value"] for entry in item["evidence"]}
+            assert evidence["outdoor_moisture_suitability"] == ("unknown" if failure else "drier")
+        app.state.state_reporter._expires = 0
+        assert client.get("/v1/state-report").status_code == 200
+        assert len(requests) == 1
 
 
 class SequenceDetector:

@@ -53,6 +53,72 @@ def test_sustained_humidity_has_room_causal_window_evidence_and_action():
     assert "risk" in item.summary.lower()
 
 
+@pytest.mark.parametrize(
+    "temperature,humidity,expected",
+    [(5, 90, "drier"), (30, 50, "not-drier"), (20, 65, "not-drier")],
+)
+def test_ventilation_compares_absolute_humidity(temperature, humidity, expected):
+    from edgeops_ai.weather import WeatherObservation
+
+    at = START + 120 * MINUTE
+    observation = WeatherObservation(
+        observed_at=at - MINUTE,
+        temperature_c=temperature,
+        humidity_percent=humidity,
+        location="1030,AT",
+    )
+    (item,) = findings(samples(temperature_mean=20), outdoor_weather=[observation])
+    assert item.evidence["outdoor_moisture_suitability"] == expected
+    assert item.evidence["weather_provider"] == "openweathermap"
+    assert item.evidence["weather_observed_at"] == observation.observed_at.isoformat()
+    assert item.evidence["indoor_absolute_humidity_g_m3"] == pytest.approx(11.24, abs=0.03)
+    if expected == "drier":
+        assert "to reduce moisture" in item.recommendation
+        assert "outdoor air quality permits" in item.recommendation
+    else:
+        assert "not drier" in item.recommendation
+        assert "dehumidifier" in item.recommendation
+
+
+@pytest.mark.parametrize("weather_age", [-1, 31, None])
+def test_missing_stale_and_newer_weather_keeps_conditional_advice(weather_age):
+    from edgeops_ai.weather import WeatherObservation
+
+    observations = (
+        []
+        if weather_age is None
+        else [
+            WeatherObservation(
+                observed_at=START + (120 - weather_age) * MINUTE,
+                temperature_c=5,
+                humidity_percent=90,
+                location="1030,AT",
+            )
+        ]
+    )
+    (item,) = findings(samples(temperature_mean=20), outdoor_weather=observations)
+    assert item.evidence["outdoor_moisture_suitability"] == "unknown"
+    assert "if outdoor air is drier" in item.recommendation
+    assert "unknown" in item.recommendation
+
+
+def test_weather_does_not_remove_air_quality_condition_or_require_indoor_temperature():
+    from edgeops_ai.weather import WeatherObservation
+
+    observation = WeatherObservation(
+        observed_at=START + 14 * MINUTE,
+        temperature_c=5,
+        humidity_percent=90,
+        location="1030,AT",
+    )
+    for values in ({}, {"temperature_mean": 20}, {"temperature_mean": float("nan")}):
+        (item,) = findings(samples(15, iaq_mean=40, **values), 15, outdoor_weather=[observation])
+        assert "when outdoor air quality permits" in item.recommendation
+        assert item.evidence["outdoor_moisture_suitability"] == (
+            "drier" if values.get("temperature_mean") == 20 else "unknown"
+        )
+
+
 @pytest.mark.parametrize("change", ["gap", "missing", "threshold", "clock", "room"])
 def test_missing_minutes_fields_and_room_changes_break_humidity_duration(change):
     rows = samples()

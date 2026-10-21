@@ -18,7 +18,9 @@ def exported(tmp_path):
     root.mkdir()
     rows = []
     for sample in samples(240, iaq_mean=40):
+        sample.values["temperature_mean"] = 20
         for field, name in {
+            "temp_c_mean": "temperature_mean",
             "rel_hum_perc_mean": "humidity_mean",
             "iaq_score_mean": "iaq_mean",
             "gas_ohm_mean": "gas_mean",
@@ -82,9 +84,80 @@ def test_climate_command_replays_real_parquet_and_preserves_inputs(exported, tmp
 def test_loader_selects_climate_fields_without_changing_health_defaults(exported):
     climate = load_devices(exported, fields=CLIMATE_FIELDS)
     assert climate[0].values["humidity_mean"] == 65
+    assert climate[0].values["temperature_mean"] == 20
     assert climate[0].values["gas_mean"] == 50_000
     assert climate[0].room == "kitchen"
     assert "humidity_mean" not in load_devices(exported)[0].values
+
+
+def test_replay_uses_only_timestamped_weather_and_records_source_hash(exported, tmp_path):
+    weather_path = tmp_path / "weather.json"
+    observation = {
+        "provider": "openweathermap",
+        "location": "1030,AT",
+        "temperature_c": 5,
+        "humidity_percent": 90,
+    }
+    weather_path.write_text(
+        json.dumps(
+            {
+                "observations": [
+                    {**observation, "observed_at": (START + 14 * MINUTE).isoformat()},
+                    {**observation, "observed_at": (START + 179 * MINUTE).isoformat()},
+                ]
+            }
+        )
+    )
+    output = tmp_path / "climate-weather"
+    assert (
+        main(
+            [
+                "advisor-climate",
+                "--input-dir",
+                str(exported),
+                "--output-dir",
+                str(output),
+                "--weather-observations",
+                str(weather_path),
+            ]
+        )
+        == 0
+    )
+    report = json.loads((output / "report.json").read_text())
+    advice = json.loads((output / "advice.json").read_text())["findings"]
+    assert report["outdoor_weather_available"] is True
+    assert (
+        report["sources"]["weather_observations_sha256"]
+        == hashlib.sha256(weather_path.read_bytes()).hexdigest()
+    )
+    assert [item["evidence"]["outdoor_moisture_suitability"] for item in advice] == [
+        "drier",
+        "drier",
+    ]
+
+    weather_path.write_text(
+        json.dumps(
+            {
+                "observations": [
+                    {**observation, "observed_at": (START + 300 * MINUTE).isoformat()},
+                ]
+            }
+        )
+    )
+    output = tmp_path / "future-weather"
+    report = replay(exported, output, weather_observations=weather_path)
+    assert report["outdoor_weather_available"] is False
+    advice = json.loads((output / "advice.json").read_text())["findings"]
+    assert all(item["evidence"]["outdoor_moisture_suitability"] == "unknown" for item in advice)
+
+
+def test_malformed_weather_does_not_publish_replay(exported, tmp_path):
+    weather_path = tmp_path / "weather.json"
+    weather_path.write_text('{"observations": [{"observed_at": "no-clock"}]}')
+    output = tmp_path / "bad-weather"
+    with pytest.raises(ValueError):
+        replay(exported, output, weather_observations=weather_path)
+    assert not output.exists()
 
 
 @pytest.mark.parametrize("problem", ["hash", "rows", "shuffle", "bounds", "schema", "cadence"])
