@@ -64,7 +64,9 @@ def load_windows(
     ):
         raise ValueError("Advisor source schema, row count or SHA-256 mismatch")
     channels = contract["channels"]
-    fields = pa.array([*channels, "warmed_up_last", "uptime_last", "uptime_resets"])
+    fields = pa.array(
+        [*channels, "warmed_up_last", "time_valid_last", "uptime_last", "uptime_resets"]
+    )
     points: dict[tuple[str, Any], dict[str, Any]] = {}
     for batch in parquet.iter_batches():
         table = pa.Table.from_batches([batch])
@@ -72,6 +74,8 @@ def load_windows(
             if row["measurement"] not in (
                 {"bme680", "device_status"} if kind == "device" else {"cpu"}
             ):
+                continue
+            if row["field"] == "time_valid_last" and row["measurement"] != "bme680":
                 continue
             dimensions = json.loads(row["dimensions"])
             if kind == "host" and dimensions.get("cpu") != "cpu-total":
@@ -109,7 +113,12 @@ def load_windows(
         split = split_at(at, train_stop, val_stop)
         valid = all(isinstance(point.get(c), (float, int)) for c in channels)
         if kind == "device":
-            valid = valid and point.get("warmed_up_last") == "true" and bool(point["room"])
+            valid = (
+                valid
+                and point.get("warmed_up_last") == "true"
+                and point.get("time_valid_last") != "false"
+                and bool(point["room"])
+            )
         identity = (entity, point["room"], split)
         reset = point.get("uptime_resets", 0) or (
             previous is not None
@@ -152,6 +161,34 @@ def load_windows(
 
 def checkpoint_hashes(checkpoint: Path) -> dict[str, str]:
     return {p.name: file_hash(p) for p in checkpoint.iterdir() if p.is_file()}
+
+
+def load_candidate(
+    input_dir: Path, candidate: Path
+) -> tuple[ForecastModel, dict[str, list], dict[str, str]]:
+    paths = {
+        name: candidate / name
+        for name in ("model.onnx", "model.onnx.sha256", "manifest.json", "validation-report.json")
+    }
+    hashes = {name: file_hash(path) for name, path in paths.items()}
+    digest = paths["model.onnx.sha256"].read_text(encoding="ascii").strip()
+    model = ForecastModel(paths["model.onnx"], digest)
+    manifest = read_report(paths["manifest.json"])
+    validation = read_report(paths["validation-report.json"])
+    if manifest != {**model.manifest, "sha256": digest} or (
+        validation.get("schema_version") != "advisor-validation-1"
+        or validation.get("passed") is not True
+        or validation.get("model_version") != model.manifest["model_version"]
+        or validation.get("sources") != model.manifest["dataset"]
+        or validation.get("tolerances") != {"atol": ATOL, "rtol": RTOL}
+    ):
+        raise ValueError("Expected a compatible validated #26 candidate and parity report")
+    windows, sources = load_windows(input_dir, model.contract)
+    if sources != model.manifest["dataset"]:
+        raise ValueError("Forecast dataset must match the candidate's chronological dataset")
+    if any(file_hash(path) != hashes[name] for name, path in paths.items()):
+        raise ValueError("Forecast candidate changed while loading")
+    return model, windows, hashes
 
 
 def evaluate(native: Any, exported: ForecastModel, windows: list) -> dict[str, Any]:
