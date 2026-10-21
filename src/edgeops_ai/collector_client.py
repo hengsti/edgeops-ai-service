@@ -1,3 +1,4 @@
+import asyncio
 import logging
 from typing import Any
 from urllib.parse import quote
@@ -65,7 +66,16 @@ class CollectorClient:
             }
         )
 
-        devices = [await self._fetch_device(device_id) for device_id in self._device_ids]
+        device_tasks = [
+            asyncio.create_task(self._fetch_device(device_id)) for device_id in self._device_ids
+        ]
+        try:
+            devices = await asyncio.gather(*device_tasks)
+        finally:
+            # Drain requests before the next poll or client shutdown, including on failure.
+            for task in device_tasks:
+                task.cancel()
+            await asyncio.gather(*device_tasks, return_exceptions=True)
 
         return ObservationV1.model_validate(
             {
