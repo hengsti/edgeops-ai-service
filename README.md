@@ -76,9 +76,34 @@ See the [refactoring record](docs/refactoring-2026-10-12.md) for scope and valid
 Requires Python 3.13 and [uv](https://docs.astral.sh/uv/).
 
 ```powershell
-uv sync
-uv run uvicorn edgeops_ai.main:create_app --factory --reload --port 8080
+uv sync --locked --no-dev
+uv run --no-sync uvicorn edgeops_ai.main:create_app --factory --reload --port 8080
 ```
+
+Choose the installation for the workload:
+
+| Workload | Install command | Dependencies |
+| --- | --- | --- |
+| Rules-only service | `uv sync --locked --no-dev` | HTTP service only; no NumPy, ONNX Runtime, scikit-learn or joblib |
+| ML service with the approved ONNX artifact | `uv sync --locked --no-dev --extra ml` | HTTP service plus ONNX Runtime and its dependencies |
+| Development, training and evaluation | `uv sync --locked` | Both backends plus the existing development/training tools, including scikit-learn and joblib |
+
+For pip installations, the corresponding runtime choices are `pip install .` and
+`pip install '.[ml]'`. Legacy `.joblib` artifacts require the development/training
+installation. The optional Advisor training group still uses
+`uv sync --locked --group advisor`.
+
+After preparing a runtime environment, use `uv run --no-sync` to start it as shown
+above. Plain `uv run` installs the default development group. To select local ML
+inference, also set `PREDICTION_BACKEND=ml` and `MODEL_ARTIFACT_SHA256` to the
+approved artifact's hash; the existing hash and model-contract validation applies.
+
+Measured on Windows x86_64 with Python 3.13.5 and this lockfile on 2026-10-21,
+non-editable installations contain **11.53 MiB** (20 packages) for rules-only and
+**94.87 MiB** (25 packages) with `--extra ml`: **83.34 MiB (87.9%) less** for rules.
+These are summed file sizes under `site-packages`, excluding bytecode, the Python
+interpreter and uv caches. They measure installed packages rather than image size
+or runtime memory. Both environments omit scikit-learn and joblib; training keeps them.
 
 Or with Docker:
 
@@ -87,7 +112,8 @@ docker build -t edgeops-ai-service .
 docker run --rm -p 8080:8080 edgeops-ai-service
 ```
 
-The quickstart uses the default `rules` backend. The image bundles the approved
+The quickstart uses the default `rules` backend. Docker explicitly installs the
+`ml` extra so the same image supports both backends. It bundles the approved
 `artifacts/model.onnx`; to run the ML backend, pass its SHA-256 (see
 [Model artifacts](#model-artifacts-and-reports)):
 
@@ -827,7 +853,7 @@ Only trusted local `save_pretrained` directories with `config.json` and
 `model.safetensors` are loaded, with the recorded weights SHA-256 checked first.
 No joblib intermediate is used. The command does not fetch model code or weights.
 PyTorch, Granite TSFM, ONNX and ONNX Script stay in the laptop environment;
-`uv sync --locked --no-dev` and the production image exclude the training group.
+`uv sync --locked --no-dev --extra ml` and the production image exclude the training group.
 Granite TSFM 0.3.5 caps scikit-learn below 1.8, so the laptop environment can warn
 when reading the older incident joblib artifact trained with 1.9. Keep the
 approved incident ONNX artifact for inference; do not resave the source joblib.
@@ -896,8 +922,8 @@ fine-tuning without downloading a checkpoint:
 uv run --group advisor pytest tests/test_advisor_forecast.py -q
 ```
 
-CI runs this check on Windows. Production installation requires only the normal
-runtime dependencies, including NumPy via ONNX Runtime; it does not import
+CI runs this check on Windows. Production ONNX inference requires the `ml` extra,
+including NumPy via ONNX Runtime; it does not import
 PyTorch, Granite TSFM, PyArrow or ONNX conversion libraries.
 
 The reviewed September 10–October 19 dataset lacks `warmed_up_last` in its original
@@ -931,11 +957,11 @@ versus last-value 0.144 / 1.105. This candidate also remains unapproved. Its ONN
 SHA-256 is `7ae6ad6b85bc9bd047fc23df804d31704a66dcfcb000c1188039506a4953cef4`.
 
 Inference was verified on Windows x86_64 in a clean environment containing only
-the locked production dependencies. Reproduce that dependency check without
+the locked ML runtime dependencies. Reproduce that dependency check without
 installing any training packages into it:
 
 ```powershell
-uv export --locked --no-dev --no-emit-project --quiet `
+uv export --locked --no-dev --extra ml --no-emit-project --quiet `
   --output-file data/advisor-runtime-requirements.txt
 uv venv data/advisor-runtime
 uv pip sync --python data/advisor-runtime/Scripts/python.exe `
@@ -990,7 +1016,7 @@ long-term or MQTT-delivery impact. Docker memory cgroups are unavailable on
 this host, so Docker's zero-byte memory display was not used. No host settings,
 production files, running services or deployment were changed.
 
-Re-run the inference-only command inside an environment with the normal runtime
+Re-run the inference-only command inside an environment with the ML runtime
 dependencies and the exported candidate/reference inputs:
 
 ```sh
