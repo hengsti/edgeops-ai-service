@@ -1,11 +1,13 @@
 """Indoor climate advice from observed minute aggregates."""
 
 import math
+from bisect import bisect_right
 from collections import defaultdict, deque
 from collections.abc import Sequence
 from datetime import datetime, timedelta
 
 from edgeops_ai.advisor import MINUTE, Advice, DeviceSample, check_time
+from edgeops_ai.weather import WeatherObservation, ventilation_advice
 
 
 def climate_findings(
@@ -16,6 +18,7 @@ def climate_findings(
     *,
     humidity_minutes: int = 120,
     forecast_advice: Sequence[Advice] = (),
+    outdoor_weather: Sequence[WeatherObservation] = (),
 ) -> list[Advice]:
     for at in (start, stop, *split_boundaries):
         check_time(at)
@@ -56,6 +59,8 @@ def climate_findings(
     last_advice: dict[str, datetime] = {}
     forecasts = {(item.evidence["device_id"], item.observed_at): item for item in forecast_advice}
     findings = []
+    weather = sorted(outdoor_weather, key=lambda observation: observation.observed_at)
+    weather_times = [observation.observed_at for observation in weather]
     for row in sorted(samples, key=lambda row: (row.at, row.device_id)):
         if not row.room:
             continue
@@ -93,6 +98,8 @@ def climate_findings(
             air[key].clear()
 
         observed_at = row.at + MINUTE
+        weather_index = bisect_right(weather_times, observed_at) - 1
+        observation = weather[weather_index] if weather_index >= 0 else None
         for code, window, required in (
             ("climate.mould-risk", humidity[key], humidity_minutes),
             ("climate.air-quality", air[key], 15),
@@ -140,16 +147,20 @@ def climate_findings(
                     "or ventilate for 10 minutes when outdoor air quality permits."
                 )
             findings.append(
-                Advice(
-                    code,
-                    row.room,
-                    window[0].at,
-                    observed_at,
-                    observed_at,
-                    summary,
-                    action,
-                    evidence,
-                    detector="rule:indoor-climate@1",
+                ventilation_advice(
+                    Advice(
+                        code,
+                        row.room,
+                        window[0].at,
+                        observed_at,
+                        observed_at,
+                        summary,
+                        action,
+                        evidence,
+                        detector="rule:indoor-climate@1",
+                    ),
+                    row,
+                    observation,
                 )
             )
             latched.add((*key, code))
@@ -164,7 +175,7 @@ def climate_findings(
                 or observed_at - last_advice[row.room] >= timedelta(hours=1)
             )
         ):
-            findings.append(forecast)
+            findings.append(ventilation_advice(forecast, row, observation))
             latched.add((*key, forecast.code))
             last_advice[row.room] = observed_at
     return findings
