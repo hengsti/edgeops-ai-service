@@ -20,6 +20,7 @@ from edgeops_ai.training.advisor_dataset import timestamp
 from edgeops_ai.training.advisor_health import load_devices, split_at
 from edgeops_ai.training.advisor_labels import file_hash
 from edgeops_ai.training.reports import read_report, write_report
+from edgeops_ai.weather import WeatherObservation
 
 
 def replay(
@@ -28,6 +29,7 @@ def replay(
     *,
     humidity_minutes: int = 120,
     forecast_candidate: Path | None = None,
+    weather_observations: Path | None = None,
 ) -> dict[str, Any]:
     if output.exists():
         raise ValueError("Output already exists; choose a new report directory")
@@ -35,6 +37,8 @@ def replay(
         "data_card_sha256": input_dir / "data-card.json",
         "device_parquet_sha256": input_dir / "device.parquet",
     }
+    if weather_observations is not None:
+        source_paths["weather_observations_sha256"] = weather_observations
     hashes = {name: file_hash(path) for name, path in source_paths.items()}
     card = read_report(source_paths["data_card_sha256"])
     if card.get("schema_version") != "advisor-1":
@@ -50,6 +54,14 @@ def replay(
     if parquet_rows != card["tables"]["device"]["rows"]:
         raise ValueError("Source device Parquet row count mismatch")
     samples = load_devices(input_dir, fields=CLIMATE_FIELDS)
+    weather = (
+        [
+            WeatherObservation.model_validate(item)
+            for item in read_report(weather_observations)["observations"]
+        ]
+        if weather_observations is not None
+        else []
+    )
     forecasts: list[dict[str, Any]] = []
     forecast_advice: list[Advice] = []
     forecast_metadata: dict[str, Any] | None = None
@@ -66,6 +78,7 @@ def replay(
         (train_stop, validation_stop),
         humidity_minutes=humidity_minutes,
         forecast_advice=forecast_advice,
+        outdoor_weather=weather,
     )
     rows = [
         {
@@ -97,7 +110,9 @@ def replay(
         },
         "advice_counts": dict(Counter(item.code for item in findings)),
         "forecast_available": bool(forecasts),
-        "outdoor_weather_available": False,
+        "outdoor_weather_available": any(
+            "weather_observed_at" in item.evidence for item in findings
+        ),
     }
     if forecast_metadata is not None:
         report["forecast"] = forecast_metadata
@@ -121,6 +136,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument("--output-dir", type=Path, required=True)
     parser.add_argument("--humidity-minutes", type=int, default=120)
     parser.add_argument("--forecast-candidate", type=Path)
+    parser.add_argument("--weather-observations", type=Path)
     args = parser.parse_args(argv)
     try:
         report = replay(
@@ -128,6 +144,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             args.output_dir,
             humidity_minutes=args.humidity_minutes,
             forecast_candidate=args.forecast_candidate,
+            weather_observations=args.weather_observations,
         )
         print(f"Report: {args.output_dir}; advice: {sum(report['advice_counts'].values())}")
         return 0
