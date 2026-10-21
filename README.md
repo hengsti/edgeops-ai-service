@@ -360,7 +360,7 @@ Relative paths are resolved from the terminal's current directory.
 | `advisor-dataset` | Export labelled InfluxDB aggregate history to Parquet with time-based splits |
 | `advisor-labels` | Apply human reviews to an existing Advisor export offline |
 | `advisor-health` | Replay device/pipeline advice and a per-device anomaly baseline |
-| `advisor-climate` | Replay room humidity and warmed-up air-quality advice |
+| `advisor-climate` | Replay room climate advice and optional TTM humidity/temperature forecasts |
 | `advisor-maintenance` | Estimate battery, root-disk and device-memory time to thresholds |
 | `advisor-forecast` | Fine-tune TTM on CPU, export ONNX and validate native/ONNX parity |
 | `advisor-benchmark` | Measure ONNX latency/process memory on native-reference held-out inputs |
@@ -734,16 +734,112 @@ cooldown permit at most one advice item per room in any rolling hour, across
 both rules and all devices. A persistent episode is not repeated until recovery;
 gaps do not establish recovery. State lasts for the replay invocation.
 
-This implements the deterministic part of #20. Forecasts, estimated wall
-temperatures and outdoor-weather integration are absent; recommendations do not
-assert that outside conditions are suitable. TTM forecasts require the separate
-forecasting artifact. Live Advisor API delivery belongs to #22. Historical replay
+Without a forecast candidate this implements the deterministic part of #20.
+Estimated wall temperatures and outdoor-weather integration are absent;
+recommendations do not assert that outside conditions are suitable. The optional
+offline TTM consumer below implements #28; live forecast integration belongs to
+#32. Historical replay
 checks the data and detector behavior; advice usefulness still needs human review.
-Historical reproduction also requires a reviewed true positive for the intended
-case. Acceptance requires all eight historical findings, a fitted baseline for
-each device and fewer than one false advice item per validation day. The command
+The separate `advisor-health` acceptance gate requires a reviewed true positive
+for each intended case, all eight historical findings, a fitted baseline for
+each device and fewer than one false advice item per validation day. That command
 returns **1** when acceptance is pending or failed, while retaining its reports;
 it returns **0** only when acceptance passes.
+
+#### Proactive climate forecasts (#28)
+
+Reuse the validated #26 climate candidate and its exact matching chronological
+dataset, without training or changing either source:
+
+```powershell
+uv run --no-sync edgeops-train advisor-climate `
+  --input-dir data/advisor-issue26-climate-20261010-20261019 `
+  --forecast-candidate artifacts/advisor-ttm-climate-20261020 `
+  --output-dir data/advisor-issue28-climate-20261021
+```
+
+Choose a new output directory for each run. The command retains `advice.json`
+and `report.json`, and adds `forecasts.json`: per-device forecasts within one
+stable room, with temperature in degC, relative humidity in percent, model
+version/SHA-256, context start/stop, last input, forecast origin and UTC target
+timestamps. Multiple devices are not averaged or stitched together.
+
+The candidate needs its ONNX file, digest, embedded/JSON manifest and passing
+#26 parity report. The source dataset hashes must match its manifest. The
+consumer reuses #26's 512-context/96-target windows, including their 96-minute
+origin stride, rather than introducing a separate windowing implementation.
+Missing channels, gaps, missing/false warm-up flags, explicitly invalid sensor
+clocks, resets, room changes and chronological split boundaries break windows.
+Incomplete windows produce no forecast or advice. Invalid candidate/data checks
+fail without publishing a report; nonphysical predicted humidity also fails.
+
+Aggregate timestamps denote minute **starts**. The forecast origin is the end
+of the completed input context, one minute after the last input timestamp.
+The first target starts at that origin (lead zero); the consumer retains leads
+0 through 60, so index 30/60 is exactly 30/60 minutes after the origin. The
+evidence window contains observed context only, never the future crossing.
+
+An upward humidity crossing above the existing 60% threshold, with current RH
+at or below 60%, can produce advice at issuance for leads 1–60 minutes. An
+already high reading or lead-zero crossing produces no proactive advice.
+Evidence includes the threshold, current/predicted RH, estimated minutes and
+target timestamp. Forecast advice shares the deterministic rules' rolling
+60-minute room cooldown across all devices; observed RH at or below 55% rearms
+its episode. It suggests a humidity/ventilation check, without inferring
+cooking/heating causes or assuming outdoor conditions are suitable.
+
+The report compares TTM, last-value and a daily seasonal baseline on the same
+validation/test windows. The seasonal baseline averages unique training
+observations per device/room and UTC minute of day; overlapping contexts do not
+overweight observations. Its sample count and profile hash identify the fitted
+baseline. Missing seasonal coverage excludes a window from **all three**
+comparisons and is counted explicitly, without filling missing values. Existing
+60%/55% thresholds are fixed rules, not fitted on held-out data. TTM preprocessing
+remains inside the validated #26 graph. Metrics include MAE/RMSE by lead/channel,
+mean MAE over leads 30–60, and raw humidity-crossing true/false positives,
+misses and timing MAE on matched crossings. Crossing metrics describe numeric
+forecasts before advice cooldown/hysteresis; already high contexts are excluded.
+
+The local October 10–19 replay on 2026-10-21 produced **442 forecasts** in
+bedroom, buero, kitchen and livingroom: 250 training, 96 validation and 96 test
+windows. Both held-out comparisons covered **96/96** windows. The seasonal
+profile used 28,608 unique training samples. After shared cooldown/hysteresis,
+the replay emitted 5 forecast and 8 observed-humidity advice items.
+
+| Split | Model | Temperature MAE, 30–60 min (degC) | RH MAE, 30–60 min (pp) | Crossing TP / FP / misses | Matched timing MAE (min) |
+| --- | --- | --- | --- | --- | --- |
+| Validation | TTM | 0.079 | 0.468 | 2 / 1 / 1 | 24.0 |
+| Validation | Last-value | 0.073 | 0.432 | 0 / 0 / 3 | no matches |
+| Validation | Daily seasonal | 0.760 | 3.026 | 0 / 4 / 3 | no matches |
+| Test | TTM | 0.162 | 1.273 | 3 / 3 / 6 | 17.7 |
+| Test | Last-value | 0.132 | 1.088 | 0 / 0 / 9 | no matches |
+| Test | Daily seasonal | 0.855 | 5.371 | 2 / 0 / 7 | 24.0 |
+
+Crossing evaluation has 51 eligible validation and 31 eligible test windows;
+the remaining origins already exceed 60%. Raw reports are in the new output
+directory above. The candidate's ONNX SHA-256 is
+`7ae6ad6b85bc9bd047fc23df804d31704a66dcfcb000c1188039506a4953cef4`;
+the fitted seasonal profile SHA-256 is
+`93ef01e9165db3972efb68291dada59ac40781bc999231152609edad1506bd49`.
+TTM loses to last-value on both channels/splits, and crossing errors remain.
+`deployment_approved=false` is retained; completing the offline consumer does
+not approve the model or establish advice usefulness. Runtime/API delivery,
+fresh Pi measurements and outdoor integration are outside this replay.
+
+Focused verification:
+
+```powershell
+uv run --no-sync pytest tests/test_advisor_climate.py tests/test_advisor_climate_replay.py `
+  tests/test_advisor_climate_forecast.py tests/test_advisor_forecast.py `
+  tests/test_advisor_residuals.py tests/test_state_report.py -q
+```
+
+The final local suite passed **470 tests**; Ruff lint/format and mypy passed.
+The suite reported 67 dependency warnings, including deprecations and the
+existing incident classifier's scikit-learn artifact-version warning. Independent
+code review found no issues. All 442 real forecast alignments, split boundaries,
+room cooldowns and unchanged dataset/candidate hashes were also checked. Hosted
+CI, live API delivery and fresh Pi validation were not run for this offline change.
 
 ### Advisor maintenance estimates
 
