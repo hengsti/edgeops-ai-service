@@ -253,7 +253,8 @@ The latest detection response looks like this:
 
 The Advisor stays in this service, separate from the incident classifier. Enable
 it with `ADVISOR_INFLUX_URL`, `ADVISOR_INFLUX_ORG` (default `smarthome`) and
-`ADVISOR_INFLUX_TOKEN`. Use a read-only token for `sensors_1m` and `metrics`, kept
+`ADVISOR_INFLUX_TOKEN`. Use a read-only token for `sensors_1m`, `metrics_5m`
+and `metrics`, kept
 in the local environment or `.env`; do not commit it. URL and token must be set
 together. With both omitted, the endpoint returns 503 and existing incident
 endpoints retain their normal behavior.
@@ -263,8 +264,23 @@ indoor-climate rules on the latest bounded 24-hour window. The window ends one
 completed minute behind the current UTC minute to allow aggregate task delay.
 Queries select only required sensor fields and pipeline counters, preserve
 historical device/room and pipeline-series identity, and exclude test devices.
+Host/container observations retain their original five-minute cadence and tag
+dimensions (including root mount/device and container version). Only completed
+five-minute resource windows are read. A resource observation older than 15
+minutes is stale. Missing observations and unsupported container health states
+remain explicit in `inputs`; their absence cannot establish health.
 Each response is limited to 32 MiB and HTTP operations have a 10-second timeout.
 Malformed, conflicting or nonfinite observations fail the refresh.
+
+The reader also keeps compact summaries of 30 completed UTC days for device
+memory and root disk trends. On a cold process it reads one bounded day at a
+time, selecting only memory/uptime/reset fields and root disk usage; it retains
+daily counts, medians, minima and boot continuity evidence, then discards minute
+history. Later refreshes load only newly completed days. Missing days, missing
+uptime, resets/discontinuities and observed room changes break trend history;
+gaps are never filled. The first request is consequently slower. Summaries and
+finding history reset on process restart; restart after historical backfills to
+refresh previously cached completed days. There is no persistent cache.
 
 Reports are cached for `ADVISOR_REFRESH_SECONDS` (default 300, range 60–3600).
 Concurrent requests share one refresh, and parsing/detection runs in worker
@@ -274,17 +290,48 @@ The application owns and closes its Influx client. No background training or
 additional runtime dependency is introduced.
 
 The response has these fields; OpenAPI documents the exact `StateReport`,
-`Finding` and `Evidence` schemas at `/openapi.json`:
+`Finding`, `Evidence` and `MaintenanceEstimate` schemas at `/openapi.json`:
 
 | Field | Meaning |
 | --- | --- |
-| `schema_version` | `1.0`, independent of service/model versions; breaking changes require a new schema version |
+| `schema_version` | `1.0`, independent of service/model versions; additive fields are compatible and consumers should ignore unknown fields; breaking changes require a new version |
 | `generated_at` | UTC report-generation time, unchanged while the response is cached |
-| `observed_at`, `window_start` | Exclusive observation-window end and inclusive start |
-| `status` | `complete` or `partial`, according to category coverage |
+| `observed_at`, `window_start` | Exclusive observation-window end and inclusive history start; device/climate/pipeline detail still uses the latest 24 hours |
+| `status` | `complete` or `partial`, according to category coverage and required input availability |
 | `coverage` | Per-category `available`, `no-data` or `deferred`; availability means source observations exist, not that every possible detector was evaluated |
 | `overall` | `critical` for critical findings; `attention` for warnings or incomplete coverage; otherwise `ok` |
 | `findings` | Deduplicated findings, sorted by stable ID |
+| `maintenance_estimates` | Every known root disk/device memory estimate, including nondue, stale, insufficient-history and uncertain estimates |
+| `inputs` | Host/container CPU, memory and health, root disk and ETA input status: `available`, `no-data`, `stale`, `insufficient-history` or `unsupported` |
+
+Maintenance estimates share #21's daily Theil–Sen baseline: seven consecutive
+qualified days, at most 30 days, at least 144 distinct five-minute root disk
+observations or 720 device memory/uptime minute pairs per day. Reboot days are
+excluded. A root disk cleanup of at least five percentage points restarts its
+history. Estimates expose the current daily median, threshold, observed days,
+slope, 95% slope limits, ETA and ETA bounds, status, `advice_due` and concrete
+recommendation. Null ETAs mean unknown or not approaching; they never mean zero.
+Advice requires the complete finite ETA range inside the horizon, or a threshold
+already reached. ETA bounds propagate slope uncertainty from the last daily
+median; they are not calibrated crossing-time prediction intervals.
+
+| Setting | Default | Meaning |
+| --- | --- | --- |
+| `ADVISOR_DISK_THRESHOLD` | `90` | Root disk percent used, 0–100 |
+| `ADVISOR_MEMORY_THRESHOLD` | `65536` | Device free memory threshold in bytes, nonnegative |
+| `ADVISOR_MAINTENANCE_HORIZON_DAYS` | `30` | Positive advice horizon in days |
+
+The shared fit uses only the Python standard library and is checked against
+SciPy's Theil–Sen slope and confidence limits, including ties and flat trends.
+Request handling imports no PyArrow, NumPy, SciPy or scikit-learn. The original
+`edgeops-train advisor-maintenance` command still uses this same forecast core.
+Device memory-decline advice reuses #19's minimum-memory rule within a continuous
+boot. Host/root disk/container memory pressure requires three adjacent
+five-minute windows at or above 90%; host CPU uses the same rule but reports
+informational activity rather than a fault warning. Container CPU
+is read for later consumers but has no host-style percentage cap. Container
+health failures, OOM flags and adjacent restart-count increases produce concrete
+inspection advice without claiming a root cause or performing an action.
 
 Each finding includes `id`, `category` (`device`, `pipeline`, `climate`, `host`,
 `maintenance`), `severity` (`info`, `warning`, `critical`), `subject`, `summary`,
@@ -309,14 +356,55 @@ registry or changing the incident predictor. Injected readers remain owned by
 their caller. Deterministic detector output is normalized and validated against
 the public schema before publishing it.
 
-The initial live reader does not evaluate multi-day memory decline, offline
-IsolationForest baselines, host/maintenance ETAs or trained forecasts. Host and
-maintenance coverage is explicitly `deferred`, so this initial report is partial
-and never silently reports overall `ok` for those missing checks. Remaining work:
+The live reader evaluates deterministic device/resource rules and maintenance
+ETAs. It does not evaluate offline IsolationForest baselines or trained forecasts.
+Incomplete inputs keep the report partial. Runtime integration and model wiring:
 
-- [#31](https://github.com/hengsti/edgeops-ai-service/issues/31): bounded longer-history and host/maintenance runtime adapters, reusing #19/#21 without importing training tools into request handling.
+- [#31](https://github.com/hengsti/edgeops-ai-service/issues/31): deterministic runtime adapters, with local and user-run Pi validation recorded below; production rollout remains separate.
 - [#32](https://github.com/hengsti/edgeops-ai-service/issues/32): live model-consumer wiring after #27/#28/#30 and their #26 artifact/contract prerequisites.
-- [#29](https://github.com/hengsti/edgeops-ai-service/issues/29): outdoor weather integration.
+
+Before rollout, verify the read-only token can query all three buckets and that
+`sensors_1m`/`metrics_5m` tasks have sufficient recent and historical coverage.
+Check cold and warm `/v1/state-report` requests, `inputs`, every estimate's status,
+and stable IDs/first-seen on a refresh. Check a failed read returns 503 without
+serving an expired report. Measure cold/warm query time, CPU and peak memory on
+the Pi before approving deployment; laptop timings do not establish Pi cost.
+Pi measurements are recorded below. No production deployment was performed.
+
+Local validation on 2026-10-22 passed 554 tests, Ruff lint/formatting and mypy.
+Against live InfluxDB at `http://influxdb.smarthome.local/`, the local API returned
+200 with all input groups available and five nondue maintenance estimates (two
+with uncertain trends). Cold history loading took 13.92 seconds / 63 queries;
+a cached response took 2 ms / no queries; a warm refresh took 3.08 seconds /
+three queries and preserved first-seen values. These are laptop/API timings,
+not Pi CPU/memory or deployed-service measurements. The ignored local evidence
+is `data/issue31-live-validation.json`; no credentials are included.
+
+The user also ran the current source in a temporary read-only container on
+`smarthome-rpi4` at 06:38–06:39 UTC on 2026-10-22, using the existing service
+image, a read-only source mount and `http://influxdb:8086/`. All three in-process
+endpoint requests succeeded with `status=complete`, all eight input groups
+available and five maintenance estimates. The cached response equality check
+passed.
+
+| Pi phase | Wall time | Process CPU time | Queries | Lifetime peak RSS |
+| --- | --- | --- | --- | --- |
+| Cold | 40.352 s | 33.157 s | 63 | 193.0 MiB |
+| Cached | 0.003 s | 0.003 s | 0 | 193.0 MiB |
+| Warm refresh | 13.312 s | 11.205 s | 3 | 205.7 MiB |
+
+RSS is the cumulative process lifetime peak; these are not independent phase
+memory peaks. Process CPU excludes InfluxDB and other processes. Cold startup
+and warm refresh remain comparatively expensive; these measurements do not
+establish an accepted latency/memory budget or external HTTP latency.
+
+A separate read-only query of raw InfluxDB metrics from 06:35–06:41 UTC returned
+555 observations. Host CPU median was 33.6% before, 60.2% during and 32.8% after
+the benchmark (71.3% maximum during). AI service, collector and InfluxDB health
+observations remained healthy with restart counts zero throughout the window.
+This short observation cannot establish causal or sustained production impact.
+Ignored evidence files are `data/issue31-pi-validation.json` (user-supplied
+measurements) and `data/issue31-pi-impact.json` (independently queried telemetry).
 
 Grafana JSON consumers can poll this GET endpoint and inspect `status`/`coverage`
 alongside findings. No Grafana provisioning, notifications or LLM execution is
@@ -922,8 +1010,9 @@ contains only actions due within the horizon. `report.json` records input hashes
 thresholds and battery backtest cases. Existing reports and source datasets stay
 unchanged, source changes during replay are rejected, and publication is atomic.
 
-The development-only baseline uses the installed
-[SciPy Theil–Sen estimator](https://docs.scipy.org/doc/scipy/reference/generated/scipy.stats.theilslopes.html)
+The offline replay and live API share a standard-library Theil–Sen baseline,
+checked against the
+[SciPy Theil–Sen estimator](https://docs.scipy.org/doc/scipy/reference/generated/scipy.stats.theilslopes.html),
 on up to 30 consecutive completed UTC daily medians, requiring at least seven
 days. Root-disk days need 144 distinct five-minute aggregates, and device-memory
 days need 720 distinct one-minute aggregates with uptime evidence. Disk identity
