@@ -72,6 +72,9 @@ def create_app(
                     advisor_detectors,
                     refresh_seconds=runtime_settings.advisor_refresh_seconds,
                     weather_client=weather_client,
+                    disk_threshold=runtime_settings.advisor_disk_threshold,
+                    memory_threshold=runtime_settings.advisor_memory_threshold,
+                    horizon_days=runtime_settings.advisor_maintenance_horizon_days,
                 )
                 if reader is not None
                 else None
