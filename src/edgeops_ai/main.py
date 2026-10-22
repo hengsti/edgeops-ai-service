@@ -1,6 +1,7 @@
 import asyncio
 from collections.abc import AsyncIterator
 from contextlib import AsyncExitStack, asynccontextmanager
+from typing import TYPE_CHECKING
 
 import httpx
 from fastapi import FastAPI
@@ -15,6 +16,9 @@ from edgeops_ai.rules import RuleBasedPredictor
 from edgeops_ai.settings import Settings
 from edgeops_ai.state_report import DEFAULT_DETECTORS, Detector, InfluxReader, StateReporter
 from edgeops_ai.weather import WeatherClient
+
+if TYPE_CHECKING:
+    from edgeops_ai.forecast_runtime import ForecastDetector
 
 
 def create_app(
@@ -41,6 +45,15 @@ def create_app(
         app.state.collector_polling_enabled = runtime_settings.collector_polling_enabled
         app.state.collector_poll_interval_seconds = runtime_settings.collector_poll_interval_seconds
         async with AsyncExitStack() as resources:
+            forecast_detectors: tuple[ForecastDetector, ...] = ()
+            if runtime_settings.advisor_forecast_config is not None:
+                from edgeops_ai.forecast_runtime import load_consumers
+
+                assert runtime_settings.advisor_forecast_config_sha256 is not None
+                forecast_detectors = load_consumers(
+                    runtime_settings.advisor_forecast_config,
+                    runtime_settings.advisor_forecast_config_sha256,
+                )
             reader = advisor_reader
             if reader is None and runtime_settings.advisor_influx_url is not None:
                 from edgeops_ai.influx_reader import HttpInfluxReader
@@ -50,6 +63,12 @@ def create_app(
                     str(runtime_settings.advisor_influx_url),
                     runtime_settings.advisor_influx_org,
                     runtime_settings.advisor_influx_token.get_secret_value(),
+                    resource_history_hours=48
+                    if any(
+                        item.name == "resources" and item.model is not None
+                        for item in forecast_detectors
+                    )
+                    else 24,
                 )
                 resources.push_async_callback(reader.close)
             weather_client = None
@@ -75,6 +94,7 @@ def create_app(
                     disk_threshold=runtime_settings.advisor_disk_threshold,
                     memory_threshold=runtime_settings.advisor_memory_threshold,
                     horizon_days=runtime_settings.advisor_maintenance_horizon_days,
+                    forecast_detectors=forecast_detectors,
                 )
                 if reader is not None
                 else None
