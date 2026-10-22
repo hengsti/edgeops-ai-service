@@ -57,3 +57,19 @@ def test_blank_digest_keeps_documented_rules_configuration_working(digest: str) 
 def test_ml_settings_reject_blank_digest(digest: str) -> None:
     with pytest.raises(ValidationError, match="MODEL_ARTIFACT_SHA256 is required"):
         Settings(_env_file=None, prediction_backend="ml", model_artifact_sha256=digest)
+
+
+@pytest.mark.parametrize(
+    "changes",
+    [
+        {"advisor_disk_threshold": 101},
+        {"advisor_disk_threshold": -1},
+        {"advisor_memory_threshold": -1},
+        {"advisor_memory_threshold": float("nan")},
+        {"advisor_maintenance_horizon_days": 0},
+        {"advisor_maintenance_horizon_days": float("inf")},
+    ],
+)
+def test_maintenance_policy_rejects_invalid_settings(changes):
+    with pytest.raises(ValidationError):
+        Settings(_env_file=None, **changes)
