@@ -303,6 +303,8 @@ The response has these fields; OpenAPI documents the exact `StateReport`,
 | `findings` | Deduplicated findings, sorted by stable ID |
 | `maintenance_estimates` | Every known root disk/device memory estimate, including nondue, stale, insufficient-history and uncertain estimates |
 | `inputs` | Host/container CPU, memory and health, root disk and ETA input status: `available`, `no-data`, `stale`, `insufficient-history` or `unsupported` |
+| `models` | Health/climate/resource consumer status, model/calibration hashes and per-entity availability; disabled consumers are explicit |
+| `forecasts` | Available room temperature/humidity point forecasts, origin/targets, context and model provenance; uncertainty is explicitly uncalibrated |
 
 Maintenance estimates share #21's daily Theil–Sen baseline: seven consecutive
 qualified days, at most 30 days, at least 144 distinct five-minute root disk
@@ -323,7 +325,7 @@ median; they are not calibrated crossing-time prediction intervals.
 
 The shared fit uses only the Python standard library and is checked against
 SciPy's Theil–Sen slope and confidence limits, including ties and flat trends.
-Request handling imports no PyArrow, NumPy, SciPy or scikit-learn. The original
+The default deterministic path imports no PyArrow, NumPy, SciPy or scikit-learn. The original
 `edgeops-train advisor-maintenance` command still uses this same forecast core.
 Device memory-decline advice reuses #19's minimum-memory rule within a continuous
 boot. Host/root disk/container memory pressure requires three adjacent
@@ -357,11 +359,12 @@ their caller. Deterministic detector output is normalized and validated against
 the public schema before publishing it.
 
 The live reader evaluates deterministic device/resource rules and maintenance
-ETAs. It does not evaluate offline IsolationForest baselines or trained forecasts.
+ETAs. Optional trained consumers are described below; offline IsolationForest
+baselines remain outside the request path.
 Incomplete inputs keep the report partial. Runtime integration and model wiring:
 
 - [#31](https://github.com/hengsti/edgeops-ai-service/issues/31): deterministic runtime adapters, with local and user-run Pi validation recorded below; production rollout remains separate.
-- [#32](https://github.com/hengsti/edgeops-ai-service/issues/32): live model-consumer wiring after #27/#28/#30 and their #26 artifact/contract prerequisites.
+- [#32](https://github.com/hengsti/edgeops-ai-service/issues/32): optional model consumers after #27/#28/#30 and their #26 artifact/contract prerequisites, described below.
 
 Before rollout, verify the read-only token can query all three buckets and that
 `sensors_1m`/`metrics_5m` tasks have sufficient recent and historical coverage.
@@ -410,6 +413,116 @@ Grafana JSON consumers can poll this GET endpoint and inspect `status`/`coverage
 alongside findings. No Grafana provisioning, notifications or LLM execution is
 included. Optional explainers run off the Pi and consume this JSON; the service
 does not call an LLM.
+
+### Optional Advisor model consumers (#32)
+
+All three adapters are optional and disabled by default. Set
+`ADVISOR_FORECAST_CONFIG` to an `advisor-runtime-1` JSON file. A configuration contains only
+the consumers to enable: `health`, `climate`, and/or `resources`. Paths are
+relative to that file. For example, with the configuration in `data/`:
+
+```json
+{
+  "schema_version": "advisor-runtime-1",
+  "consumers": {
+    "health": {
+      "candidate": "../artifacts/advisor-ttm-climate-20261020",
+      "model_sha256": "<model.onnx SHA-256>",
+      "evidence": "advisor-issue27-health-reviewed-20261020/report.json",
+      "evidence_sha256": "<report.json SHA-256>",
+      "pi_sha256": "<candidate/pi-benchmark.json SHA-256>"
+    }
+  }
+}
+```
+
+Add `climate` with the same climate candidate and #28's
+`advisor-issue28-climate-20261021/report.json`; add `resources` with
+`../artifacts/advisor-ttm-host-cpu-20261020` and #30's
+`advisor-issue30-workload-verified-20261021/report.json`, each with its own hashes.
+Use `Get-FileHash -Algorithm SHA256 <path>` to obtain a file's digest. Configuration
+and evidence contain no credentials. Mount the configuration, referenced reports
+and candidate inference files read-only in the container; paths must resolve
+there. Candidates require `model.onnx`, `model.onnx.sha256`, `manifest.json`,
+`validation-report.json` and `pi-benchmark.json`; training checkpoints are not
+needed. The existing Docker image already installs the `ml` extra. Other
+installations need that extra for ONNX Runtime/NumPy.
+
+Loading checks the pinned model, embedded and external manifests, exact
+channel/context/horizon/preprocessing/missing-data contract, matching evaluation
+and dataset provenance, native/ONNX parity report, and the same artifact's ARM64
+Pi parity/resource evidence (<50 ms p95, <100 MB process RSS). Frozen calibration
+is read from the pinned evaluation report. It is never fitted to current data.
+The health/climate consumers share one inference session when they reference
+the same candidate. Restart to change artifacts or configuration.
+
+- **Health (#27):** use the original full horizon and training-only per-device,
+  room, horizon and channel scales. Sustained scores above 1 for 15 adjacent
+  minutes produce advice. Complete observed target blocks and the latest
+  completed partial block use the same segmentation as offline evaluation.
+  Warnings retain representative actual/expected values, frozen scale, forecast
+  origin/target/horizon, maximum score, evidence interval and provenance.
+- **Climate (#28):** publish leads 0–60 from the latest complete context. An
+  upward humidity crossing above 60% at a positive lead produces existing advice.
+  Model and deterministic room advice share the 60-minute cooldown and recovery
+  policy, including across refreshes. Forecasts remain available when advice is
+  suppressed. Existing weather wording is reused without new weather behavior.
+- **Resources (#30):** request 48 hours of five-minute resource inputs only when
+  this adapter loads successfully, sufficient for its 512-sample CPU context.
+  Use the first target against each completed observation in the latest sustained
+  interval. CPU >=90% or deviation alone is informational; a warning additionally
+  requires observed unhealthy/OOM service evidence on the same host throughout
+  15 minutes. Container restart/uptime/version boundaries break corroboration.
+  Host reset/deploy markers are still unavailable in these live sources; activity
+  and causes remain unknown. Existing maintenance thresholds and ETAs are retained.
+
+Gaps, invalid clocks, warm-up failures, room/source changes and incomplete
+channels break contexts without imputation. Unknown device/room/host calibration
+is explicit. `models` reports `disabled`, `available`, `no-data`, `stale`,
+`insufficient-history`, `uncalibrated` or `error`. Availability means the consumer
+ran with compatible evidence, not that its quality or deployment is approved.
+Disabled consumers do not change deterministic coverage. An enabled unavailable
+or failed consumer makes the report partial/attention while retaining valid
+deterministic advice. Read failures still return 503; model failures never turn
+into an overall healthy report. All findings use the existing cache, stable IDs,
+first-seen tracking and two-refresh recovery. Confidence remains null; forecast
+uncertainty is separately labelled `uncalibrated`. All evidence retains
+`deployment_approved=false`.
+
+Reproduce sampled held-out endpoint validation on the laptop, choosing a new
+output filename (existing reports are never overwritten):
+
+```powershell
+.\.venv\Scripts\python.exe scripts/validate_advisor_runtime.py `
+  --config data/issue32-runtime.json `
+  --climate-data data/advisor-issue26-climate-20261010-20261019 `
+  --resource-data data/advisor-issue18-reviewed-20261019 `
+  --output data/issue32-runtime-validation-new.json
+```
+
+The retained local #32 run, `data/issue32-runtime-validation-no-config-hash.json`,
+passed **54 held-out endpoint cases**: 24 health,
+24 climate and six CPU cases, sampled across both chronological held-out splits
+and every source identity. It checks availability, null confidence, climate
+numerical alignment and residual value provenance. Resource samples supply CPU
+only; corroboration and recovery are covered by endpoint fixtures. The JSON
+records exact model/evidence hashes and reuses #26's existing Pi
+results: climate p95 11.99 ms / RSS 77.54 MB; host p95 24.49 ms / RSS 77.72 MB.
+These are artifact-inference measurements, not new combined API measurements.
+
+Local verification on 2026-10-22: **576 tests passed**, including 22 new runtime
+checks, plus Ruff lint/format, mypy and whitespace checks. The suite retains 67
+existing dependency deprecation/version warnings. Read-only code review found
+a missing residual-provenance detail, now fixed and checked by a regression test;
+the reviewer confirmed the fix. Changes remain unstaged/uncommitted.
+
+Runtime handling imports no training packages, PyArrow, SciPy, scikit-learn or
+LLMs. This integration does not retrain or export models, change historical
+reviews, or approve deployment. #28 still loses to last-value on its held-out
+forecast comparison; #30 historical incident/usefulness acceptance remains
+unverified. A fresh live model-enabled API/Pi cost measurement, hosted CI and
+production rollout have not been performed. Retain the ignored configuration,
+validation JSON and original evaluation/artifact files separately.
 
 ## Rules first, then ML
 
