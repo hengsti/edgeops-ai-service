@@ -6,7 +6,7 @@ import io
 import json
 import math
 from dataclasses import replace
-from datetime import datetime
+from datetime import datetime, timedelta
 
 import httpx
 
@@ -92,8 +92,10 @@ class HttpInfluxReader:
         token: str,
         *,
         transport: httpx.AsyncBaseTransport | None = None,
+        resource_history_hours: int = 24,
     ):
         self._history: dict[datetime, list[MaintenanceDay]] = {}
+        self.resource_history_hours = resource_history_hours
         self.client = httpx.AsyncClient(
             base_url=url.rstrip("/"),
             timeout=10,
@@ -212,7 +214,12 @@ class HttpInfluxReader:
             }
             entity = json.dumps({"measurement": row["_measurement"], **dimensions}, sort_keys=True)
             pipeline.append(PipelineSample(at, entity, row["_field"], value))
-        resources = await self._resources(start, stop)
+        resource_start = (
+            start
+            if self.resource_history_hours == 24
+            else stop - timedelta(hours=self.resource_history_hours)
+        )
+        resources = await self._resources(resource_start, stop)
         history_stop = day_start(stop)
         history_start = history_stop - 30 * DAY
         self._history = {
