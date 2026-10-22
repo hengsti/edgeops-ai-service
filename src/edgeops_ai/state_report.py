@@ -6,7 +6,7 @@ import logging
 from dataclasses import dataclass, replace
 from datetime import UTC, datetime
 from time import monotonic
-from typing import Literal, Protocol, cast
+from typing import TYPE_CHECKING, Literal, Protocol, cast
 
 import httpx
 from pydantic import AwareDatetime, Field, FiniteFloat
@@ -26,6 +26,9 @@ from edgeops_ai.maintenance import MaintenanceDay, assess
 from edgeops_ai.resources import STEP, ResourceSample, resource_findings
 from edgeops_ai.schemas import StrictModel
 from edgeops_ai.weather import WeatherClient, WeatherObservation
+
+if TYPE_CHECKING:
+    from edgeops_ai.forecast_runtime import ForecastDetector
 
 Category = Literal["device", "pipeline", "climate", "host", "maintenance"]
 Coverage = Literal["available", "no-data", "deferred"]
@@ -83,6 +86,32 @@ class MaintenanceEstimate(StrictModel):
     recommendation: str
 
 
+class ModelAvailability(StrictModel):
+    status: Literal[
+        "disabled", "available", "no-data", "stale", "insufficient-history", "uncalibrated", "error"
+    ]
+    model_version: str | None = None
+    model_sha256: str | None = None
+    calibration_sha256: str | None = None
+    deployment_approved: bool = False
+    entities: dict[str, str] = Field(default_factory=dict)
+
+
+class ClimateForecast(StrictModel):
+    device_id: str
+    room: str
+    model_version: str
+    model_sha256: str
+    context_start: AwareDatetime
+    context_stop: AwareDatetime
+    forecast_origin: AwareDatetime
+    last_input: AwareDatetime
+    target_times: list[AwareDatetime]
+    temperature_c: list[FiniteFloat]
+    humidity_percent: list[FiniteFloat]
+    uncertainty: Literal["uncalibrated"] = "uncalibrated"
+
+
 class StateReport(StrictModel):
     schema_version: Literal["1.0"] = "1.0"
     generated_at: AwareDatetime
@@ -93,6 +122,13 @@ class StateReport(StrictModel):
     coverage: dict[Category, Coverage]
     findings: list[Finding]
     maintenance_estimates: list[MaintenanceEstimate] = Field(default_factory=list)
+    models: dict[str, ModelAvailability] = Field(
+        default_factory=lambda: {
+            name: ModelAvailability(status="disabled")
+            for name in ("health", "climate", "resources")
+        }
+    )
+    forecasts: list[ClimateForecast] = Field(default_factory=list)
     inputs: dict[
         str, Literal["available", "no-data", "stale", "insufficient-history", "unsupported"]
     ] = Field(default_factory=dict)
@@ -109,6 +145,7 @@ class AdvisorWindow:
     history: tuple[MaintenanceDay, ...] = ()
     history_start: datetime | None = None
     maintenance_findings: tuple[Advice, ...] = ()
+    forecast_advice: tuple[Advice, ...] = ()
 
 
 class InfluxReader(Protocol):
@@ -137,7 +174,11 @@ class ClimateDetector:
 
     def detect(self, window: AdvisorWindow) -> list[Advice]:
         return climate_findings(
-            window.devices, window.start, window.stop, outdoor_weather=window.outdoor_weather
+            window.devices,
+            window.start,
+            window.stop,
+            outdoor_weather=window.outdoor_weather,
+            forecast_advice=window.forecast_advice,
         )
 
 
@@ -192,6 +233,7 @@ class StateReporter:
         disk_threshold: float = 90,
         memory_threshold: float = 65536,
         horizon_days: float = 30,
+        forecast_detectors: tuple["ForecastDetector", ...] = (),
     ):
         self.reader = reader
         self.detectors = detectors
@@ -200,6 +242,8 @@ class StateReporter:
         self.disk_threshold = disk_threshold
         self.memory_threshold = memory_threshold
         self.horizon_days = horizon_days
+        self.forecast_detectors = forecast_detectors
+        self._climate_advice: tuple[Advice, ...] = ()
         # shortcut: state is per process; persist it before adding durable notifications.
         self._lock = asyncio.Lock()
         self._cached: StateReport | None = None
@@ -210,7 +254,13 @@ class StateReporter:
     def _findings(
         self,
         window: AdvisorWindow,
-    ) -> tuple[list[Finding], dict[Category, Coverage], list[MaintenanceEstimate]]:
+    ) -> tuple[
+        list[Finding],
+        dict[Category, Coverage],
+        list[MaintenanceEstimate],
+        dict[str, ModelAvailability],
+        list[ClimateForecast],
+    ]:
         estimates, maintenance_findings = assess(
             list(window.history),
             window.stop,
@@ -218,7 +268,30 @@ class StateReporter:
             memory_threshold=self.memory_threshold,
             horizon_days=self.horizon_days,
         )
-        window = replace(window, maintenance_findings=tuple(maintenance_findings))
+        model_items: dict[Category, list[Advice]] = {"device": [], "host": [], "climate": []}
+        models = {
+            name: ModelAvailability(status="disabled")
+            for name in ("health", "climate", "resources")
+        }
+        frames: list[ClimateForecast] = []
+        for consumer in self.forecast_detectors:
+            model_items[consumer.category].extend(consumer.detect(window))
+            models[consumer.name] = consumer.availability
+            frames.extend(
+                ClimateForecast.model_validate(
+                    {name: frame[name] for name in ClimateForecast.model_fields}
+                )
+                for frame in consumer.frames
+            )
+        window = replace(
+            window,
+            maintenance_findings=tuple(maintenance_findings),
+            forecast_advice=tuple(
+                item
+                for item in (*self._climate_advice, *model_items["climate"])
+                if window.start <= item.start < item.observed_at <= window.stop
+            ),
+        )
         coverage: dict[Category, Coverage] = dict.fromkeys(
             ("device", "pipeline", "climate", "host", "maintenance"), "deferred"
         )
@@ -234,8 +307,14 @@ class StateReporter:
             ),
         }
         latest: dict[str, Finding] = {}
+        climate_advice = []
         for detector in self.detectors:
             items = detector.detect(window)
+            if detector.category == "climate":
+                # The climate rule applies the shared room cooldown to forecast advice as well.
+                climate_advice = [item for item in items if item.detector == "model:ttm-climate@1"]
+            else:
+                items.extend(model_items.get(detector.category, []))
             coverage[detector.category] = (
                 "available" if items or available.get(detector.category, False) else "no-data"
             )
@@ -278,10 +357,13 @@ class StateReporter:
                 before = latest.get(finding.id)
                 if before is None or finding.last_seen > before.last_seen:
                     latest[finding.id] = finding
+        self._climate_advice = tuple(climate_advice)
         return (
             list(latest.values()),
             coverage,
             [MaintenanceEstimate.model_validate(item) for item in estimates],
+            models,
+            frames,
         )
 
     def _inputs(self, window: AdvisorWindow, estimates: list[MaintenanceEstimate]) -> dict:
@@ -341,7 +423,9 @@ class StateReporter:
                     window = replace(
                         window, outdoor_weather=(observation,) if observation is not None else ()
                     )
-                findings, coverage, estimates = await asyncio.to_thread(self._findings, window)
+                findings, coverage, estimates, models, frames = await asyncio.to_thread(
+                    self._findings, window
+                )
                 inputs = self._inputs(window, estimates)
             except (httpx.HTTPError, ValueError, KeyError, TypeError) as error:
                 self._retry_after = monotonic() + min(60, self.refresh_seconds)
@@ -359,6 +443,9 @@ class StateReporter:
                     if count < 2:
                         current[identity], missing[identity] = item, count
             partial = any(value != "available" for value in (*coverage.values(), *inputs.values()))
+            partial = partial or any(
+                item.status not in {"disabled", "available"} for item in models.values()
+            )
             overall: Overall = (
                 "critical"
                 if any(item.severity == "critical" for item in current.values())
@@ -378,6 +465,8 @@ class StateReporter:
                 findings=sorted(current.values(), key=lambda item: item.id),
                 maintenance_estimates=estimates,
                 inputs=inputs,
+                models=models,
+                forecasts=frames,
             )
             self._cached, self._missing = report, missing
             self._expires = monotonic() + self.refresh_seconds
