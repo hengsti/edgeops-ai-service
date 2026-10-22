@@ -22,6 +22,8 @@ from edgeops_ai.advisor import (
     pipeline_findings,
 )
 from edgeops_ai.climate import climate_findings
+from edgeops_ai.maintenance import MaintenanceDay, assess
+from edgeops_ai.resources import STEP, ResourceSample, resource_findings
 from edgeops_ai.schemas import StrictModel
 from edgeops_ai.weather import WeatherClient, WeatherObservation
 
@@ -55,6 +57,32 @@ class Finding(StrictModel):
     detector: str = Field(min_length=1)
 
 
+class MaintenanceEstimate(StrictModel):
+    metric: Literal["disk_used_percent", "free_mem_bytes"]
+    entity_id: str
+    unit: str
+    as_of: AwareDatetime
+    start: AwareDatetime | None
+    stop: AwareDatetime | None
+    observed_days: int = Field(ge=0, le=30)
+    threshold: FiniteFloat
+    current: FiniteFloat | None
+    status: Literal[
+        "insufficient-history",
+        "stale",
+        "threshold-reached",
+        "not-approaching",
+        "forecast",
+        "uncertain-trend",
+    ]
+    slope_per_day: FiniteFloat | None
+    slope_95_percent_interval: tuple[FiniteFloat | None, FiniteFloat | None]
+    eta_days: FiniteFloat | None
+    eta_range_days: tuple[FiniteFloat | None, FiniteFloat | None]
+    advice_due: bool
+    recommendation: str
+
+
 class StateReport(StrictModel):
     schema_version: Literal["1.0"] = "1.0"
     generated_at: AwareDatetime
@@ -64,6 +92,10 @@ class StateReport(StrictModel):
     overall: Overall
     coverage: dict[Category, Coverage]
     findings: list[Finding]
+    maintenance_estimates: list[MaintenanceEstimate] = Field(default_factory=list)
+    inputs: dict[
+        str, Literal["available", "no-data", "stale", "insufficient-history", "unsupported"]
+    ] = Field(default_factory=dict)
 
 
 @dataclass(frozen=True)
@@ -73,6 +105,10 @@ class AdvisorWindow:
     devices: list[DeviceSample]
     pipeline: list[PipelineSample]
     outdoor_weather: tuple[WeatherObservation, ...] = ()
+    resources: tuple[ResourceSample, ...] = ()
+    history: tuple[MaintenanceDay, ...] = ()
+    history_start: datetime | None = None
+    maintenance_findings: tuple[Advice, ...] = ()
 
 
 class InfluxReader(Protocol):
@@ -90,7 +126,10 @@ class DeviceHealthDetector:
     category: Category = "device"
 
     def detect(self, window: AdvisorWindow) -> list[Advice]:
-        return device_findings(window.devices, window.start, window.stop)
+        return [
+            *device_findings(window.devices, window.start, window.stop),
+            *(item for item in window.maintenance_findings if item.code.startswith("device.")),
+        ]
 
 
 class ClimateDetector:
@@ -117,10 +156,28 @@ class PipelineHealthDetector:
         ]
 
 
+class ResourceDetector:
+    category: Category = "host"
+
+    def detect(self, window: AdvisorWindow) -> list[Advice]:
+        return resource_findings(list(window.resources), window.stop)
+
+
+class MaintenanceDetector:
+    category: Category = "maintenance"
+
+    def detect(self, window: AdvisorWindow) -> list[Advice]:
+        return [
+            item for item in window.maintenance_findings if item.code.startswith("maintenance.")
+        ]
+
+
 DEFAULT_DETECTORS: tuple[Detector, ...] = (
     DeviceHealthDetector(),
     PipelineHealthDetector(),
     ClimateDetector(),
+    ResourceDetector(),
+    MaintenanceDetector(),
 )
 
 
@@ -132,11 +189,17 @@ class StateReporter:
         *,
         refresh_seconds: float = 300,
         weather_client: WeatherClient | None = None,
+        disk_threshold: float = 90,
+        memory_threshold: float = 65536,
+        horizon_days: float = 30,
     ):
         self.reader = reader
         self.detectors = detectors
         self.refresh_seconds = refresh_seconds
         self.weather_client = weather_client
+        self.disk_threshold = disk_threshold
+        self.memory_threshold = memory_threshold
+        self.horizon_days = horizon_days
         # shortcut: state is per process; persist it before adding durable notifications.
         self._lock = asyncio.Lock()
         self._cached: StateReport | None = None
@@ -144,7 +207,18 @@ class StateReporter:
         self._retry_after = 0.0
         self._missing: dict[str, int] = {}
 
-    def _findings(self, window: AdvisorWindow) -> tuple[list[Finding], dict[Category, Coverage]]:
+    def _findings(
+        self,
+        window: AdvisorWindow,
+    ) -> tuple[list[Finding], dict[Category, Coverage], list[MaintenanceEstimate]]:
+        estimates, maintenance_findings = assess(
+            list(window.history),
+            window.stop,
+            disk_threshold=self.disk_threshold,
+            memory_threshold=self.memory_threshold,
+            horizon_days=self.horizon_days,
+        )
+        window = replace(window, maintenance_findings=tuple(maintenance_findings))
         coverage: dict[Category, Coverage] = dict.fromkeys(
             ("device", "pipeline", "climate", "host", "maintenance"), "deferred"
         )
@@ -153,6 +227,10 @@ class StateReporter:
             "pipeline": bool(window.pipeline),
             "climate": any(
                 "humidity_mean" in row.values or "iaq_mean" in row.values for row in window.devices
+            ),
+            "host": any(window.stop - row.at <= 3 * STEP for row in window.resources),
+            "maintenance": any(
+                item["status"] not in {"stale", "insufficient-history"} for item in estimates
             ),
         }
         latest: dict[str, Finding] = {}
@@ -164,7 +242,10 @@ class StateReporter:
             for item in items:
                 for at in (item.start, item.stop, item.observed_at):
                     check_time(at)
-                if not window.start <= item.start < item.stop <= item.observed_at <= window.stop:
+                if not (
+                    (window.history_start or window.start) <= item.start < item.stop <= window.stop
+                    and item.start <= item.observed_at <= window.stop
+                ):
                     raise ValueError("Finding evidence is outside the Advisor observation window")
                 if item.code.partition(".")[0] != detector.category:
                     raise ValueError("Finding category does not match its detector")
@@ -188,7 +269,8 @@ class StateReporter:
                         for name, value in item.evidence.items()
                     ],
                     first_seen=item.observed_at,
-                    last_seen=item.observed_at,
+                    # Silence rules first detect a gap before its full observation interval ends.
+                    last_seen=max(item.observed_at, item.stop),
                     window_start=item.start,
                     window_stop=item.stop,
                     detector=item.detector,
@@ -196,7 +278,50 @@ class StateReporter:
                 before = latest.get(finding.id)
                 if before is None or finding.last_seen > before.last_seen:
                     latest[finding.id] = finding
-        return list(latest.values()), coverage
+        return (
+            list(latest.values()),
+            coverage,
+            [MaintenanceEstimate.model_validate(item) for item in estimates],
+        )
+
+    def _inputs(self, window: AdvisorWindow, estimates: list[MaintenanceEstimate]) -> dict:
+        inputs = {}
+        for name, measurement, metric in (
+            ("host-cpu", "cpu", "usage_active_mean"),
+            ("host-memory", "mem", "used_percent_mean"),
+            ("root-disk", "disk", "used_percent_mean"),
+            ("container-cpu", "docker_container_cpu", "usage_percent_mean"),
+            ("container-memory", "docker_container_mem", "usage_percent_mean"),
+            ("container-health", "docker_container_health", "health_status_last"),
+        ):
+            rows = [
+                row
+                for row in window.resources
+                if row.measurement == measurement and row.metric == metric
+            ]
+            fresh = [row for row in rows if window.stop - row.at <= 3 * STEP]
+            inputs[name] = "available" if fresh else "stale" if rows else "no-data"
+            if (
+                name == "container-health"
+                and fresh
+                and not any(row.value in {"healthy", "unhealthy"} for row in fresh)
+            ):
+                inputs[name] = "unsupported"
+        for name, metric in (
+            ("root-disk-eta", "disk_used_percent"),
+            ("device-memory-eta", "free_mem_bytes"),
+        ):
+            items = [item for item in estimates if item.metric == metric]
+            inputs[name] = (
+                "no-data"
+                if not items
+                else "stale"
+                if all(item.status == "stale" for item in items)
+                else "insufficient-history"
+                if any(item.status in {"insufficient-history", "stale"} for item in items)
+                else "available"
+            )
+        return inputs
 
     async def report(self) -> StateReport:
         async with self._lock:
@@ -206,7 +331,6 @@ class StateReporter:
                 raise ValueError("Advisor refresh is temporarily unavailable")
             now = datetime.now(UTC)
             stop = now.replace(second=0, microsecond=0) - MINUTE
-            # shortcut: one day of live history; #31 adds bounded multi-day/resource inputs.
             start = stop - DAY
             try:
                 window = await self.reader.read(start, stop)
@@ -217,7 +341,8 @@ class StateReporter:
                     window = replace(
                         window, outdoor_weather=(observation,) if observation is not None else ()
                     )
-                findings, coverage = await asyncio.to_thread(self._findings, window)
+                findings, coverage, estimates = await asyncio.to_thread(self._findings, window)
+                inputs = self._inputs(window, estimates)
             except (httpx.HTTPError, ValueError, KeyError, TypeError) as error:
                 self._retry_after = monotonic() + min(60, self.refresh_seconds)
                 logger.warning("Advisor report refresh failed (%s)", type(error).__name__)
@@ -233,7 +358,7 @@ class StateReporter:
                     count = self._missing.get(identity, 0) + 1
                     if count < 2:
                         current[identity], missing[identity] = item, count
-            partial = any(value != "available" for value in coverage.values())
+            partial = any(value != "available" for value in (*coverage.values(), *inputs.values()))
             overall: Overall = (
                 "critical"
                 if any(item.severity == "critical" for item in current.values())
@@ -246,11 +371,13 @@ class StateReporter:
             report = StateReport(
                 generated_at=datetime.now(UTC),
                 observed_at=stop,
-                window_start=start,
+                window_start=window.history_start or start,
                 status="partial" if partial else "complete",
                 overall=overall,
                 coverage=coverage,
                 findings=sorted(current.values(), key=lambda item: item.id),
+                maintenance_estimates=estimates,
+                inputs=inputs,
             )
             self._cached, self._missing = report, missing
             self._expires = monotonic() + self.refresh_seconds
