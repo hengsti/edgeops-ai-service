@@ -26,6 +26,9 @@ class Settings(BaseSettings):
     advisor_influx_org: str = Field(default="smarthome", min_length=1)
     advisor_influx_token: SecretStr | None = None
     advisor_refresh_seconds: float = Field(default=300, ge=60, le=3600)
+    advisor_disk_threshold: float = Field(default=90, ge=0, le=100, allow_inf_nan=False)
+    advisor_memory_threshold: float = Field(default=65536, ge=0, allow_inf_nan=False)
+    advisor_maintenance_horizon_days: float = Field(default=30, gt=0, allow_inf_nan=False)
     advisor_weather_postcode: str = Field(default="", pattern=r"^$|^[^,\s]+,[A-Z]{2}$")
     advisor_weather_api_key: SecretStr | None = None
 
