@@ -49,11 +49,7 @@ def create_app(
             if runtime_settings.advisor_forecast_config is not None:
                 from edgeops_ai.forecast_runtime import load_consumers
 
-                assert runtime_settings.advisor_forecast_config_sha256 is not None
-                forecast_detectors = load_consumers(
-                    runtime_settings.advisor_forecast_config,
-                    runtime_settings.advisor_forecast_config_sha256,
-                )
+                forecast_detectors = load_consumers(runtime_settings.advisor_forecast_config)
             reader = advisor_reader
             if reader is None and runtime_settings.advisor_influx_url is not None:
                 from edgeops_ai.influx_reader import HttpInfluxReader
