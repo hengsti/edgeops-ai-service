@@ -31,6 +31,7 @@ class Settings(BaseSettings):
     advisor_maintenance_horizon_days: float = Field(default=30, gt=0, allow_inf_nan=False)
     advisor_weather_postcode: str = Field(default="", pattern=r"^$|^[^,\s]+,[A-Z]{2}$")
     advisor_weather_api_key: SecretStr | None = None
+    advisor_forecast_config: Path | None = None
 
     @model_validator(mode="after")
     def validate_advisor(self) -> Self:
