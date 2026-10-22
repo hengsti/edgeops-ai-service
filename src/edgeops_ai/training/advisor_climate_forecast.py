@@ -8,7 +8,8 @@ from typing import Any
 
 import numpy as np
 
-from edgeops_ai.advisor import MINUTE, Advice
+from edgeops_ai.advisor import Advice
+from edgeops_ai.forecast_advice import climate_projection
 from edgeops_ai.forecasting import ForecastModel
 from edgeops_ai.training.advisor_forecast import load_candidate
 from edgeops_ai.training.advisor_labels import file_hash
@@ -87,48 +88,13 @@ def score_windows(
             prediction = model.predict(window["past"][0], window["times"])[0, :61]
             if np.any((prediction[:, 1] < 0) | (prediction[:, 1] > 100)):
                 raise ValueError("Forecast humidity must be between 0 and 100 percent")
-            origin = window["times"][-1] + MINUTE
             targets = window["target_times"][:61]
-            frame = {
-                "device_id": window["entity_id"],
-                "room": window["room"],
-                "split": split,
-                "model_version": model.manifest["model_version"],
-                "context_start": window["times"][0].isoformat(),
-                "context_stop": origin.isoformat(),
-                "forecast_origin": origin.isoformat(),
-                "last_input": window["times"][-1].isoformat(),
-                "target_times": [at.isoformat() for at in targets],
-                "temperature_c": prediction[:, 0].tolist(),
-                "humidity_percent": prediction[:, 1].tolist(),
-            }
+            frame, advice = climate_projection(
+                {**window, "split": split}, prediction, model.manifest["model_version"]
+            )
             forecasts.append(frame)
-            lead = crossing(prediction[:, 1], current)
-            if lead is not None and lead > 0:
-                findings.append(
-                    Advice(
-                        "climate.humidity-forecast",
-                        window["room"],
-                        window["times"][0],
-                        origin,
-                        origin,
-                        f"{window['room']}: humidity is forecast to exceed 60% "
-                        f"in about {lead} minutes.",
-                        f"Check humidity in {window['room']}; ventilate if outdoor air is drier, "
-                        "or use a dehumidifier.",
-                        {
-                            "device_id": window["entity_id"],
-                            "threshold_percent": 60,
-                            "minutes_to_crossing": lead,
-                            "crossing_at": targets[lead].isoformat(),
-                            "forecast_humidity_percent": float(prediction[lead, 1]),
-                            "current_humidity_percent": current,
-                            "model_version": model.manifest["model_version"],
-                            "forecast_origin": origin.isoformat(),
-                        },
-                        detector="model:ttm-climate@1",
-                    )
-                )
+            if advice is not None:
+                findings.append(advice)
             if split not in compared:
                 continue
             keys = [

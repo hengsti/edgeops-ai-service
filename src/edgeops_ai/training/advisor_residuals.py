@@ -5,14 +5,13 @@ from __future__ import annotations
 import hashlib
 import json
 from collections import defaultdict
-from datetime import datetime, timedelta
-from itertools import groupby
 from pathlib import Path
 from typing import Any
 
 import numpy as np
 
 from edgeops_ai.advisor import Advice
+from edgeops_ai.forecast_advice import residual_advice
 from edgeops_ai.forecasting import ATOL, ForecastModel
 from edgeops_ai.training.advisor_forecast import load_candidate
 from edgeops_ai.training.advisor_labels import file_hash
@@ -86,48 +85,7 @@ def score_windows(
     calibration_hash = hashlib.sha256(
         json.dumps(metadata["devices"], sort_keys=True, allow_nan=False).encode()
     ).hexdigest()
-    findings = []
-    minute = timedelta(minutes=1)
-
-    # Grouping and adjacency restart persistence at split, room and missing-data boundaries.
-    def key(row):
-        return row["entity_id"], row["room"], row["split"], row["channel"]
-
-    for (device, room, _, channel), series in groupby(sorted(scores, key=key), key=key):
-        run: list[dict[str, Any]] = []
-        for row in [*series, None]:
-            if run and (
-                row is None
-                or row["score"] <= 1
-                or row["time"] != (run[-1]["at"] + minute).isoformat()
-            ):
-                if len(run) >= SUSTAINED_MINUTES:
-                    begin, end = run[0]["at"], run[-1]["at"] + minute
-                    findings.append(
-                        Advice(
-                            f"device.forecast-residual.{channel}",
-                            device,
-                            begin,
-                            end,
-                            end,
-                            f"{device}: {channel} differed from its forecast "
-                            f"for {len(run)} minutes.",
-                            "Inspect the channel history, sensor and room conditions; "
-                            "the residual score does not identify a cause.",
-                            {
-                                "room": room,
-                                "channel": channel,
-                                "maximum_residual_score": max(r["score"] for r in run),
-                                "sustained_minutes": len(run),
-                                "model_version": model.manifest["model_version"],
-                                "calibration_sha256": calibration_hash,
-                            },
-                            detector="model:ttm-residual@1",
-                        )
-                    )
-                run = []
-            if row is not None and row["score"] > 1:
-                run.append({**row, "at": datetime.fromisoformat(row["time"])})
+    findings = residual_advice(scores, model.manifest["model_version"], calibration_hash)
     return findings, scores, metadata
 
 

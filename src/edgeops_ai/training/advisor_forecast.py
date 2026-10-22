@@ -24,8 +24,9 @@ from edgeops_ai.forecasting import (
     PROFILES,
     RTOL,
     ForecastModel,
+    build_windows,
     forecast_contract,
-    prepare_input,
+    load_artifact,
     validate_contract,
 )
 from edgeops_ai.training.advisor_dataset import SCHEMA, timestamp
@@ -111,59 +112,9 @@ def load_windows(
             ):
                 raise ValueError("Duplicate aggregate or value outside the finite float32 range")
             point[name] = value
-    windows: dict[str, list] = {key: [] for key in ("train", "validation", "test")}
-    context = contract["context_length"]
-    horizon = 1 if one_step else contract["prediction_length"]
-    segment: list = []
-    previous = None
-    for (entity, at), point in sorted(points.items()):
-        split = split_at(at, train_stop, val_stop)
-        valid = all(isinstance(point.get(c), (float, int)) for c in channels)
-        if one_step and kind == "host":
-            valid = valid and all(0 <= point[c] <= 100 for c in channels)
-        if kind == "device":
-            valid = (
-                valid
-                and point.get("warmed_up_last") == "true"
-                and point.get("time_valid_last") != "false"
-                and bool(point["room"])
-            )
-        identity = (entity, point["room"], split)
-        reset = (
-            (boundaries is not None and (entity, at) in boundaries)
-            or point.get("uptime_resets", 0)
-            or (
-                previous is not None
-                and point.get("uptime_last", math.inf) < previous[2].get("uptime_last", -math.inf)
-            )
-        )
-        if (
-            not valid
-            or previous is None
-            or previous[0] != identity
-            or (at - previous[1]).total_seconds() != contract["cadence_minutes"] * 60
-            or reset
-        ):
-            segment = []
-        previous = identity, at, point
-        if not valid:
-            continue
-        segment.append((at, [point[c] for c in channels]))
-        if len(segment) >= context + horizon and (len(segment) - context - horizon) % horizon == 0:
-            selected = segment[-context - horizon :]
-            times = [t for t, _ in selected[:context]]
-            windows[split].append(
-                {
-                    "entity_id": entity,
-                    "room": point["room"],
-                    "times": times,
-                    "target_times": [t for t, _ in selected[context:]],
-                    "past": prepare_input([v for _, v in selected[:context]], times, contract),
-                    "future": np.asarray([v for _, v in selected[context:]], dtype=np.float32)[
-                        None, ...
-                    ],
-                }
-            )
+    windows = build_windows(
+        points, contract, cuts=(train_stop, val_stop), one_step=one_step, boundaries=boundaries
+    )
     if any(file_hash(path) != hashes[name] for name, path in paths.items()):
         raise ValueError("Advisor source changed while building windows")
     if not one_step and any(not windows[split] for split in windows):
@@ -183,29 +134,13 @@ def load_candidate(
     one_step: bool = False,
     boundaries: set[tuple[str, datetime]] | None = None,
 ) -> tuple[ForecastModel, dict[str, list], dict[str, str]]:
-    paths = {
-        name: candidate / name
-        for name in ("model.onnx", "model.onnx.sha256", "manifest.json", "validation-report.json")
-    }
-    hashes = {name: file_hash(path) for name, path in paths.items()}
-    digest = paths["model.onnx.sha256"].read_text(encoding="ascii").strip()
-    model = ForecastModel(paths["model.onnx"], digest)
-    manifest = read_report(paths["manifest.json"])
-    validation = read_report(paths["validation-report.json"])
-    if manifest != {**model.manifest, "sha256": digest} or (
-        validation.get("schema_version") != "advisor-validation-1"
-        or validation.get("passed") is not True
-        or validation.get("model_version") != model.manifest["model_version"]
-        or validation.get("sources") != model.manifest["dataset"]
-        or validation.get("tolerances") != {"atol": ATOL, "rtol": RTOL}
-    ):
-        raise ValueError("Expected a compatible validated #26 candidate and parity report")
+    model, hashes = load_artifact(candidate)
     windows, sources = load_windows(
         input_dir, model.contract, one_step=one_step, boundaries=boundaries
     )
     if sources != model.manifest["dataset"]:
         raise ValueError("Forecast dataset must match the candidate's chronological dataset")
-    if any(file_hash(path) != hashes[name] for name, path in paths.items()):
+    if any(file_hash(candidate / name) != digest for name, digest in hashes.items()):
         raise ValueError("Forecast candidate changed while loading")
     return model, windows, hashes
 

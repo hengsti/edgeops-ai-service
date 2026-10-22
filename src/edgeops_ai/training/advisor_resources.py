@@ -17,7 +17,7 @@ import pyarrow as pa
 import pyarrow.compute as pc
 import pyarrow.parquet as pq
 
-from edgeops_ai.advisor import Advice
+from edgeops_ai.forecast_advice import apply_container_context, classify, findings_for
 from edgeops_ai.forecasting import ATOL
 from edgeops_ai.training.advisor_dataset import SCHEMA, load_manual_labels, timestamp
 from edgeops_ai.training.advisor_forecast import load_candidate
@@ -109,143 +109,8 @@ def load_context(input_dir: Path, card: dict) -> tuple[dict, dict[str, str]]:
                     )
                 )
                 point.setdefault("versions", set()).add(version)
-    previous: dict[str, dict] = {}
-    for (entity, at), point in sorted(containers.items()):
-        host = entity.split("/", 1)[0]
-        context = points[host, at]
-        before = previous.get(entity)
-        boundary = bool(point.get("conflict") or len(point["versions"]) > 1)
-        if before:
-            boundary = boundary or point["versions"] != before["versions"]
-            for field in ("container_id_last", "started_at_last", "restart_count_last"):
-                if field in point and field in before and point[field] != before[field]:
-                    boundary = True
-            uptime, prior_uptime = point.get("uptime_ns_last"), before.get("uptime_ns_last")
-            if (
-                isinstance(uptime, (int, float))
-                and isinstance(prior_uptime, (int, float))
-                and 0 <= uptime < prior_uptime
-            ):
-                boundary = True
-        previous[entity] = point
-        if boundary:
-            context["container_boundary"] = True
-            continue
-        status = point.get("health_status_last")
-        if status in {"healthy", "unhealthy"}:
-            context.setdefault("health_observed", []).append(entity)
-        if status == "unhealthy" or point.get("oomkilled_last") in {"true", 1.0}:
-            context.setdefault("affected_services", []).append(entity)
+    apply_container_context(points, containers)
     return dict(points), hashes
-
-
-def classify(row: dict, method: str, threshold: float) -> str:
-    cpu = row.get("cpu_percent")
-    if cpu is None or not isinstance(cpu, (int, float)) or not 0 <= cpu <= 100:
-        return "insufficient-evidence"
-    score = row.get(f"{method}_score")
-    busy = cpu >= threshold or (score is not None and score > 1)
-    if busy and row["affected_services"] and not row["container_boundary"]:
-        return "resource-pressure"
-    if busy:
-        return "unusual-activity"
-    return (
-        "expected-workload" if score is not None or method == "rules" else "insufficient-evidence"
-    )
-
-
-def findings_for(rows: list[dict], method: str, threshold: float, minutes: int) -> list[Advice]:
-    findings: list[Advice] = []
-    run: list[dict] = []
-
-    def finish():
-        if len(run) * 5 < minutes:
-            return
-        first, last = run[0], run[-1]
-        pressure = first["state"] == "resource-pressure"
-        expected = (
-            first.get("last_value_cpu_percent")
-            if method == "last_value"
-            else first["expected_cpu_percent"]
-            if method == "ttm"
-            else None
-        )
-        affected = sorted(
-            {service for item in run for service in item["affected_services"].split(",") if service}
-        )
-        condition = (
-            "resource pressure with observed service impact" if pressure else "unusual CPU activity"
-        )
-        evidence = {
-            "metric": "usage_active_mean",
-            "cpu_percent": first["cpu_percent"],
-            "maximum_cpu_percent": max(r["cpu_percent"] for r in run),
-            "memory_percent": first["memory_percent"]
-            if first["memory_percent"] is not None
-            else "unavailable",
-            "expected_cpu_percent": expected if expected is not None else "unavailable",
-            "deviation_score": first.get(f"{method}_score")
-            if first.get(f"{method}_score") is not None
-            else "unavailable",
-            "maximum_deviation_score": max(
-                (r[f"{method}_score"] for r in run if r.get(f"{method}_score") is not None),
-                default="unavailable",
-            ),
-            "first_detected_at": (
-                timestamp(first["time"]) + timedelta(minutes=minutes)
-            ).isoformat(),
-            "expectation_origin": first["expectation_origin"] or "unavailable",
-            "expectation_target": first["time"],
-            "expectation_lead_minutes": 5,
-            "context_start": first["context_start"] or "unavailable",
-            "affected_services": ",".join(affected),
-            "cause": "unknown",
-            "activity": first["activity"],
-            "sustained_minutes": len(run) * 5,
-            "cpu_threshold_percent": threshold,
-            "required_minutes": minutes,
-            "model_version": first["model_version"],
-            "model_sha256": first["model_sha256"],
-            "calibration_sha256": first["calibration_sha256"],
-        }
-        findings.append(
-            Advice(
-                "host.resource-pressure" if pressure else "host.unusual-workload",
-                first["entity_id"],
-                timestamp(first["time"]),
-                timestamp(last["time"]) + STEP,
-                timestamp(last["time"]) + STEP,
-                f"{first['entity_id']}: {condition} for {len(run) * 5} minutes.",
-                "Inspect affected services and workload; check memory and recent changes."
-                if pressure
-                else "Monitor the workload; CPU activity alone does not establish a fault.",
-                evidence,
-                severity="warning" if pressure else "info",
-                detector=f"model:{method}-workload@1"
-                if method != "rules" and first.get(f"{method}_score") is not None
-                else "rule:host-workload@1",
-            )
-        )
-
-    previous = None
-    for source in rows:
-        row = {**source, "state": classify(source, method, threshold)}
-        key = row["entity_id"], row["split"], row["state"], row["activity"]
-        at = timestamp(row["time"])
-        if (
-            previous is None
-            or key != previous[0]
-            or at - previous[1] != STEP
-            or row["container_boundary"]
-            or row["host_boundary"]
-        ):
-            finish()
-            run = []
-        if row["state"] in {"unusual-activity", "resource-pressure"} and not row["host_boundary"]:
-            run.append(row)
-        previous = key, at
-    finish()
-    return findings
 
 
 def review_findings(findings, metadata, labels, cuts, reviews_path, minutes):
