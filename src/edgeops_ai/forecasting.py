@@ -2,6 +2,7 @@
 
 import hashlib
 import json
+from bisect import bisect_right
 from collections.abc import Sequence
 from datetime import datetime, timedelta
 from itertools import pairwise
@@ -86,6 +87,127 @@ def prepare_input(values: Any, times: Sequence[datetime], contract: dict[str, An
     ):
         raise ValueError("Expected regular completed UTC aggregate timestamps")
     return matrix[np.newaxis, ...]
+
+
+def load_artifact(candidate: Path, expected_sha256: str | None = None) -> tuple[Any, dict]:
+    """Validate the same artifact/manifest/parity evidence offline and at runtime."""
+    names = ("model.onnx", "model.onnx.sha256", "manifest.json", "validation-report.json")
+    content = {name: (candidate / name).read_bytes() for name in names}
+    hashes = {name: hashlib.sha256(value).hexdigest() for name, value in content.items()}
+    digest = content["model.onnx.sha256"].decode("ascii").strip()
+    if expected_sha256 is not None and digest != expected_sha256:
+        raise ValueError("Advisor artifact does not match the pinned model")
+    model = ForecastModel(candidate / "model.onnx", digest)
+    manifest = json.loads(content["manifest.json"])
+    validation = json.loads(content["validation-report.json"])
+    if manifest != {**model.manifest, "sha256": digest} or (
+        validation.get("schema_version") != "advisor-validation-1"
+        or validation.get("passed") is not True
+        or validation.get("model_version") != model.manifest["model_version"]
+        or validation.get("sources") != model.manifest["dataset"]
+        or validation.get("tolerances") != {"atol": ATOL, "rtol": RTOL}
+    ):
+        raise ValueError("Expected a compatible validated #26 candidate and parity report")
+    if any(
+        hashlib.sha256((candidate / name).read_bytes()).hexdigest() != value
+        for name, value in hashes.items()
+    ):
+        raise ValueError("Forecast candidate changed while loading")
+    return model, hashes
+
+
+def build_windows(
+    points: dict,
+    contract: dict,
+    *,
+    cuts: tuple = (),
+    one_step: bool = False,
+    boundaries: set | None = None,
+    partial: bool = False,
+    context_only: bool = False,
+) -> dict[str, list]:
+    """Keep offline and runtime segmentation, cadence and target alignment identical."""
+    validate_contract(contract)
+    kind, channels = contract["entity_type"], contract["channels"]
+    context = contract["context_length"]
+    horizon = 1 if one_step else contract["prediction_length"]
+    windows: dict[str, list] = {
+        key: [] for key in (("train", "validation", "test") if cuts else ("runtime",))
+    }
+    segment: list = []
+    previous = None
+
+    def emit(count: int) -> None:
+        selected = segment[-context - count :]
+        times = [at for at, _ in selected[:context]]
+        windows[identity[2]].append(
+            {
+                "entity_id": identity[0],
+                "room": identity[1],
+                "split": identity[2],
+                "times": times,
+                "target_times": [at for at, _ in selected[context:]],
+                "past": prepare_input([v for _, v in selected[:context]], times, contract),
+                "future": np.asarray([v for _, v in selected[context:]], dtype=np.float32)[
+                    None, ...
+                ],
+            }
+        )
+
+    def finish() -> None:
+        if context_only and len(segment) >= context:
+            emit(0)
+            return
+        remainder = (len(segment) - context) % horizon
+        if partial and len(segment) > context and remainder:
+            emit(remainder)
+
+    identity = ("", "", "runtime")
+    for (entity, at), point in sorted(points.items()):
+        split = ("train", "validation", "test")[bisect_right(cuts, at)] if cuts else "runtime"
+        valid = all(type(point.get(c)) in (float, int) and np.isfinite(point[c]) for c in channels)
+        if one_step and kind == "host":
+            valid = valid and all(0 <= point[c] <= 100 for c in channels)
+        if kind == "device":
+            valid = (
+                valid
+                and point.get("warmed_up_last") == "true"
+                and point.get("time_valid_last") != "false"
+                and bool(point["room"])
+            )
+        next_identity = entity, point["room"], split
+        reset = (
+            bool(boundaries and (entity, at) in boundaries)
+            or point.get("uptime_resets", 0)
+            or (
+                previous is not None
+                and point.get("uptime_last", float("inf"))
+                < previous[2].get("uptime_last", -float("inf"))
+            )
+        )
+        if (
+            not valid
+            or previous is None
+            or previous[0] != next_identity
+            or (at - previous[1]).total_seconds() != contract["cadence_minutes"] * 60
+            or point.get("source_identity") != previous[2].get("source_identity")
+            or reset
+        ):
+            finish()
+            segment = []
+        identity = next_identity
+        previous = identity, at, point
+        if not valid:
+            continue
+        segment.append((at, [point[c] for c in channels]))
+        if (
+            not context_only
+            and len(segment) >= context + horizon
+            and (len(segment) - context - horizon) % horizon == 0
+        ):
+            emit(horizon)
+    finish()
+    return windows
 
 
 class ForecastModel:
