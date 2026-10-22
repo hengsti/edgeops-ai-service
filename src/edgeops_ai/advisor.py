@@ -96,6 +96,30 @@ def _gaps(times: list[datetime], stop: datetime) -> list[tuple[datetime, datetim
     ]
 
 
+def memory_decline(
+    device: str,
+    history: list[tuple[datetime, float]],
+    begin: datetime,
+    end: datetime,
+) -> Advice | None:
+    if len({day_start(day) for day, _ in history}) < 7:
+        return None
+    ages = [(day - history[0][0]) / DAY for day, _ in history]
+    slope, _ = linear_regression(ages, [value for _, value in history])
+    if slope > -256 or slope * ages[-1] > -4096:
+        return None
+    return Advice(
+        "device.memory-decline",
+        device,
+        begin,
+        end,
+        end,
+        f"{device}: minimum free memory declined; a firmware leak is suspected.",
+        "Investigate allocations and logs; the trend does not prove a leak.",
+        {"bytes_per_day": slope, "days": len(history), "fitted_decline_bytes": -slope * ages[-1]},
+    )
+
+
 def device_findings(
     samples: list[DeviceSample],
     start: datetime,
@@ -325,28 +349,10 @@ def device_findings(
                 for (b, d), v in memory.items()
                 if b == boot and day - 29 * DAY <= d <= day and len(v) >= 60
             )
-            if len({day_start(d) for d, _ in history}) < 7:
-                continue
-            ages = [(d - history[0][0]).total_seconds() / DAY.total_seconds() for d, _ in history]
-            slope, _ = linear_regression(ages, [v for _, v in history])
-            if slope <= -256 and slope * ages[-1] <= -4096:
-                begin, end = day_window(day, start, stop, split_boundaries)
-                findings.append(
-                    Advice(
-                        "device.memory-decline",
-                        device,
-                        begin,
-                        end,
-                        end,
-                        f"{device}: minimum free memory declined; a firmware leak is suspected.",
-                        "Investigate allocations and logs; the trend does not prove a leak.",
-                        {
-                            "bytes_per_day": slope,
-                            "days": len(history),
-                            "fitted_decline_bytes": -slope * ages[-1],
-                        },
-                    )
-                )
+            begin, end = day_window(day, start, stop, split_boundaries)
+            finding = memory_decline(device, history, begin, end)
+            if finding is not None:
+                findings.append(finding)
     return sorted(findings, key=lambda f: (f.observed_at, f.id))
 
 
