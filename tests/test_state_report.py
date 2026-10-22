@@ -208,8 +208,8 @@ def test_configured_reader_is_created_and_closed_with_application(monkeypatch):
     class ManagedReader(FixtureReader):
         closed = False
 
-        def __init__(self, url, org, token):
-            created.append((url, org, token))
+        def __init__(self, url, org, token, *, resource_history_hours=24):
+            created.append((url, org, token, resource_history_hours))
 
         async def close(self):
             self.closed = True
@@ -220,7 +220,7 @@ def test_configured_reader_is_created_and_closed_with_application(monkeypatch):
         assert client.get("/v1/state-report").status_code == 200
         reader = app.state.state_reporter.reader
     assert reader.closed
-    assert created == [("http://influx/", "smarthome", "secret")]
+    assert created == [("http://influx/", "smarthome", "secret", 24)]
 
 
 def test_empty_data_does_not_return_an_overall_ok():
