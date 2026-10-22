@@ -18,127 +18,13 @@ from typing import Any
 import pyarrow as pa
 import pyarrow.compute as pc
 import pyarrow.parquet as pq
-from scipy.stats import theilslopes
 
 from edgeops_ai.advisor import DAY, Advice, check_time, day_start
+from edgeops_ai.maintenance import POLICIES, forecast
 from edgeops_ai.training.advisor_dataset import SCHEMA, timestamp
 from edgeops_ai.training.advisor_health import load_devices, split_at
 from edgeops_ai.training.advisor_labels import file_hash
 from edgeops_ai.training.reports import read_report, write_report
-
-POLICIES = {
-    "battery_percent": (10, -1, "%", "Replace the battery before the estimated threshold."),
-    "disk_used_percent": (
-        90,
-        1,
-        "%",
-        "Review disk usage and remove unneeded build caches or expand storage.",
-    ),
-    "free_mem_bytes": (
-        65536,
-        -1,
-        "bytes",
-        "Inspect the device memory trend and firmware allocations.",
-    ),
-}
-
-
-def forecast(
-    points: list[tuple[datetime, float]],
-    metric: str,
-    as_of: datetime,
-    *,
-    threshold: float | None = None,
-    horizon_days: float = 30,
-) -> dict[str, Any]:
-    check_time(as_of)
-    default, direction, unit, _ = POLICIES[metric]
-    threshold = default if threshold is None else threshold
-    if (
-        not math.isfinite(horizon_days)
-        or horizon_days <= 0
-        or not math.isfinite(threshold)
-        or threshold < 0
-        or (unit == "%" and threshold > 100)
-    ):
-        raise ValueError("Invalid maintenance horizon or threshold")
-    seen = set()
-    for at, value in points:
-        check_time(at)
-        if at > as_of or at != day_start(at) or at in seen:
-            raise ValueError("Expected unique completed UTC daily observations before the forecast")
-        if not math.isfinite(value) or value < 0 or (unit == "%" and value > 100):
-            raise ValueError("Invalid maintenance value")
-        seen.add(at)
-    history: list[tuple[datetime, float]] = []
-    for at, value in sorted(points):
-        if history:
-            previous = median(v for _, v in history[-3:])
-            if (
-                at - history[-1][0] != DAY
-                or (metric == "battery_percent" and value - previous >= 10)
-                or (metric == "disk_used_percent" and previous - value >= 5)
-            ):
-                history.clear()
-        history.append((at, value))
-        history = history[-30:]
-    result: dict[str, Any] = {
-        "metric": metric,
-        "unit": unit,
-        "as_of": as_of.isoformat(),
-        "start": (history[0][0] - DAY).isoformat() if history else None,
-        "stop": history[-1][0].isoformat() if history else None,
-        "observed_days": len(history),
-        "threshold": threshold,
-        "current": history[-1][1] if history else None,
-        "status": "insufficient-history",
-        "slope_per_day": None,
-        "slope_95_percent_interval": [None, None],
-        "eta_days": None,
-        "eta_range_days": [None, None],
-        "advice_due": False,
-    }
-    if not history:
-        return result
-    if as_of - history[-1][0] >= DAY:
-        result["status"] = "stale"
-        return result
-    distance = direction * (threshold - history[-1][1])
-    if distance <= 0:
-        result.update(
-            status="threshold-reached", eta_days=0, eta_range_days=[0, 0], advice_due=True
-        )
-        return result
-    if len(history) < 7:
-        return result
-    fit = theilslopes(
-        [value for _, value in history],
-        [(at - history[0][0]) / DAY for at, _ in history],
-        alpha=0.95,
-    )
-    slope, low, high = float(fit.slope), float(fit.low_slope), float(fit.high_slope)
-    result.update(slope_per_day=slope, slope_95_percent_interval=[low, high])
-    speed = direction * slope
-    if speed <= 0:
-        result["status"] = "not-approaching"
-        return result
-    slow, fast = sorted((direction * low, direction * high))
-    eta = distance / speed
-    # shortcut: ETA bounds propagate slope uncertainty only; calibrate with observed crossings.
-    lower = distance / fast if fast > 0 else None
-    upper = distance / slow if slow > 0 else None
-    if not math.isfinite(eta) or any(
-        v is not None and not math.isfinite(v) for v in (lower, upper)
-    ):
-        result["status"] = "uncertain-trend"
-        return result
-    result.update(
-        status="forecast" if upper is not None else "uncertain-trend",
-        eta_days=eta,
-        eta_range_days=[lower, upper],
-        advice_due=upper is not None and upper <= horizon_days,
-    )
-    return result
 
 
 def battery_backtest(
