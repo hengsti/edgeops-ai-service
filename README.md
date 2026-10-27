@@ -205,7 +205,7 @@ Inside the stack network, consumers such as control-ui use
 | `GET` | `/metrics` | Prometheus text metrics for polling failures and prediction freshness |
 | `POST` | `/v1/observations` | analyze one observation (409 while collector polling is enabled) |
 | `GET` | `/v1/detections/latest` | most recent analysis with freshness (404 before the first one) |
-| `GET` | `/v1/state-report` | versioned Advisor findings and coverage (503 when unconfigured/unavailable) |
+| `GET` | `/v1/state-report` | Advisor snapshot (200), refresh pending (202), or unavailable (503) |
 
 `/health` stays HTTP 200 for liveness, but reports `status: degraded` after the
 first failed collector poll. It includes `last_poll_success_at` (UTC, or `null`
@@ -278,16 +278,142 @@ time, selecting only memory/uptime/reset fields and root disk usage; it retains
 daily counts, medians, minima and boot continuity evidence, then discards minute
 history. Later refreshes load only newly completed days. Missing days, missing
 uptime, resets/discontinuities and observed room changes break trend history;
-gaps are never filled. The first request is consequently slower. Summaries and
+gaps are never filled. Cold report generation is consequently slower. Summaries and
 finding history reset on process restart; restart after historical backfills to
 refresh previously cached completed days. There is no persistent cache.
 
-Reports are cached for `ADVISOR_REFRESH_SECONDS` (default 300, range 60–3600).
-Concurrent requests share one refresh, and parsing/detection runs in worker
-threads. Failed refreshes return 503 with a generic error, retain internal finding
-history, and retry after 60 seconds; expired reports are not served as current.
-The application owns and closes its Influx client. No background training or
+Reports are cached for `ADVISOR_REFRESH_SECONDS` (default 300, range 60–3600),
+starting when generation succeeds. Each HTTP request uses a **one-second
+generation wait budget**. Elapsed response time also includes event-loop
+scheduling and response overhead; the target-Pi HTTP acceptance budget is
+**2.5 seconds**, below the Control UI's three-second timeout.
+One on-demand background task per process owns the refresh; simultaneous callers,
+retries, request timeouts and disconnects share it. Parsing/detection runs in
+worker threads. There is no scheduler or per-user report job.
+Input normalization yields between small batches so large query results do not
+monopolize the event loop that schedules HTTP deadlines and incident endpoints.
+
+| HTTP | Body | Client behavior |
+| --- | --- | --- |
+| `200` | Existing schema-1.0 `StateReport` | Render the snapshot, preserving `generated_at` and observation timestamps |
+| `202` | `{"status":"pending","detail":"Advisor refresh is in progress.","retry_after_seconds":2}` | Honor `Retry-After: 2`, then request the same endpoint; generation keeps running |
+| `503` | `status: "unconfigured"`, generic `detail`, null retry delay | Advisor URL/token are missing; wait for configuration rather than polling automatically |
+| `503` | `status: "failed"`, generic `detail`, numeric retry delay | This request observed a failed refresh; honor `Retry-After` |
+| `503` | `status: "backoff"`, generic `detail`, numeric retry delay | A prior refresh failed; no new read until the remaining retry delay expires |
+
+All responses use `Cache-Control: no-store`. Configured responses include
+`X-Advisor-Refresh-Seconds`. A `200` additionally includes `X-Advisor-State: current`
+and UTC `X-Advisor-Expires-At`, the successful generation time plus the configured
+cache duration. Cache hits retain the same body and expiry; fetching again does
+not imply a new analysis. Freshness describes the snapshot cache, while source
+coverage, observation age and optional consumer availability remain separate.
+An optional disabled model is still represented inside a successful snapshot,
+independent of these HTTP lifecycle states. `/health` and `/ready` continue to
+describe the incident service/collector, not Advisor readiness.
+
+At expiry, the next caller starts one refresh. Expired snapshots are **not returned**
+during refresh or failure: pending/error bodies contain no findings or fabricated
+overall health. The previous snapshot stays internal for first-seen and recovery
+tracking; failed refreshes do not advance recovery. Failures back off for 60 seconds
+(the integer `Retry-After` counts down, rounded up). Errors never expose upstream
+URLs, credentials or exception text. Clients may retain their own last snapshot
+only with its original timestamps and explicit stale/unavailable presentation.
+
+For example, `curl -i http://localhost:8080/v1/state-report` first returns `200`
+if the build finishes within one second, otherwise `202` with `Retry-After: 2`.
+Wait two seconds and repeat that same request until `200`, or honor a `503` state
+and its retry policy. Do not overlap polls or apply the classifier's short
+freshness threshold to Advisor reports. Exact bodies and headers are in OpenAPI.
+
+Application shutdown cancels and awaits the refresh before closing weather/Influx
+clients. An active detector thread is awaited because Python cannot cancel its
+running thread. Injected readers remain caller-owned. No background training or
 additional runtime dependency is introduced.
+
+To measure #34 on the target Pi without deploying, copy the prepared source
+bundle from the Windows checkout:
+
+```powershell
+scp .\data\issue34-pi-validation.tar.gz pi@smarthome-rpi4:/tmp/issue34-pi-validation.tar.gz
+```
+
+On the Pi, from the Server directory containing `edgeops-ai/service/.env` and
+with the existing `edgeops-ai-service` container running:
+
+```bash
+validation_dir=$(mktemp -d /tmp/edgeops-ai-issue34.XXXXXX)
+tar -xzf /tmp/issue34-pi-validation.tar.gz -C "$validation_dir"
+chmod -R a+rX "$validation_dir"
+set -o pipefail
+bash "$validation_dir/scripts/validate_advisor_lifecycle.sh" | tee /tmp/issue34-pi-validation.jsonl
+```
+
+The archive contains the current source, the two exact configured ONNX candidates,
+their manifests/validation/Pi reports, the three consumer evidence reports and a
+matching runtime configuration. The retained model/evidence hashes are checked
+and all three consumers must load before the archive is published. Native
+training checkpoints, credentials and unrelated artifacts are excluded.
+
+The command mounts the supplied code and bundled artifacts read-only into a
+temporary container. Its `/app/artifacts` contains the runtime configuration,
+models and evidence; the service's existing artifact directory stays untouched.
+It uses the deployed
+image/network and existing environment file without publishing ports or changing
+or restarting the service. It queries live InfluxDB. Output
+identifies deterministic-only versus model-enabled execution and keeps
+`deployment_approved=false`. Configured optional artifacts must resolve through
+the bundled read-only mount for model-enabled evidence. Weather is disabled
+in this isolated measurement. Cold generation may
+take minutes while 30 daily summaries are read.
+Configured consumers that fail to load stop validation before any measurements;
+they are not silently counted as a deterministic-only run.
+
+`scripts/validate_advisor_lifecycle.py` self-checks the cold/cached/warm/concurrent
+phases, one refresh per phase (zero for cached), stable cache timestamps, and
+HTTP responses within 2.5 seconds, below the UI timeout. It records each request's
+status/latency, total generation/poll time, read/query counts, process CPU time,
+mean host CPU and cumulative Linux process peak RSS. Requests use the real app
+in-process; external network RTT is excluded. CPU includes other host workload
+and RSS includes loaded models; this is not a deployment or advice-quality gate.
+Retain the JSONL output separately. Local tests do not check the Pi acceptance box.
+
+The user-run model-enabled check on `smarthome-rpi4` passed on 2026-10-27,
+15:10:28–15:11:57 UTC, using real InfluxDB in the temporary container. All three
+configured consumers loaded. The 40 requests included 36 pending responses;
+every request finished within 2.5 seconds (maximum 1.208 seconds). Cached
+generation/observation/expiry timestamps were unchanged. Eight simultaneous
+callers shared one refresh and three queries.
+
+| Phase | Phase wall time, including polling | Maximum HTTP time | Refresh reads | Influx queries |
+| --- | --- | --- | --- | --- |
+| Cold | 48.656 s | 1.102 s | 1 | 63 |
+| Cached | 0.006 s | 0.0035 s | 0 | 0 |
+| Warm refresh | 21.315 s | 1.076 s | 1 | 3 |
+| Eight simultaneous callers | 19.326 s | 1.208 s | 1 | 3 |
+
+| Phase | Process CPU time | Mean process CPU | Mean host CPU | Cumulative process peak RSS |
+| --- | --- | --- | --- | --- |
+| Cold | 41.411 s | 85.11% | 59.72% | 319.89 MiB |
+| Cached | 0.005 s | 88.22% | 66.67% | 319.89 MiB |
+| Warm refresh | 18.575 s | 87.14% | 61.32% | 341.49 MiB |
+| Eight simultaneous callers | 17.582 s | 90.97% | 55.10% | 360.46 MiB |
+
+Process CPU is relative to one core. Cached CPU percentages span only about
+6 ms and are not representative load measurements; host CPU includes other
+workload. RSS includes the interpreter, models and data, and is a cumulative
+process high-water mark rather than an isolated model inference measurement.
+The initial `insufficient-history` consumer states were logged before input
+reads; final per-consumer availability and advice quality were not recorded by
+this lifecycle measurement. External network RTT and browser UI integration
+remain outside its scope. No production files or services were changed and
+`deployment_approved=false` remains.
+
+Retained user-supplied evidence: `data/issue34-pi-validation-20261027.jsonl`, with
+assert-checked summary `data/issue34-pi-validation-summary-20261027.json`. These
+ignored files and `data/issue34-pi-validation-manifest.json` must be retained
+separately. The prepared bundle SHA-256 is
+`31fe52612fa5932e95f9871b602477d750190d58840a1180902bc429618a5f7a`;
+the remote archive hash and image ID were not independently reported.
 
 The response has these fields; OpenAPI documents the exact `StateReport`,
 `Finding`, `Evidence` and `MaintenanceEstimate` schemas at `/openapi.json`:
