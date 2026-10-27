@@ -6,6 +6,7 @@ from collections import defaultdict
 from dataclasses import replace
 from datetime import UTC, datetime
 from pathlib import Path
+from time import sleep
 from unittest.mock import patch
 
 import numpy as np
@@ -28,6 +29,14 @@ def held_out_samples(windows: dict) -> list[dict]:
     return [
         items[i] for items in groups.values() for i in sorted({0, len(items) // 2, len(items) - 1})
     ]
+
+
+def report_response(client: TestClient):
+    response = client.get("/v1/state-report")
+    while response.status_code == 202:
+        sleep(int(response.headers["Retry-After"]))
+        response = client.get("/v1/state-report")
+    return response
 
 
 def validate(config_path: Path, climate_data: Path, resource_data: Path) -> dict:
@@ -123,7 +132,7 @@ def validate(config_path: Path, climate_data: Path, resource_data: Path) -> dict
                 Clock.current = stop + MINUTE
                 reporter._cached, reporter._expires = None, 0
                 reporter._missing, reporter._climate_advice = {}, ()
-                response = client.get("/v1/state-report")
+                response = report_response(client)
                 if response.status_code != 200:
                     raise ValueError(f"{detector.name}: endpoint failed on held-out context")
                 report = response.json()
