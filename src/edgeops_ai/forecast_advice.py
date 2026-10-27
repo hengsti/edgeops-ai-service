@@ -6,6 +6,7 @@ from typing import Any
 
 from edgeops_ai.advisor import Advice, check_time
 from edgeops_ai.resources import STEP
+from edgeops_ai.schemas import SourceIdentity
 
 SUSTAINED_MINUTES = 15
 
@@ -50,6 +51,9 @@ def climate_projection(window: dict, prediction, model_version: str) -> tuple[di
                 "forecast_origin": origin.isoformat(),
             },
             detector="model:ttm-climate@1",
+            source=SourceIdentity(
+                kind="room", device_id=window["entity_id"], room=window["room"] or None
+            ),
         )
     return frame, advice
 
@@ -98,6 +102,9 @@ def residual_advice(scores: list[dict], model_version: str, calibration_hash: st
                                 "calibration_sha256": calibration_hash,
                             },
                             detector="model:ttm-residual@1",
+                            source=SourceIdentity(
+                                kind="device", device_id=device, room=room or None
+                            ),
                         )
                     )
                 run = []
@@ -191,6 +198,7 @@ def findings_for(rows: list[dict], method: str, threshold: float, minutes: int) 
                 detector=f"model:{method}-workload@1"
                 if method != "rules" and first.get(f"{method}_score") is not None
                 else "rule:host-workload@1",
+                source=SourceIdentity(kind="host", host=first.get("host") or None),
             )
         )
 

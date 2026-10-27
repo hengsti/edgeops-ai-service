@@ -13,6 +13,7 @@ import httpx
 from edgeops_ai.advisor import COUNTERS, DAY, DeviceSample, PipelineSample, check_time, day_start
 from edgeops_ai.maintenance import MaintenanceDay, summarize_day
 from edgeops_ai.resources import RESOURCE_FIELDS, STEP, ResourceSample
+from edgeops_ai.schemas import SourceIdentity
 from edgeops_ai.state_report import AdvisorWindow
 
 MAX_RESPONSE_BYTES = 32 * 1024 * 1024
@@ -213,7 +214,21 @@ class HttpInfluxReader:
                 if value and key not in {"", "result", "table"} and not key.startswith("_")
             }
             entity = json.dumps({"measurement": row["_measurement"], **dimensions}, sort_keys=True)
-            pipeline.append(PipelineSample(at, entity, row["_field"], value))
+            pipeline.append(
+                PipelineSample(
+                    at,
+                    entity,
+                    row["_field"],
+                    value,
+                    source=SourceIdentity(
+                        kind="pipeline",
+                        measurement=row["_measurement"],
+                        host=dimensions.get("host"),
+                        container_name=dimensions.get("container_name"),
+                        dimensions=dimensions,
+                    ),
+                )
+            )
         resource_start = (
             start
             if self.resource_history_hours == 24

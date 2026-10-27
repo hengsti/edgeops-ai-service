@@ -8,6 +8,8 @@ from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
 from statistics import linear_regression, median
 
+from edgeops_ai.schemas import SourceIdentity
+
 MINUTE = timedelta(minutes=1)
 DAY = timedelta(days=1)
 COUNTERS = ("sensor_read_failures_total", "samples_failed_total", "mqtt_connects_total")
@@ -27,6 +29,7 @@ class PipelineSample:
     entity_id: str
     metric: str
     value: float
+    source: SourceIdentity | None = None
 
 
 @dataclass(frozen=True)
@@ -41,6 +44,7 @@ class Advice:
     evidence: dict[str, float | str] = field(default_factory=dict)
     severity: str = "warning"
     detector: str = "rule:device-health@1"
+    source: SourceIdentity | None = None
 
     @property
     def id(self) -> str:
@@ -101,6 +105,8 @@ def memory_decline(
     history: list[tuple[datetime, float]],
     begin: datetime,
     end: datetime,
+    *,
+    room: str = "",
 ) -> Advice | None:
     if len({day_start(day) for day, _ in history}) < 7:
         return None
@@ -117,6 +123,7 @@ def memory_decline(
         f"{device}: minimum free memory declined; a firmware leak is suspected.",
         "Investigate allocations and logs; the trend does not prove a leak.",
         {"bytes_per_day": slope, "days": len(history), "fitted_decline_bytes": -slope * ages[-1]},
+        source=SourceIdentity(kind="device", device_id=device, room=room or None),
     )
 
 
@@ -169,6 +176,7 @@ def device_findings(
                         "devices": sum(times[0] < begin for times in presence.values()),
                     },
                     "critical",
+                    source=SourceIdentity(kind="fleet"),
                 )
             )
         for device, times in presence.items():
@@ -192,6 +200,14 @@ def device_findings(
                             f"No sensor data from {device} since {a.isoformat()}.",
                             "Check device power, firmware responsiveness, Wi-Fi and the data path.",
                             {"missing_minutes": (b - a).total_seconds() / 60},
+                            source=SourceIdentity(
+                                kind="device",
+                                device_id=device,
+                                room=next(
+                                    row.room for row in reversed(devices[device]) if row.at < a
+                                )
+                                or None,
+                            ),
                         )
                     )
 
@@ -212,6 +228,7 @@ def device_findings(
         daily: dict[datetime, list[DeviceSample]] = defaultdict(list)
         increases: dict[datetime, dict[str, float]] = defaultdict(lambda: defaultdict(float))
         memory: dict[tuple[int, datetime], list[float]] = defaultdict(list)
+        memory_rooms: dict[tuple[int, datetime], str] = {}
         segment = 0
         previous = None
         last_uptime = None
@@ -234,6 +251,7 @@ def device_findings(
                 last_uptime = row
             if "free_mem" in row.values and "uptime" in row.values:
                 memory[(segment, day)].append(float(row.values["free_mem"]))
+                memory_rooms[segment, day] = row.room
             previous = row
 
         for day, points in sorted(daily.items()):
@@ -262,6 +280,7 @@ def device_findings(
                         recommendation,
                         {**evidence, "room": room},
                         severity,
+                        source=SourceIdentity(kind="device", device_id=device, room=room or None),
                     )
                 )
 
@@ -350,7 +369,7 @@ def device_findings(
                 if b == boot and day - 29 * DAY <= d <= day and len(v) >= 60
             )
             begin, end = day_window(day, start, stop, split_boundaries)
-            finding = memory_decline(device, history, begin, end)
+            finding = memory_decline(device, history, begin, end, room=memory_rooms[boot, day])
             if finding is not None:
                 findings.append(finding)
     return sorted(findings, key=lambda f: (f.observed_at, f.id))
@@ -362,6 +381,7 @@ def pipeline_findings(
 ) -> list[Advice]:
     previous: dict[tuple[str, str], PipelineSample] = {}
     daily: dict[tuple[str, datetime], dict[str, float]] = defaultdict(lambda: defaultdict(float))
+    sources: dict[tuple[str, datetime], SourceIdentity | None] = {}
     for row in sorted(samples, key=lambda row: (row.at, row.entity_id, row.metric)):
         check_time(row.at)
         if not row.entity_id or not row.metric or not math.isfinite(row.value) or row.value < 0:
@@ -377,6 +397,7 @@ def pipeline_findings(
                     [day_start(row.at), *(cut for cut in split_boundaries if cut <= row.at)]
                 )
                 daily[(row.entity_id, period)][row.metric] += row.value - before.value
+                sources[row.entity_id, period] = row.source
         previous[key] = row
     return [
         Advice(
@@ -389,6 +410,7 @@ def pipeline_findings(
             "Inspect the DLQ, ingest errors and broker drops; identify the source first.",
             {name: value for name, value in deltas.items() if value > 0},
             detector="rule:pipeline-counter-increase@1",
+            source=sources[entity, day] or SourceIdentity(kind="pipeline"),
         )
         for (entity, day), deltas in sorted(daily.items())
         if any(v > 0 for v in deltas.values())

@@ -7,6 +7,7 @@ from collections.abc import Sequence
 from datetime import datetime, timedelta
 
 from edgeops_ai.advisor import MINUTE, Advice, DeviceSample, check_time
+from edgeops_ai.schemas import SourceIdentity
 from edgeops_ai.weather import WeatherObservation, ventilation_advice
 
 
@@ -158,6 +159,7 @@ def climate_findings(
                         action,
                         evidence,
                         detector="rule:indoor-climate@1",
+                        source=SourceIdentity(kind="room", room=row.room, device_id=row.device_id),
                     ),
                     row,
                     observation,

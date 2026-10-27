@@ -24,7 +24,7 @@ from edgeops_ai.advisor import (
 from edgeops_ai.climate import climate_findings
 from edgeops_ai.maintenance import MaintenanceDay, assess
 from edgeops_ai.resources import STEP, ResourceSample, resource_findings
-from edgeops_ai.schemas import StrictModel
+from edgeops_ai.schemas import SourceIdentity, StrictModel
 from edgeops_ai.weather import WeatherClient, WeatherObservation
 
 if TYPE_CHECKING:
@@ -58,6 +58,10 @@ class Finding(StrictModel):
     window_start: AwareDatetime
     window_stop: AwareDatetime
     detector: str = Field(min_length=1)
+    code: str | None = Field(
+        default=None, min_length=1, description="Original detector finding code"
+    )
+    source: SourceIdentity | None = Field(default=None, description="Observed subject identity")
 
 
 class MaintenanceEstimate(StrictModel):
@@ -84,6 +88,9 @@ class MaintenanceEstimate(StrictModel):
     eta_range_days: tuple[FiniteFloat | None, FiniteFloat | None]
     advice_due: bool
     recommendation: str
+    source: SourceIdentity | None = Field(
+        default=None, description="Same identity as related findings"
+    )
 
 
 class ModelAvailability(StrictModel):
@@ -353,6 +360,8 @@ class StateReporter:
                     window_start=item.start,
                     window_stop=item.stop,
                     detector=item.detector,
+                    code=item.code,
+                    source=item.source,
                 )
                 before = latest.get(finding.id)
                 if before is None or finding.last_seen > before.last_seen:

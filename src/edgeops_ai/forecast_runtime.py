@@ -88,6 +88,7 @@ def resource_points(window: AdvisorWindow) -> tuple[dict, dict]:
                 usage_active_mean=row.value,
                 cpu_percent=row.value,
                 source_identity=row.entity_id,
+                host=row.dimensions.get("host"),
             )
         elif row.measurement == "mem" and row.metric == "used_percent_mean":
             points[host, row.at]["memory_percent"] = row.value
@@ -357,6 +358,7 @@ class ForecastDetector:
             observations.append(
                 {
                     "entity_id": host,
+                    "host": point.get("host"),
                     "time": at.isoformat(),
                     "split": "runtime",
                     "cpu_percent": point["cpu_percent"],

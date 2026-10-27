@@ -3,8 +3,10 @@
 from collections import defaultdict
 from dataclasses import dataclass, field
 from datetime import datetime
+from typing import Literal
 
 from edgeops_ai.advisor import MINUTE, Advice
+from edgeops_ai.schemas import SourceIdentity
 
 STEP = 5 * MINUTE
 RESOURCE_FIELDS = {
@@ -26,6 +28,25 @@ class ResourceSample:
     metric: str
     value: float | str
     dimensions: dict[str, str] = field(default_factory=dict)
+
+
+def resource_source(row: ResourceSample) -> SourceIdentity:
+    kind: Literal["container", "disk", "host"] = (
+        "container"
+        if row.measurement.startswith("docker_container_")
+        else "disk"
+        if row.measurement == "disk"
+        else "host"
+    )
+    return SourceIdentity(
+        kind=kind,
+        host=row.dimensions.get("host") or None,
+        container_name=(row.dimensions.get("container_name") or None)
+        if kind == "container"
+        else None,
+        path=(row.dimensions.get("path") or None) if kind == "disk" else None,
+        measurement=row.measurement,
+    )
 
 
 def resource_findings(samples: list[ResourceSample], stop: datetime) -> list[Advice]:
@@ -80,6 +101,7 @@ def resource_findings(samples: list[ResourceSample], stop: datetime) -> list[Adv
                     {"metric": metric, "value": last.value, "cadence_seconds": 300},
                     severity="info" if measurement == "cpu" else "warning",
                     detector="rule:resources@1",
+                    source=resource_source(last),
                 )
             )
     return findings

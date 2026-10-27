@@ -9,7 +9,8 @@ from statistics import NormalDist, median
 from typing import Any
 
 from edgeops_ai.advisor import DAY, Advice, DeviceSample, check_time, day_start, memory_decline
-from edgeops_ai.resources import ResourceSample
+from edgeops_ai.resources import ResourceSample, resource_source
+from edgeops_ai.schemas import SourceIdentity
 
 
 def slope_bounds(values: list[float]) -> tuple[float, float, float]:
@@ -150,6 +151,7 @@ class MaintenanceDay:
     valid: bool = True
     first: DeviceSample | None = None
     last: DeviceSample | None = None
+    source: SourceIdentity | None = None
 
 
 def same_boot(before: DeviceSample, after: DeviceSample) -> bool:
@@ -192,15 +194,30 @@ def summarize_day(
                 valid,
                 rows[0] if rows else None,
                 rows[-1] if rows else None,
+                SourceIdentity(
+                    kind="device",
+                    device_id=device,
+                    room=(samples[-1].room or None)
+                    if len({row.room for row in samples}) == 1
+                    else None,
+                ),
             )
         )
-    disks: dict[str, list[float]] = defaultdict(list)
+    disks: dict[str, list[ResourceSample]] = defaultdict(list)
     for resource in resources:
         if resource.measurement == "disk" and resource.metric == "used_percent_mean":
-            disks[resource.entity_id].append(float(resource.value))
+            disks[resource.entity_id].append(resource)
     result.extend(
-        MaintenanceDay(at, "disk_used_percent", entity, median(values), min(values), len(values))
-        for entity, values in sorted(disks.items())
+        MaintenanceDay(
+            at,
+            "disk_used_percent",
+            entity,
+            median(float(row.value) for row in rows),
+            min(float(row.value) for row in rows),
+            len(rows),
+            source=resource_source(max(rows, key=lambda row: row.at)),
+        )
+        for entity, rows in sorted(disks.items())
     )
     return result
 
@@ -259,6 +276,15 @@ def assess(
             else:
                 history.clear()
         threshold = memory_threshold if metric == "free_mem_bytes" else disk_threshold
+        source = rows[-1].source or (
+            SourceIdentity(
+                kind="device",
+                device_id=entity,
+                room=(rows[-1].last.room or None) if rows[-1].last else None,
+            )
+            if metric == "free_mem_bytes"
+            else SourceIdentity(kind="disk")
+        )
         item = {
             **forecast(
                 [(row.at + DAY, row.value) for row in history if row.value is not None],
@@ -268,11 +294,14 @@ def assess(
                 horizon_days=horizon_days,
             ),
             "entity_id": entity,
+            "source": source,
             "recommendation": POLICIES[metric][3],
         }
         estimates.append(item)
         if metric == "free_mem_bytes" and as_of - rows[-1].at < 2 * DAY:
-            finding = memory_decline(entity, decline_history, rows[-1].at, rows[-1].at + DAY)
+            finding = memory_decline(
+                entity, decline_history, rows[-1].at, rows[-1].at + DAY, room=source.room or ""
+            )
             if finding is not None:
                 findings.append(finding)
         if item["advice_due"]:
@@ -296,6 +325,7 @@ def assess(
                         "eta_upper_days": item["eta_range_days"][1],
                     },
                     detector="trend:theil-sen@1",
+                    source=source,
                 )
             )
     return estimates, findings
