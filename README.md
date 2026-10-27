@@ -306,6 +306,35 @@ The response has these fields; OpenAPI documents the exact `StateReport`,
 | `models` | Health/climate/resource consumer status, model/calibration hashes and per-entity availability; disabled consumers are explicit |
 | `forecasts` | Available room temperature/humidity point forecasts, origin/targets, context and model provenance; uncertainty is explicitly uncalibrated |
 
+Findings also expose the original detector `code` (for example,
+`device.telemetry-stale` or `maintenance.disk_used_percent`) and a typed `source`.
+Maintenance estimates carry the same `source` identity as their related findings.
+These are optional additive schema-1.0 fields; older responses and custom
+detectors may omit them or return null. Clients can always render the existing
+`subject`, summary and recommendation.
+
+| `source` field | Meaning |
+| --- | --- |
+| `kind` | `device`, `room`, `fleet`, `pipeline`, `host`, `container` or `disk`; independent of finding category (a maintenance estimate can concern a device or disk) |
+| `device_id` | Stable device identifier; room advice also identifies its contributing device when known |
+| `room` | Room recorded in the evidence, including maintenance history and model windows; current inventory names do not relabel history |
+| `host` | Observed host identity; combine with container name or disk path to distinguish identical labels on different hosts |
+| `container_name`, `path` | Applicable container name or disk path (currently `/` for root-disk evidence) |
+| `measurement` | Original pipeline/resource measurement, when known |
+| `dimensions` | Original pipeline source tags; empty when unavailable or inapplicable |
+
+For example, a disk source can be
+`{"kind":"disk","host":"pi","path":"/","measurement":"disk"}`;
+a room source can be
+`{"kind":"room","device_id":"sensor-01","room":"Kitchen"}`.
+Other unknown/inapplicable fields are null (and `dimensions` defaults to `{}`).
+Fleet silence uses `kind: "fleet"` with no fake device identifier; its legacy
+display subject remains `*`. Labels are opaque and may contain punctuation or
+Unicode. Do not parse `subject`, hashed finding IDs or JSON in `entity_id` to
+recover identity. The UI owns route generation; no action URLs are supplied.
+Finding hashes, first-seen tracking, deduplication and recovery hysteresis do not
+use the additive fields and retain their existing behavior.
+
 Maintenance estimates share #21's daily Theil–Sen baseline: seven consecutive
 qualified days, at most 30 days, at least 144 distinct five-minute root disk
 observations or 720 device memory/uptime minute pairs per day. Reboot days are
