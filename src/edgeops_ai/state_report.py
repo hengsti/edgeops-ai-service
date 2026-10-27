@@ -4,11 +4,11 @@ import asyncio
 import hashlib
 import logging
 from dataclasses import dataclass, replace
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
+from math import ceil
 from time import monotonic
 from typing import TYPE_CHECKING, Literal, Protocol, cast
 
-import httpx
 from pydantic import AwareDatetime, Field, FiniteFloat
 
 from edgeops_ai.advisor import (
@@ -141,6 +141,12 @@ class StateReport(StrictModel):
     ] = Field(default_factory=dict)
 
 
+class AdvisorStatus(StrictModel):
+    status: Literal["pending", "unconfigured", "failed", "backoff"]
+    detail: str
+    retry_after_seconds: int | None = Field(default=None, ge=1)
+
+
 @dataclass(frozen=True)
 class AdvisorWindow:
     start: datetime
@@ -252,9 +258,11 @@ class StateReporter:
         self.forecast_detectors = forecast_detectors
         self._climate_advice: tuple[Advice, ...] = ()
         # shortcut: state is per process; persist it before adding durable notifications.
-        self._lock = asyncio.Lock()
+        self._refresh_task: asyncio.Task[StateReport | None] | None = None
+        self._closed = False
         self._cached: StateReport | None = None
         self._expires = 0.0
+        self.expires_at: datetime | None = None
         self._retry_after = 0.0
         self._missing: dict[str, int] = {}
 
@@ -414,32 +422,52 @@ class StateReporter:
             )
         return inputs
 
+    @property
+    def retry_after_seconds(self) -> int:
+        return max(0, ceil(self._retry_after - monotonic()))
+
     async def report(self) -> StateReport:
-        async with self._lock:
-            if self._cached is not None and monotonic() < self._expires:
-                return self._cached
-            if monotonic() < self._retry_after:
-                raise ValueError("Advisor refresh is temporarily unavailable")
+        if self._closed:
+            raise ValueError("Advisor is stopping")
+        if self._cached is not None and monotonic() < self._expires:
+            return self._cached
+        if self.retry_after_seconds:
+            raise ValueError("Advisor refresh is temporarily unavailable")
+        # No await between checking and creating the task: callers on this loop share it.
+        if self._refresh_task is None or self._refresh_task.done():
+            self._refresh_task = asyncio.create_task(self._refresh(), name="advisor_refresh")
+        report = await asyncio.shield(self._refresh_task)
+        if report is None:
+            raise ValueError("Advisor report is unavailable")
+        return report
+
+    async def close(self) -> None:
+        self._closed = True
+        if self._refresh_task is not None:
+            self._refresh_task.cancel()
+            await asyncio.gather(self._refresh_task, return_exceptions=True)
+
+    async def _refresh(self) -> StateReport | None:
+        try:
             now = datetime.now(UTC)
             stop = now.replace(second=0, microsecond=0) - MINUTE
             start = stop - DAY
-            try:
-                window = await self.reader.read(start, stop)
-                if window.start != start or window.stop != stop:
-                    raise ValueError("Reader returned a different Advisor window")
-                if self.weather_client is not None:
-                    observation = await self.weather_client.get(now)
-                    window = replace(
-                        window, outdoor_weather=(observation,) if observation is not None else ()
-                    )
-                findings, coverage, estimates, models, frames = await asyncio.to_thread(
-                    self._findings, window
+            window = await self.reader.read(start, stop)
+            if window.start != start or window.stop != stop:
+                raise ValueError("Reader returned a different Advisor window")
+            if self.weather_client is not None:
+                observation = await self.weather_client.get(now)
+                window = replace(
+                    window, outdoor_weather=(observation,) if observation is not None else ()
                 )
-                inputs = self._inputs(window, estimates)
-            except (httpx.HTTPError, ValueError, KeyError, TypeError) as error:
-                self._retry_after = monotonic() + min(60, self.refresh_seconds)
-                logger.warning("Advisor report refresh failed (%s)", type(error).__name__)
+            analysis = asyncio.create_task(asyncio.to_thread(self._findings, window))
+            try:
+                findings, coverage, estimates, models, frames = await asyncio.shield(analysis)
+            except asyncio.CancelledError:
+                # Cancelling to_thread cannot stop its thread; drain it before closing inputs.
+                await asyncio.gather(analysis, return_exceptions=True)
                 raise
+            inputs = self._inputs(window, estimates)
             previous = {item.id: item for item in self._cached.findings} if self._cached else {}
             current = {item.id: item for item in findings}
             missing = {}
@@ -479,4 +507,10 @@ class StateReporter:
             )
             self._cached, self._missing = report, missing
             self._expires = monotonic() + self.refresh_seconds
+            self.expires_at = report.generated_at + timedelta(seconds=self.refresh_seconds)
             return report
+        except Exception as error:
+            # A timed-out/disconnected caller may no longer be awaiting this task's result.
+            self._retry_after = monotonic() + min(60, self.refresh_seconds)
+            logger.warning("Advisor report refresh failed (%s)", type(error).__name__)
+            return None
