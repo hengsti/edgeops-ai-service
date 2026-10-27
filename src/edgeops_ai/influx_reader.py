@@ -146,7 +146,10 @@ class HttpInfluxReader:
         )
         devices: dict[tuple[str, datetime], DeviceSample] = {}
         sensor_minutes = set()
-        for row in await self._query(sensor_query):
+        # Large query normalization must let HTTP deadlines and cancellation run on this loop.
+        for index, row in enumerate(await self._query(sensor_query)):
+            if index % 128 == 0:
+                await asyncio.sleep(0)
             name = fields.get((row["_measurement"], row["_field"]))
             if name is None or row.get("device_id") in {"stresstest", "livingroom-01"}:
                 continue
@@ -199,7 +202,9 @@ class HttpInfluxReader:
             '|> drop(columns: ["_start", "_stop"])'
         )
         pipeline = []
-        for row in await self._query(pipeline_query):
+        for index, row in enumerate(await self._query(pipeline_query)):
+            if index % 128 == 0:
+                await asyncio.sleep(0)
             if row["_measurement"] != "prometheus" or row["_field"] not in PIPELINE_FIELDS:
                 continue
             at = observation_time(row, start, stop)
@@ -283,7 +288,9 @@ class HttpInfluxReader:
             '|> drop(columns: ["_start", "_stop"])'
         )
         unique: dict[tuple[str, datetime, str, str], ResourceSample] = {}
-        for row in await self._query(query):
+        for index, row in enumerate(await self._query(query)):
+            if index % 128 == 0:
+                await asyncio.sleep(0)
             measurement, metric = row["_measurement"], row["_field"]
             if metric not in selected.get(measurement, set()):
                 raise ValueError("Unexpected resource field")
