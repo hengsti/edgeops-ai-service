@@ -95,6 +95,8 @@ def create_app(
                 if reader is not None
                 else None
             )
+            if app.state.state_reporter is not None:
+                resources.push_async_callback(app.state.state_reporter.close)
             if runtime_settings.collector_polling_enabled:
                 collector_client = CollectorClient(
                     base_url=runtime_settings.collector_base_url,
