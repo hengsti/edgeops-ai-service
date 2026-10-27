@@ -9,10 +9,27 @@ from pydantic import (
     NonNegativeFloat,
     NonNegativeInt,
 )
+from pydantic.dataclasses import dataclass as validated_dataclass
 
 
 class StrictModel(BaseModel):
     model_config = ConfigDict(extra="forbid")
+
+
+@validated_dataclass(frozen=True, config=ConfigDict(extra="forbid"))
+class SourceIdentity:
+    """Observed subject identity; unknown dimensions stay null, never inferred from text."""
+
+    kind: Literal["device", "room", "fleet", "pipeline", "host", "container", "disk"]
+    device_id: str | None = Field(default=None, min_length=1)
+    room: str | None = Field(default=None, min_length=1, description="Historical observed room")
+    host: str | None = Field(default=None, min_length=1)
+    container_name: str | None = Field(default=None, min_length=1)
+    path: str | None = Field(default=None, min_length=1)
+    measurement: str | None = Field(default=None, min_length=1)
+    dimensions: dict[str, str] = Field(
+        default_factory=dict, description="Original pipeline source tags, when available"
+    )
 
 
 class ObservationMetadata(StrictModel):
