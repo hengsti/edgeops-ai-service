@@ -1,7 +1,7 @@
 import csv
 import hashlib
 import json
-from datetime import timedelta
+from datetime import datetime, timedelta
 
 import pyarrow as pa
 import pyarrow.parquet as pq
@@ -95,6 +95,40 @@ def test_health_command_and_real_replay_publish_reviewable_evidence(exported, tm
     assert (output / "advice-review.csv").exists()
     assert (output / "anomaly-scores.csv").exists()
     assert hashlib.sha256((exported / "device.parquet").read_bytes()).hexdigest() == source_hash
+    for row in json.loads((output / "advice.json").read_text())["findings"]:
+        original = {
+            name: row[name]
+            for name in (
+                "code",
+                "entity_id",
+                "start",
+                "stop",
+                "observed_at",
+                "summary",
+                "recommendation",
+                "evidence",
+                "severity",
+                "detector",
+            )
+        }
+        for name in ("start", "stop", "observed_at"):
+            original[name] = datetime.fromisoformat(original[name])
+        digest = hashlib.sha256(
+            json.dumps(
+                {
+                    "finding": original,
+                    "sources": {
+                        key: value
+                        for key, value in report["sources"].items()
+                        if key != "advice_reviews_sha256"
+                    },
+                },
+                sort_keys=True,
+                default=str,
+                allow_nan=False,
+            ).encode()
+        ).hexdigest()
+        assert row["id"] == digest
 
 
 def test_reviewed_false_positive_rate_is_counted_per_validation_calendar_day(exported, tmp_path):

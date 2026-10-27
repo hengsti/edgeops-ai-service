@@ -362,6 +362,27 @@ def test_rejected_warning_does_not_count_as_detecting_an_incident(tmp_path):
     ]
     cuts = [START + timedelta(days=1), START + timedelta(days=3)]
     rows = review_findings(findings, metadata, cases, cuts, None, 15)
+    original = {
+        "code": "host.resource-pressure",
+        "entity_id": "pi",
+        "start": begin,
+        "stop": stop,
+        "observed_at": stop,
+        "summary": "Pressure",
+        "recommendation": "Inspect",
+        "evidence": {"first_detected_at": stop.isoformat()},
+        "severity": "warning",
+        "detector": "rule:device-health@1",
+    }
+    digest = hashlib.sha256(
+        json.dumps(
+            {"finding": original, "method": "ttm", "sources": {}, "candidate": {}},
+            sort_keys=True,
+            default=str,
+            allow_nan=False,
+        ).encode()
+    ).hexdigest()
+    assert rows[0]["id"] == digest
     reviews = tmp_path / "rejected.csv"
     with reviews.open("w", newline="") as handle:
         writer = csv.DictWriter(handle, fieldnames=["id", "verdict", "note"])

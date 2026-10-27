@@ -75,6 +75,21 @@ def test_state_report_contract_uses_real_rules_and_cache():
         assert len({item["id"] for item in report["findings"]}) == len(report["findings"])
         for item in report["findings"]:
             assert item["subject"] and item["recommendation"] and item["detector"]
+            assert item["code"] in {
+                "device.sensor-read-failures",
+                "pipeline.errors",
+                "climate.mould-risk",
+            }
+            source = item["source"]
+            assert (
+                source["kind"]
+                == {"device": "device", "pipeline": "pipeline", "climate": "room"}[item["category"]]
+            )
+            if item["category"] != "pipeline":
+                assert source["device_id"] == "sensor"
+                assert source["room"] == "kitchen"
+            else:
+                assert source["host"] is None
             assert item["evidence"] and item["confidence"] is None
             assert item["window_start"] < item["window_stop"] <= report["observed_at"]
         assert client.get("/v1/state-report").json() == report
@@ -339,6 +354,10 @@ def test_annotated_influx_responses_reach_the_versioned_endpoint():
             report = response.json()
             assert {item["category"] for item in report["findings"]} == {"pipeline", "climate"}
             assert report["schema_version"] == "1.0"
+            pipeline = next(item for item in report["findings"] if item["category"] == "pipeline")
+            assert pipeline["source"]["host"] == "pi"
+            assert pipeline["source"]["measurement"] == "prometheus"
+            assert pipeline["source"]["dimensions"] == {"host": "pi"}
             assert len(requests) == 63
     finally:
         asyncio.run(reader.close())
@@ -494,5 +513,8 @@ def test_silence_detection_keeps_first_detection_time_before_the_full_gap_ends()
             item for item in report["findings"] if item["id"].startswith("device.all-silent")
         )
         assert finding["first_seen"] < finding["window_stop"]
+        assert finding["code"] == "device.all-silent"
+        assert finding["source"]["kind"] == "fleet"
+        assert finding["source"]["device_id"] is None
         assert finding["last_seen"] == finding["window_stop"] == report["observed_at"]
         assert report["overall"] == "critical"

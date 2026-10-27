@@ -234,12 +234,23 @@ def test_optional_consumers_serve_real_findings_frames_and_cache(bundle):
         )
         host = next(row for row in report["findings"] if row["detector"] == "model:ttm-workload@1")
         assert host["severity"] == "warning"
+        assert health["code"] == "device.forecast-residual.temp_c_mean"
+        assert health["source"]["kind"] == "device"
+        assert health["source"]["device_id"] == "sensor"
+        assert health["source"]["room"] == "kitchen"
+        assert host["code"] == "host.resource-pressure"
+        assert host["source"]["kind"] == "host"
+        assert host["source"]["host"] == "host"
         assert all(row["confidence"] is None for row in report["findings"])
         frame = report["forecasts"][0]
         assert len(frame["target_times"]) == 61
         assert frame["target_times"][0] == frame["forecast_origin"]
         assert frame["uncertainty"] == "uncalibrated"
         assert frame["humidity_percent"] == [50] * 10 + [65] * 51
+        climate = next(row for row in report["findings"] if row["category"] == "climate")
+        assert climate["source"]["kind"] == "room"
+        assert climate["source"]["device_id"] == frame["device_id"]
+        assert climate["source"]["room"] == frame["room"]
         assert client.get("/v1/state-report").json() == report
         assert reader.calls == 1
 

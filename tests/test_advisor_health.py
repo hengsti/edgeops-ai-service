@@ -2,7 +2,7 @@ from datetime import UTC, datetime, timedelta
 
 import pytest
 
-from edgeops_ai.advisor import DeviceSample, PipelineSample, device_findings, pipeline_findings
+from edgeops_ai.advisor import DAY, DeviceSample, PipelineSample, device_findings, pipeline_findings
 
 START = datetime(2026, 9, 1, tzinfo=UTC)
 MINUTE = timedelta(minutes=1)
@@ -173,6 +173,31 @@ def test_climate_only_minute_does_not_hide_a_memory_reset():
             values = {"sensor_samples": 1}
         rows.append(DeviceSample(START + minute * MINUTE, "a", values))
     assert "device.memory-decline" not in codes(rows, 9)
+
+
+def test_memory_decline_room_belongs_to_the_contributing_boot_before_a_move():
+    rows = [
+        DeviceSample(
+            START + day * DAY + minute * MINUTE,
+            "sensor",
+            {"uptime": day * 86400 + minute * 60 + 1000, "free_mem": 100_000 - day * 1000},
+            "old room",
+        )
+        for day in range(7)
+        for minute in range(60)
+    ]
+    rows.append(
+        DeviceSample(
+            START + 6 * DAY + 120 * MINUTE, "sensor", {"uptime": 5, "free_mem": 200_000}, "new room"
+        )
+    )
+    decline = next(
+        row
+        for row in device_findings(rows, START, START + 7 * DAY)
+        if row.code == "device.memory-decline"
+    )
+    assert decline.source.device_id == "sensor"
+    assert decline.source.room == "old room"
 
 
 def test_iaq_warmup_is_flagged_without_claiming_bad_room_air_or_single_raw_sample():
