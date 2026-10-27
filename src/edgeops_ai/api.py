@@ -1,33 +1,93 @@
+import asyncio
 from datetime import datetime
 from time import time
 from typing import Annotated, cast
 
 import httpx
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
-from fastapi.responses import PlainTextResponse
+from fastapi.responses import JSONResponse, PlainTextResponse
 
 from edgeops_ai import __version__
 from edgeops_ai.analysis import Analyzer
 from edgeops_ai.schemas import AnalysisResult, LatestDetection, ObservationV1
-from edgeops_ai.state_report import StateReport, StateReporter
+from edgeops_ai.state_report import AdvisorStatus, StateReport, StateReporter
 
 router = APIRouter()
+ADVISOR_RESPONSE_SECONDS = 1
 
 
 @router.get(
     "/v1/state-report",
     response_model=StateReport,
-    responses={503: {"description": "Advisor is unavailable"}},
+    responses={
+        200: {
+            "description": "Current schema-1.0 snapshot; timestamps stay unchanged on cache hits",
+            "headers": {
+                "X-Advisor-State": {"schema": {"type": "string", "enum": ["current"]}},
+                "X-Advisor-Refresh-Seconds": {"schema": {"type": "number"}},
+                "X-Advisor-Expires-At": {"schema": {"type": "string", "format": "date-time"}},
+            },
+        },
+        202: {
+            "model": AdvisorStatus,
+            "description": "Refresh pending after a one-second generation wait budget; retry here",
+            "headers": {"Retry-After": {"schema": {"type": "integer"}}},
+        },
+        503: {
+            "model": AdvisorStatus,
+            "description": "Advisor unconfigured, refresh failed or retry backoff active",
+            "headers": {"Retry-After": {"schema": {"type": "integer"}}},
+        },
+    },
 )
-async def get_state_report(request: Request, response: Response) -> StateReport:
+async def get_state_report(request: Request, response: Response) -> StateReport | JSONResponse:
+    headers = {"Cache-Control": "no-store"}
     reporter = cast(StateReporter | None, request.app.state.state_reporter)
     if reporter is None:
-        raise HTTPException(status_code=503, detail="Advisor is not configured.")
+        return JSONResponse(
+            status_code=503,
+            headers=headers,
+            content=AdvisorStatus(
+                status="unconfigured", detail="Advisor is not configured."
+            ).model_dump(),
+        )
+    headers["X-Advisor-Refresh-Seconds"] = f"{reporter.refresh_seconds:g}"
+    if retry := reporter.retry_after_seconds:
+        headers["Retry-After"] = str(retry)
+        return JSONResponse(
+            status_code=503,
+            headers=headers,
+            content=AdvisorStatus(
+                status="backoff",
+                detail="Advisor refresh is temporarily unavailable.",
+                retry_after_seconds=retry,
+            ).model_dump(),
+        )
     try:
-        report = await reporter.report()
+        report = await asyncio.wait_for(reporter.report(), timeout=ADVISOR_RESPONSE_SECONDS)
+    except TimeoutError:
+        headers["Retry-After"] = "2"
+        return JSONResponse(
+            status_code=202,
+            headers=headers,
+            content=AdvisorStatus(
+                status="pending", detail="Advisor refresh is in progress.", retry_after_seconds=2
+            ).model_dump(),
+        )
     except (httpx.HTTPError, ValueError, KeyError, TypeError):
-        raise HTTPException(status_code=503, detail="Advisor report is unavailable.") from None
-    response.headers["Cache-Control"] = "no-store"
+        retry = max(1, reporter.retry_after_seconds)
+        headers["Retry-After"] = str(retry)
+        return JSONResponse(
+            status_code=503,
+            headers=headers,
+            content=AdvisorStatus(
+                status="failed", detail="Advisor report is unavailable.", retry_after_seconds=retry
+            ).model_dump(),
+        )
+    response.headers.update(headers)
+    response.headers["X-Advisor-State"] = "current"
+    assert reporter.expires_at is not None
+    response.headers["X-Advisor-Expires-At"] = reporter.expires_at.isoformat()
     return report
 
 
