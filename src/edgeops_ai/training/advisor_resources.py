@@ -118,10 +118,11 @@ def review_findings(findings, metadata, labels, cuts, reviews_path, minutes):
     for method, items in findings.items():
         for item in items:
             row = asdict(item)
+            # Keep existing review IDs independent of additive subject metadata.
             digest = hashlib.sha256(
                 json.dumps(
                     {
-                        "finding": row,
+                        "finding": {key: value for key, value in row.items() if key != "source"},
                         "method": method,
                         "sources": metadata["sources"],
                         "candidate": metadata["candidate_sha256"],

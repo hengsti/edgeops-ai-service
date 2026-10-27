@@ -334,10 +334,14 @@ def replay(
         for f in pipeline_findings(pipeline, (train_stop, validation_stop))
     )
     findings.sort(key=lambda f: (f.observed_at, f.id))
+    # Keep existing review IDs independent of additive subject metadata.
     review_ids = {
         f.id: hashlib.sha256(
             json.dumps(
-                {"finding": asdict(f), "sources": source_hashes},
+                {
+                    "finding": {key: value for key, value in asdict(f).items() if key != "source"},
+                    "sources": source_hashes,
+                },
                 sort_keys=True,
                 default=str,
                 allow_nan=False,
@@ -496,7 +500,11 @@ def replay(
             )
             writer.writeheader()
             writer.writerows(
-                {**row, "evidence": json.dumps(row["evidence"], sort_keys=True)} for row in rows
+                {
+                    **{key: value for key, value in row.items() if key != "source"},
+                    "evidence": json.dumps(row["evidence"], sort_keys=True),
+                }
+                for row in rows
             )
         with (staging / "anomaly-scores.csv").open("w", encoding="utf-8", newline="") as handle:
             writer = csv.DictWriter(
