@@ -1,19 +1,26 @@
 from dataclasses import dataclass
-from typing import Annotated, Literal
+from typing import Annotated, Literal, Self
 
 from pydantic import (
     AwareDatetime,
     BaseModel,
     ConfigDict,
     Field,
+    FiniteFloat,
     NonNegativeFloat,
     NonNegativeInt,
+    model_validator,
 )
 from pydantic.dataclasses import dataclass as validated_dataclass
 
 
 class StrictModel(BaseModel):
     model_config = ConfigDict(extra="forbid")
+
+
+class MetricSample(StrictModel):
+    labels: dict[str, str]
+    value: FiniteFloat = Field(ge=0, strict=True)
 
 
 @validated_dataclass(frozen=True, config=ConfigDict(extra="forbid"))
@@ -53,30 +60,36 @@ class Metric:
 
 
 class IngestionMetrics(StrictModel):
+    model_config = ConfigDict(allow_inf_nan=False)
+
+    telemetry_version: Literal["v3"] | None = None
+    labeled: dict[str, list[MetricSample]] = Field(default_factory=dict)
     messages_enqueued_total: Annotated[NonNegativeFloat, Metric("ingest_messages_enqueued_total")]
-    messages_processed_total: Annotated[NonNegativeFloat, Metric("ingest_messages_processed_total")]
+    messages_processed_total: Annotated[
+        NonNegativeFloat | None, Metric("ingest_messages_processed_total")
+    ]
     queue_full_total: Annotated[
-        NonNegativeFloat, Metric("ingest_event_queue_full_total", optional_zero=True)
+        NonNegativeFloat | None, Metric("ingest_event_queue_full_total", optional_zero=True)
     ]
 
     transform_success_total: Annotated[NonNegativeFloat, Metric("ingest_transform_success_total")]
     transform_failed_total: Annotated[
-        NonNegativeFloat, Metric("ingest_transform_failed_total", absent_zero=True)
+        NonNegativeFloat | None, Metric("ingest_transform_failed_total", absent_zero=True)
     ]
 
     influx_lines_written_total: NonNegativeFloat
     influx_write_failed_total: Annotated[
-        NonNegativeFloat, Metric("influx_write_failed_total", absent_zero=True)
+        NonNegativeFloat | None, Metric("influx_write_failed_total", absent_zero=True)
     ] = 0.0
-    influxdb_healthy: Annotated[float, Metric("influxdb_healthy", kind="gauge")] = Field(
+    influxdb_healthy: Annotated[float | None, Metric("influxdb_healthy", kind="gauge")] = Field(
         default=1.0, ge=0, le=1
     )
 
     pipeline_duration_seconds_sum: Annotated[
-        NonNegativeFloat, Metric("ingest_pipeline_duration_seconds_sum")
+        NonNegativeFloat | None, Metric("ingest_pipeline_duration_seconds_sum")
     ]
     pipeline_duration_seconds_count: Annotated[
-        NonNegativeFloat, Metric("ingest_pipeline_duration_seconds_count")
+        NonNegativeFloat | None, Metric("ingest_pipeline_duration_seconds_count")
     ]
 
     influx_write_success_total: NonNegativeFloat | None = None
@@ -152,6 +165,16 @@ class IngestionMetrics(StrictModel):
     wal_committed_total: Annotated[
         NonNegativeFloat | None, Metric("wal_forwarder_committed_total")
     ] = None
+    wal_delivered_total: Annotated[
+        NonNegativeFloat | None, Metric("wal_forwarder_delivered_total")
+    ] = None
+    quarantine_appends_total: NonNegativeFloat | None = None
+    admission_pressure: Annotated[
+        float | None, Metric("ingest_admission_pressure", kind="gauge")
+    ] = Field(default=None, ge=0, le=1)
+    wal_forwarder_alive: Annotated[float | None, Metric("wal_forwarder_alive", kind="gauge")] = (
+        Field(default=None, ge=0, le=1)
+    )
     wal_drop_total: Annotated[
         NonNegativeFloat | None, Metric("wal_forwarder_drop_total", absent_zero=True)
     ] = None
@@ -186,10 +209,30 @@ class IngestionMetrics(StrictModel):
     influx_write_duration_seconds_sum: NonNegativeFloat | None = None
     influx_write_duration_seconds_count: NonNegativeFloat | None = None
 
+    @model_validator(mode="after")
+    def check_contract(self) -> Self:
+        if self.telemetry_version == "v3":
+            if self.mqtt_messages_received_total is None:
+                raise ValueError("Ingest v3 requires mqtt_messages_received_total")
+        elif any(getattr(self, name) is None for name in LEGACY_REQUIRED_VALUES):
+            raise ValueError("Legacy ingestion metrics cannot be null")
+        return self
+
+
+LEGACY_REQUIRED_VALUES = (
+    "messages_processed_total",
+    "queue_full_total",
+    "transform_failed_total",
+    "influx_write_failed_total",
+    "influxdb_healthy",
+    "pipeline_duration_seconds_sum",
+    "pipeline_duration_seconds_count",
+)
 
 METRICS = {
     name: next((item for item in field.metadata if isinstance(item, Metric)), Metric(name))
     for name, field in IngestionMetrics.model_fields.items()
+    if name not in {"telemetry_version", "labeled"}
 }
 REQUIRED_METRIC_MAPPING = {
     metric.source_name: name
@@ -204,16 +247,7 @@ OPTIONAL_METRIC_MAPPING = {
 ZERO_DEFAULT_METRIC_MAPPING = {
     metric.source_name: name for name, metric in METRICS.items() if metric.optional_zero
 }
-REQUIRED_COUNTER_NAMES = tuple(
-    name
-    for name, metric in METRICS.items()
-    if metric.kind == "counter" and IngestionMetrics.model_fields[name].default is not None
-)
-OPTIONAL_COUNTER_NAMES = tuple(
-    name
-    for name, metric in METRICS.items()
-    if metric.kind == "counter" and IngestionMetrics.model_fields[name].default is None
-)
+COUNTER_NAMES = tuple(name for name, metric in METRICS.items() if metric.kind == "counter")
 
 
 class DeviceObservation(StrictModel):
@@ -231,22 +265,35 @@ class ObservationV1(StrictModel):
     broker_available: bool | None = None
 
 
+class IngestV3Features(StrictModel):
+    received_rate: NonNegativeFloat | None
+    durable_intake_rate: NonNegativeFloat
+    durable_rejection_rate: NonNegativeFloat | None
+    sink_delivery_rate: NonNegativeFloat | None
+    cursor_commit_rate: NonNegativeFloat | None
+    admission_pressure: float | None
+    forwarder_alive: float | None
+    sink_state: str | None
+    input_rejection_rate: NonNegativeFloat | None
+    labeled: dict[str, list[MetricSample]]
+
+
 class FeatureVector(StrictModel):
     elapsed_seconds: float = Field(gt=0)
 
     messages_enqueued_rate: NonNegativeFloat
-    messages_processed_rate: NonNegativeFloat
+    messages_processed_rate: NonNegativeFloat | None
     transform_success_rate: NonNegativeFloat
 
-    queue_growth_rate: float
-    processing_ratio: NonNegativeFloat
-    queue_full_rate: NonNegativeFloat
+    queue_growth_rate: float | None
+    processing_ratio: NonNegativeFloat | None
+    queue_full_rate: NonNegativeFloat | None
     queue_depth: NonNegativeFloat | None = None
     queue_capacity: NonNegativeFloat | None = None
     queue_utilization_ratio: NonNegativeFloat | None = None
     queue_metrics_available: bool = Field(default=False)
 
-    transform_failure_ratio: NonNegativeFloat
+    transform_failure_ratio: NonNegativeFloat | None
     transform_deserialize_failure_ratio: NonNegativeFloat | None = None
     transform_ignored_ratio: NonNegativeFloat | None = None
     transform_metrics_available: bool = Field(default=False)
@@ -277,10 +324,10 @@ class FeatureVector(StrictModel):
 
     influx_write_failure_ratio: NonNegativeFloat | None = None
     influx_write_metrics_available: bool = Field(default=False)
-    influxdb_healthy: NonNegativeFloat
-    persistence_ratio: NonNegativeFloat
+    influxdb_healthy: NonNegativeFloat | None
+    persistence_ratio: NonNegativeFloat | None
 
-    pipeline_duration_average_seconds: NonNegativeFloat
+    pipeline_duration_average_seconds: NonNegativeFloat | None
     decode_duration_average_seconds: NonNegativeFloat | None = None
     decode_duration_metrics_available: bool = Field(default=False)
     transform_duration_average_seconds: NonNegativeFloat | None = None
@@ -302,6 +349,7 @@ class FeatureVector(StrictModel):
     device_metrics_available: bool = Field(default=False)
 
     broker_available: bool | None = None
+    ingest_v3: IngestV3Features | None = Field(default=None, exclude_if=lambda value: value is None)
 
 
 PredictionLabel = Literal[

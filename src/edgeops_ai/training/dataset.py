@@ -54,7 +54,7 @@ from edgeops_ai.training.common import (
 from edgeops_ai.training.metrics import label_scores
 
 SOURCE_FEATURE_COLUMNS = tuple(
-    name for name, field in FeatureVector.model_fields.items() if field.annotation != list[str]
+    name for name in DATASET_FEATURE_COLUMNS if name != "missing_device_ids"
 )
 
 METADATA_COLUMNS = (
@@ -149,10 +149,11 @@ def _build_model_row(
 ) -> list[float]:
     values: dict[str, Any] = {}
     for column in SOURCE_FEATURE_COLUMNS:
-        annotation = FeatureVector.model_fields[column].annotation
+        field = FeatureVector.model_fields[column]
+        annotation = field.annotation
         types = get_args(annotation) or (annotation,)
         value = row.get(column)
-        if type(None) in types and not (value or "").strip():
+        if field.default is None and not (value or "").strip():
             values[column] = None
         else:
             parse = _parse_bool if bool in types else _parse_float

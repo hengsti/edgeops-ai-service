@@ -149,13 +149,17 @@ async def create_observation(
 
 
 @router.get("/v1/detections/latest", response_model=LatestDetection)
-async def get_latest_detection(request: Request, analyzer: Analysis) -> LatestDetection:
+async def get_latest_detection(
+    request: Request, response: Response, analyzer: Analysis
+) -> LatestDetection:
     detection = analyzer.latest_detection
     if detection is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="No detection has been analyzed yet.",
+            headers={"Cache-Control": "no-store"},
         )
+    response.headers["Cache-Control"] = "no-store"
     age_seconds = max(0.0, time() - detection.captured_at.timestamp())
     return LatestDetection(
         **detection.model_dump(),

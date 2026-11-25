@@ -62,7 +62,7 @@ METADATA_COLUMNS = (
     "simulation_phase",
 )
 
-FEATURE_COLUMNS = tuple(FeatureVector.model_fields)
+FEATURE_COLUMNS = tuple(name for name in FeatureVector.model_fields if name != "ingest_v3")
 
 RESULT_COLUMNS = (
     "expected_label",

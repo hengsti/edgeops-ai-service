@@ -43,6 +43,12 @@ def _non_negative(value: float) -> float:
     return max(value, 0.0)
 
 
+def _required(value: float | None) -> float:
+    if value is None:
+        raise ValueError("Required legacy ML feature is unavailable.")
+    return value
+
+
 def _optional_bounded(value: float | None) -> float:
     return 0.0 if value is None else _bounded(value)
 
@@ -68,20 +74,22 @@ def _wal_available(features: FeatureVector) -> bool:
 
 MODEL_FEATURES: dict[str, Callable[[FeatureVector], float]] = {
     "queue_growth_ratio": lambda f: _bounded_ratio(
-        max(f.queue_growth_rate, 0.0), f.messages_enqueued_rate
+        max(_required(f.queue_growth_rate), 0.0), f.messages_enqueued_rate
     ),
-    "processing_ratio": lambda f: _bounded(f.processing_ratio),
-    "queue_full_ratio": lambda f: _bounded_ratio(f.queue_full_rate, f.messages_enqueued_rate),
-    "transform_failure_ratio": lambda f: _bounded(f.transform_failure_ratio),
-    "persistence_ratio": lambda f: _bounded(f.persistence_ratio),
+    "processing_ratio": lambda f: _bounded(_required(f.processing_ratio)),
+    "queue_full_ratio": lambda f: _bounded_ratio(
+        _required(f.queue_full_rate), f.messages_enqueued_rate
+    ),
+    "transform_failure_ratio": lambda f: _bounded(_required(f.transform_failure_ratio)),
+    "persistence_ratio": lambda f: _bounded(_required(f.persistence_ratio)),
     "heartbeat_missing": lambda f: float(bool(f.heartbeat_missing)),
     "queue_utilization_ratio": lambda f: _optional_bounded(f.queue_utilization_ratio),
     "queue_metrics_available": lambda f: float(f.queue_utilization_ratio is not None),
     "influx_write_failure_ratio": lambda f: _optional_bounded(f.influx_write_failure_ratio),
     "influx_write_metrics_available": lambda f: float(f.influx_write_failure_ratio is not None),
-    "influxdb_healthy": lambda f: _bounded(f.influxdb_healthy),
+    "influxdb_healthy": lambda f: _bounded(_required(f.influxdb_healthy)),
     "pipeline_duration_log_seconds": lambda f: log1p(
-        _non_negative(f.pipeline_duration_average_seconds)
+        _non_negative(_required(f.pipeline_duration_average_seconds))
     ),
     "heartbeat_age_max_log_seconds": lambda f: _optional_log(f.heartbeat_age_max_seconds),
     "heartbeat_age_available": lambda f: float(f.heartbeat_age_max_seconds is not None),
@@ -144,6 +152,8 @@ MODEL_FEATURE_COLUMNS = tuple(MODEL_FEATURES)
 
 
 def vectorize_model_features(features: FeatureVector) -> list[float]:
+    if features.ingest_v3 is not None:
+        raise ValueError("The legacy ML feature contract does not accept Ingest v3 telemetry.")
     return [extract(features) for extract in MODEL_FEATURES.values()]
 
 

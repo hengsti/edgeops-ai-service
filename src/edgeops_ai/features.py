@@ -5,6 +5,7 @@ from edgeops_ai.feature_groups import (
     device_features,
     duration_features,
     influx_features,
+    ingest_v3_features,
     queue_features,
     transform_features,
     wal_features,
@@ -13,8 +14,7 @@ from edgeops_ai.feature_groups import (
     safe_ratio as safe_ratio,
 )
 from edgeops_ai.schemas import (
-    OPTIONAL_COUNTER_NAMES,
-    REQUIRED_COUNTER_NAMES,
+    COUNTER_NAMES,
     FeatureVector,
     ObservationV1,
 )
@@ -65,6 +65,7 @@ class FeatureExtractor:
         return (
             previous.metadata.source_host != current.metadata.source_host
             or previous.metadata.simulation_run_id != current.metadata.simulation_run_id
+            or previous.metrics.telemetry_version != current.metrics.telemetry_version
         )
 
     @staticmethod
@@ -72,13 +73,7 @@ class FeatureExtractor:
         previous_metrics = previous.metrics
         current_metrics = current.metrics
 
-        if any(
-            getattr(current_metrics, name) < getattr(previous_metrics, name)
-            for name in REQUIRED_COUNTER_NAMES
-        ):
-            return True
-
-        for name in OPTIONAL_COUNTER_NAMES:
+        for name in COUNTER_NAMES:
             previous_value = getattr(previous_metrics, name)
             current_value = getattr(current_metrics, name)
             if (
@@ -139,4 +134,7 @@ class FeatureExtractor:
             heartbeat_age_available=devices.heartbeat_age_max_seconds is not None,
             device_metrics_available=devices.observed_device_count > 0,
             broker_available=current.broker_available,
+            ingest_v3=ingest_v3_features(window)
+            if current.metrics.telemetry_version == "v3"
+            else None,
         )

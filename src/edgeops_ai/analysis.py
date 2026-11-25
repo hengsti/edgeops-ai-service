@@ -3,6 +3,7 @@ from datetime import datetime
 
 from edgeops_ai.features import FeatureExtractor
 from edgeops_ai.prediction import Predictor
+from edgeops_ai.rules import INGEST_V3_RULES_VERSION, RuleBasedPredictor
 from edgeops_ai.schemas import AnalysisResult, ObservationV1
 
 
@@ -11,6 +12,7 @@ class Analyzer:
 
     def __init__(self, predictor: Predictor) -> None:
         self.predictor = predictor
+        self._ingest_v3_rules = RuleBasedPredictor()
         self._extractor = FeatureExtractor()
         self._lock = asyncio.Lock()
         self.latest_detection: AnalysisResult | None = None
@@ -23,7 +25,14 @@ class Analyzer:
     async def analyze(self, observation: ObservationV1) -> AnalysisResult:
         async with self._lock:
             features = self._extractor.update(observation)
-            prediction = self.predictor.predict(features) if features is not None else None
+            ingest_v3 = observation.metrics.telemetry_version == "v3"
+            prediction = None
+            if features is not None:
+                prediction = (
+                    self._ingest_v3_rules.predict_ingest_v3(features)
+                    if ingest_v3
+                    else self.predictor.predict(features)
+                )
             self.latest_detection = AnalysisResult(
                 status="predicted" if prediction is not None else "warming-up",
                 captured_at=observation.metadata.captured_at,
@@ -32,9 +41,17 @@ class Analyzer:
                 model_version=(
                     prediction.model_version
                     if prediction is not None
+                    else INGEST_V3_RULES_VERSION
+                    if ingest_v3
                     else self.predictor.model_version
                 ),
-                recommendation=prediction.recommendation if prediction is not None else None,
+                recommendation=(
+                    prediction.recommendation
+                    if prediction is not None
+                    else "Ingest v3 evidence does not support an incident classification."
+                    if ingest_v3 and features is not None
+                    else None
+                ),
                 features=features,
                 scenario_id=observation.metadata.scenario_id,
                 simulation_run_id=observation.metadata.simulation_run_id,

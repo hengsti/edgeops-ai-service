@@ -16,7 +16,11 @@ async def poll_collector(
 ) -> None:
     while True:
         try:
-            await analyzer.analyze(await client.fetch_observation())
+            observation = await client.fetch_observation()
+            latest = analyzer.latest_detection
+            if latest is not None and observation.metadata.captured_at <= latest.captured_at:
+                raise ValueError("Collector observation timestamp did not advance")
+            await analyzer.analyze(observation)
             analyzer.collector_last_error = None
             analyzer.collector_last_success_at = datetime.now(UTC)
             analyzer.collector_consecutive_failures = 0

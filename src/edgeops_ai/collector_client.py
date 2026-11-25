@@ -17,6 +17,18 @@ from edgeops_ai.schemas import (
 logger = logging.getLogger(__name__)
 
 BROKER_DOWN_STATUSES = frozenset({"created", "restarting", "removing", "paused", "exited", "dead"})
+V3_SIGNALS = (
+    "ingest_admission_pressure",
+    "wal_forwarder_delivered_total",
+    "quarantine_appends_total",
+)
+V3_FAMILIES = frozenset(
+    {"ingest_pipeline_outcomes_total", "ingest_stage_outcomes_total", "ingest_sink_state"}
+)
+V3_LABELED = V3_FAMILIES | {
+    "ingest_persist_duration_seconds_sum",
+    "ingest_persist_duration_seconds_count",
+}
 
 
 class CollectorClient:
@@ -40,9 +52,58 @@ class CollectorClient:
     async def fetch_observation(self) -> ObservationV1:
         payload = await self._get_json("/v1/metrics/ingestion")
         collector_metrics = payload["data"]
-
-        # A successful production metrics response comes from a fresh ingest scrape.
         metadata = payload["metadata"]
+        if not isinstance(collector_metrics, dict) or not isinstance(metadata, dict):
+            raise ValueError("Collector metrics and metadata must be JSON objects")
+
+        labeled = collector_metrics.get("labeled", {})
+        if not isinstance(labeled, dict):
+            raise ValueError("Collector labeled metrics must be a JSON object")
+        if (
+            V3_FAMILIES.intersection(labeled)
+            or any(collector_metrics.get(name) is not None for name in V3_SIGNALS)
+            or (
+                "labeled" in collector_metrics
+                and collector_metrics.get("ingest_messages_processed_total") is None
+            )
+        ):
+            metrics = {
+                name: collector_metrics.get(metric.source_name) for name, metric in METRICS.items()
+            }
+            for name, value in metrics.items():
+                if value is not None and type(value) not in (int, float):
+                    raise ValueError(f"Invalid numeric collector metric: {name}")
+            metrics["telemetry_version"] = "v3"
+            metrics["labeled"] = {name: labeled[name] for name in labeled.keys() & V3_LABELED}
+        else:
+            metrics = self._legacy_metrics(collector_metrics, metadata)
+
+        device_tasks = [
+            asyncio.create_task(self._fetch_device(device_id)) for device_id in self._device_ids
+        ]
+        try:
+            devices = await asyncio.gather(*device_tasks)
+        finally:
+            # Drain requests before the next poll or client shutdown, including on failure.
+            for task in device_tasks:
+                task.cancel()
+            await asyncio.gather(*device_tasks, return_exceptions=True)
+
+        return ObservationV1.model_validate(
+            {
+                "schema_version": "1.0",
+                "metadata": metadata,
+                "metrics": metrics,
+                "devices": devices,
+                "broker_available": await self._fetch_broker_available(),
+            }
+        )
+
+    @staticmethod
+    def _legacy_metrics(
+        collector_metrics: dict[str, Any], metadata: dict[str, Any]
+    ) -> dict[str, Any]:
+        # A successful production metrics response comes from a fresh ingest scrape.
         if metadata.get("collector_mode") == "production" and metadata.get("simulated") is False:
             collector_metrics = dict(collector_metrics)
             for metric in METRICS.values():
@@ -66,26 +127,7 @@ class CollectorClient:
             }
         )
 
-        device_tasks = [
-            asyncio.create_task(self._fetch_device(device_id)) for device_id in self._device_ids
-        ]
-        try:
-            devices = await asyncio.gather(*device_tasks)
-        finally:
-            # Drain requests before the next poll or client shutdown, including on failure.
-            for task in device_tasks:
-                task.cancel()
-            await asyncio.gather(*device_tasks, return_exceptions=True)
-
-        return ObservationV1.model_validate(
-            {
-                "schema_version": "1.0",
-                "metadata": payload["metadata"],
-                "metrics": metrics,
-                "devices": devices,
-                "broker_available": await self._fetch_broker_available(),
-            }
-        )
+        return metrics
 
     async def _fetch_broker_available(self) -> bool | None:
         for attempt in range(2):

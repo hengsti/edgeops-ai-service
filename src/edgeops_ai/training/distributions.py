@@ -188,10 +188,8 @@ def check_distributions(
     report["production_rules_predictions"] = dict(
         Counter(predictor.predict(row).label for row in production)
     )
-    report["production_queue_growth_range"] = [
-        min(row.queue_growth_rate for row in production),
-        max(row.queue_growth_rate for row in production),
-    ]
+    growth = [row.queue_growth_rate for row in production if row.queue_growth_rate is not None]
+    report["production_queue_growth_range"] = [min(growth), max(growth)] if growth else []
     write_report(report, output)
     return report
 

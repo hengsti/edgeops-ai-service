@@ -5,9 +5,10 @@ import httpx
 import pytest
 from pydantic import ValidationError
 
+from edgeops_ai.analysis import Analyzer
 from edgeops_ai.collector_client import CollectorClient
 from edgeops_ai.features import FeatureExtractor
-from edgeops_ai.rules import RuleBasedPredictor
+from edgeops_ai.rules import INGEST_V3_RULES_VERSION, RuleBasedPredictor
 from edgeops_ai.schemas import ObservationV1
 
 EXPECTED_A2_MAPPING = {
@@ -85,6 +86,95 @@ def envelope(data: object) -> dict[str, object]:
         },
         "data": data,
     }
+
+
+def ingest_v3_metrics(*, state="healthy", **overrides):
+    return {
+        "mqtt_messages_received_total": 20,
+        "ingest_messages_enqueued_total": 18,
+        "ingest_transform_success_total": 18,
+        "influx_lines_written_total": 2,
+        "ingest_messages_processed_total": None,
+        "ingest_transform_failed_total": None,
+        "influxdb_healthy": None,
+        "ingest_admission_pressure": 0,
+        "wal_forwarder_alive": 1,
+        "wal_forwarder_delivered_total": 2,
+        "wal_forwarder_committed_total": 1,
+        "quarantine_appends_total": 0,
+        "labeled": {"ingest_sink_state": [{"labels": {"state": state}, "value": 1}]}
+        if state
+        else {},
+        **overrides,
+    }
+
+
+def test_ingest_v3_keeps_intake_delivery_commit_and_unknown_evidence_distinct():
+    observation = asyncio.run(fetch_observation(ingest_v3_metrics()))
+    metrics = observation.metrics
+    assert metrics.telemetry_version == "v3"
+    assert metrics.messages_enqueued_total == 18
+    assert metrics.wal_delivered_total == 2
+    assert metrics.wal_committed_total == 1
+    assert metrics.quarantine_appends_total == 0
+    assert metrics.messages_processed_total is None
+    assert metrics.influxdb_healthy is None
+    assert metrics.transform_failed_total is None
+    assert metrics.pipeline_duration_seconds_count is None
+
+
+def test_labeled_legacy_timings_do_not_switch_the_prediction_contract():
+    metrics = {
+        **collector_metrics(),
+        "labeled": {
+            "ingest_persist_duration_seconds_count": [{"labels": {"result": "success"}, "value": 1}]
+        },
+    }
+    observation = asyncio.run(fetch_observation(metrics))
+    assert observation.metrics.telemetry_version is None
+    assert observation.metrics.messages_processed_total == 90
+
+
+@pytest.mark.parametrize("invalid", [None, -1, True, "20"])
+def test_ingest_v3_rejects_invalid_required_counters(invalid):
+    metrics = ingest_v3_metrics(mqtt_messages_received_total=invalid)
+    with pytest.raises(ValueError, match="mqtt_messages_received_total"):
+        asyncio.run(fetch_observation(metrics))
+
+
+def test_ingest_v3_rules_handle_outage_missing_evidence_recovery_and_reset():
+    class LegacyPredictor(RuleBasedPredictor):
+        def predict(self, features):
+            pytest.fail("Ingest v3 telemetry must not reach the legacy classifier")
+
+    async def run():
+        analyzer = Analyzer(LegacyPredictor())
+        for step, (metrics, expected) in enumerate(
+            [
+                (ingest_v3_metrics(), None),
+                (ingest_v3_metrics(), "normal"),
+                (ingest_v3_metrics(ingest_admission_pressure=1), "ingestion-backpressure"),
+                (ingest_v3_metrics(state="blocked"), "influxdb-write-failure"),
+                (ingest_v3_metrics(state=None), None),
+                (ingest_v3_metrics(wal_forwarder_committed_total=2), "normal"),
+                (ingest_v3_metrics(wal_forwarder_committed_total=0), None),
+                (ingest_v3_metrics(wal_forwarder_committed_total=0), "normal"),
+            ]
+        ):
+            observation = await fetch_observation(metrics)
+            observation.metadata.captured_at += timedelta(seconds=10 * step)
+            result = await analyzer.analyze(observation)
+            assert result.prediction == expected
+            assert result.model_version == INGEST_V3_RULES_VERSION
+            if step == 5:
+                assert result.features.ingest_v3.cursor_commit_rate == pytest.approx(0.1)
+                assert result.features.ingest_v3.sink_delivery_rate == 0
+                assert result.features.processing_ratio is None
+                assert result.features.persistence_ratio is None
+            if step == 6:
+                assert result.features is None
+
+    asyncio.run(run())
 
 
 def transport_for(

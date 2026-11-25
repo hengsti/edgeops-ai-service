@@ -1760,6 +1760,33 @@ the new hashes and validation evidence below, then rebuild/restart with the new
 
 ## Production counter compatibility
 
+### Ingest v3 (#37)
+
+Use Collector with [the Ingest v3 metrics update](https://github.com/hengsti/edgeops-collector/issues/14).
+AI requires the four core counters for MQTT receipt, transform success, durable
+intake and Influx lines written. Optional counters, timings and health evidence
+can be absent or null. The latest detection's `features.ingest_v3` keeps
+durable intake, rejection, sink delivery and cursor commit rates distinct. It
+also carries admission pressure, sink state and labeled route/stage evidence.
+Legacy processing and persistence ratios are unavailable on v3.
+
+V3 observations use `rules-ingest-v3-0.1.0` even when a legacy classifier is
+configured. The rules report incidents supported by observed evidence and can
+report an explicitly healthy, idle pipeline. Other windows return the existing
+`warming-up` status with no prediction, a current capture timestamp and an
+explanation when a window was available. Reset counters start a new window.
+A failed poll or a capture timestamp that does not advance keeps the prior
+detection and marks it stale. Use `/health` for poll failures and
+`/v1/detections/latest` for the effective model version, timestamp and age.
+
+During rollout, record the running AI and Collector image digests, then query
+`/health`, `/v1/detections/latest` and `/v1/state-report` from the Control UI
+network. On a slow refresh, check for `202` with `Retry-After`, then a current
+schema-1.0 response with all three `X-Advisor-*` headers. Verify the Advisor
+workspace and latest incident independently through Control UI.
+
+### Legacy counters
+
 The ingestion counter fix (ingestion-service #15) must be deployed before collecting
 new production evidence. `ingest_messages_enqueued_total` and
 `ingest_messages_processed_total` both cover sensor and status messages, labelled

@@ -308,13 +308,16 @@ def test_missing_heartbeat_is_detected() -> None:
 
 def test_latest_detection() -> None:
     with TestClient(create_app(make_settings())) as client:
-        assert client.get("/v1/detections/latest").status_code == 404
+        empty = client.get("/v1/detections/latest")
+        assert empty.status_code == 404
+        assert empty.headers["Cache-Control"] == "no-store"
 
         client.post("/v1/observations", json=observation())
 
         response = client.get("/v1/detections/latest")
 
         assert response.status_code == 200
+        assert response.headers["Cache-Control"] == "no-store"
         assert response.json()["status"] == "warming-up"
 
 
@@ -535,8 +538,12 @@ def test_push_analysis_runs_on_the_event_loop(monkeypatch: pytest.MonkeyPatch) -
     asyncio.run(run())
 
 
+@pytest.mark.parametrize(
+    "failure",
+    ["collector offline", "Collector observation timestamp did not advance"],
+)
 def test_concurrent_push_and_poll_preserve_the_polling_window(
-    monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+    monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture, failure: str
 ) -> None:
     async def run() -> None:
         now = 1704067200.0
@@ -560,7 +567,9 @@ def test_concurrent_push_and_poll_preserve_the_polling_window(
             if fetch_count == 1:
                 return first
             if fetch_count == 2:
-                raise httpx.ConnectError("collector offline")
+                if failure == "collector offline":
+                    raise httpx.ConnectError(failure)
+                return first
             if fetch_count == 3:
                 failed.set()
                 await recover.wait()
@@ -588,11 +597,11 @@ def test_concurrent_push_and_poll_preserve_the_polling_window(
             assert latest.json()["observed_at"] == "2024-01-01T00:00:00Z"
             assert latest.json()["age_seconds"] == 0
             assert latest.json()["stale"] is True
-            assert app.state.analyzer.collector_last_error == "collector offline"
+            assert app.state.analyzer.collector_last_error == failure
             health = await client.get("/health")
             assert health.status_code == 200
             assert health.json()["status"] == "degraded"
-            assert health.json()["last_error"] == "collector offline"
+            assert health.json()["last_error"] == failure
             assert health.json()["consecutive_failures"] == 1
             assert health.json()["last_poll_success_at"] is not None
             last_success_at = health.json()["last_poll_success_at"]
@@ -635,4 +644,4 @@ def test_concurrent_push_and_poll_preserve_the_polling_window(
             }
 
     asyncio.run(run())
-    assert "Collector polling failed: collector offline" in caplog.text
+    assert f"Collector polling failed: {failure}" in caplog.text
